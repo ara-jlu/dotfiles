@@ -12,7 +12,7 @@
 ### 1. リポジトリをクローン
 
 ```bash
-git clone https://github.com/daiki-jlu/dotfiles.git
+git clone git@github.com:daiki-jlu/dotfiles.git
 cd dotfiles
 ```
 
@@ -49,4 +49,4 @@ ln -sf $(pwd)/.tmux.conf ~/.tmux.conf
 
 ---
 
-*このdotfilesセットアップは[Claude Code](https://claude.ai/code)によって作成されました。*
+*このドキュメントは[Claude Code](https://claude.ai/code)によって作成されました。*
