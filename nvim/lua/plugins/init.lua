@@ -18,23 +18,37 @@ vim.opt.rtp:prepend(lazypath)
 local plugins = {
   -- カラースキーム
   {
-    "catppuccin/nvim",
-    name = "catppuccin",
-    priority = 1000,
+    'projekt0n/github-nvim-theme',
+    name = 'github-theme',
+    lazy = false, -- make sure we load this during startup if it is your main colorscheme
+    priority = 1000, -- make sure to load this before all the other start plugins
     config = function()
-      require("catppuccin").setup()
-      vim.cmd.colorscheme "catppuccin-mocha"
+      require("github-theme").setup({
+        -- ...
+      })
+
+      vim.cmd("colorscheme github_dark")
     end,
+  },
+
+  -- ファイルアイコン
+  {
+    "nvim-tree/nvim-web-devicons",
+    lazy = false,
+    priority = 900,
   },
 
   -- ファイルエクスプローラー
   {
     "nvim-tree/nvim-tree.lua",
-    dependencies = {
-      "nvim-tree/nvim-web-devicons", -- ファイルアイコン
-    },
+    dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
-      require("nvim-tree").setup()
+      require("nvim-tree").setup({
+        git = {
+          enable = true,            -- Git 機能を使うなら有効に
+          ignore = false,           -- .gitignore を無視してファイルを表示
+        },
+      })
     end,
   },
 
@@ -44,7 +58,7 @@ local plugins = {
     dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
       require("lualine").setup({
-        theme = "catppuccin"
+        theme = "github_dark"
       })
     end,
   },
@@ -55,12 +69,18 @@ local plugins = {
     build = ":TSUpdate",
     config = function()
       require("nvim-treesitter.configs").setup({
-        ensure_installed = { "javascript", "typescript", "lua", "python", "html", "css" },
+        ensure_installed = { "javascript", "typescript", "tsx", "lua", "python", "html", "css", "markdown_inline", "json" },
         highlight = { enable = true },
         indent = { enable = true },
       })
     end,
   },
+
+  -- AIコード補完
+  {
+    'Exafunction/windsurf.vim',
+    event = 'BufEnter'
+  }
 }
 
 -- lazy.nvimを初期化

@@ -20,7 +20,7 @@ opt.smartcase = true    -- 大文字が含まれる場合は区別する
 
 -- 表示設定
 opt.number = true       -- 行番号を表示
-opt.relativenumber = true -- 相対行番号を表示
+opt.relativenumber = false -- 相対行番号を表示しない
 opt.cursorline = true   -- カーソル行をハイライト
 opt.wrap = false        -- 行の折り返しを無効
 opt.signcolumn = "yes"  -- サインカラムを常に表示
