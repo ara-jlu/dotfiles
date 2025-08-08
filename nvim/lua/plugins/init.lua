@@ -174,6 +174,30 @@ local plugins = {
     end,
   },
 
+  -- ファイル検索（Telescope）
+  {
+    "nvim-telescope/telescope.nvim",
+    tag = "0.1.4",
+    dependencies = { "nvim-lua/plenary.nvim" },
+    config = function()
+      require("telescope").setup({
+        defaults = {
+          file_ignore_patterns = { "node_modules", ".git" },
+          prompt_prefix = "🔍 ",
+          selection_caret = "➤ ",
+        },
+        pickers = {
+          find_files = {
+            theme = "dropdown",
+          },
+          live_grep = {
+            theme = "dropdown",
+          },
+        },
+      })
+    end,
+  },
+
   -- AIコード補完
   {
     'Exafunction/windsurf.vim',
