@@ -198,6 +198,27 @@ local plugins = {
     end,
   },
 
+  -- Git統合
+  {
+    "lewis6991/gitsigns.nvim",
+    config = function()
+      require("gitsigns").setup({
+        signs = {
+          add = { text = "+" },
+          change = { text = "~" },
+          delete = { text = "_" },
+          topdelete = { text = "‾" },
+          changedelete = { text = "~" },
+        },
+        current_line_blame = true,
+      })
+    end,
+  },
+
+  -- Git操作（Fugitive）
+  {
+    "tpope/vim-fugitive",
+  },
   -- AIコード補完
   {
     'Exafunction/windsurf.vim',
