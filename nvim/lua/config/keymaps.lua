@@ -56,3 +56,32 @@ keymap("n", "<A-k>", ":m .-2<CR>==", { desc = "現在行を上に移動" })
 
 -- ファイルエクスプローラー（nvim-tree）
 keymap("n", "<leader>e", ":NvimTreeToggle<CR>", { desc = "ファイルエクスプローラーの表示切替" })
+
+-- Telescope（ファイル検索）
+keymap("n", "<leader>ff", "<cmd>Telescope find_files<CR>", { desc = "ファイル検索" })
+keymap("n", "<leader>fg", "<cmd>Telescope live_grep<CR>", { desc = "文字列検索" })
+keymap("n", "<leader>fb", "<cmd>Telescope buffers<CR>", { desc = "バッファ検索" })
+keymap("n", "<leader>fh", "<cmd>Telescope help_tags<CR>", { desc = "ヘルプ検索" })
+
+-- LSP機能
+keymap("n", "gd", vim.lsp.buf.definition, { desc = "定義にジャンプ" })
+keymap("n", "gD", vim.lsp.buf.declaration, { desc = "宣言にジャンプ" })
+keymap("n", "gr", vim.lsp.buf.references, { desc = "参照を表示" })
+keymap("n", "gi", vim.lsp.buf.implementation, { desc = "実装にジャンプ" })
+keymap("n", "K", vim.lsp.buf.hover, { desc = "ホバー情報を表示" })
+keymap("n", "<leader>rn", vim.lsp.buf.rename, { desc = "シンボル名変更" })
+keymap("n", "<leader>ca", vim.lsp.buf.code_action, { desc = "コードアクション" })
+keymap("n", "<leader>f", function() vim.lsp.buf.format({ async = true }) end, { desc = "コードフォーマット" })
+
+-- 診断（エラー・警告）
+keymap("n", "<leader>d", vim.diagnostic.open_float, { desc = "診断情報を表示" })
+keymap("n", "[d", vim.diagnostic.goto_prev, { desc = "前の診断" })
+keymap("n", "]d", vim.diagnostic.goto_next, { desc = "次の診断" })
+keymap("n", "<leader>dl", vim.diagnostic.setloclist, { desc = "診断リストを表示" })
+
+-- Git（Fugitive）
+keymap("n", "<leader>gs", ":Git status<CR>", { desc = "Git status" })
+keymap("n", "<leader>gc", ":Git commit<CR>", { desc = "Git commit" })
+keymap("n", "<leader>gp", ":Git push<CR>", { desc = "Git push" })
+keymap("n", "<leader>gl", ":Git log<CR>", { desc = "Git log" })
+keymap("n", "<leader>gd", ":Git diff<CR>", { desc = "Git diff" })
