@@ -8,7 +8,7 @@ if not vim.loop.fs_stat(lazypath) then
     "clone",
     "--filter=blob:none",
     "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable", -- latest stable release
+    "--branch=stable",
     lazypath,
   })
 end
@@ -20,35 +20,22 @@ local plugins = {
   {
     'projekt0n/github-nvim-theme',
     name = 'github-theme',
-    lazy = false, -- make sure we load this during startup if it is your main colorscheme
-    priority = 1000, -- make sure to load this before all the other start plugins
+    lazy = false,
+    priority = 1000,
     config = function()
-      require("github-theme").setup({
-        -- ...
-      })
-
       vim.cmd("colorscheme github_dark")
     end,
   },
 
   -- ファイルアイコン
-  {
-    "nvim-tree/nvim-web-devicons",
-    lazy = false,
-    priority = 900,
-  },
+  "nvim-tree/nvim-web-devicons",
 
   -- ファイルエクスプローラー
   {
     "nvim-tree/nvim-tree.lua",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
-      require("nvim-tree").setup({
-        git = {
-          enable = true,            -- Git 機能を使うなら有効に
-          ignore = false,           -- .gitignore を無視してファイルを表示
-        },
-      })
+      require("nvim-tree").setup()
     end,
   },
 
@@ -57,173 +44,129 @@ local plugins = {
     "nvim-lualine/lualine.nvim",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
-      require("lualine").setup({
-        theme = "github_dark"
-      })
+      require("lualine").setup()
     end,
   },
 
-  -- シンタックスハイライト
+  -- ファイル検索
   {
-    "nvim-treesitter/nvim-treesitter",
-    build = ":TSUpdate",
+    "nvim-telescope/telescope.nvim",
+    tag = "0.1.4",
+    dependencies = { "nvim-lua/plenary.nvim" },
     config = function()
-      require("nvim-treesitter.configs").setup({
-        ensure_installed = { "javascript", "typescript", "tsx", "lua", "python", "html", "css", "markdown_inline", "json" },
-        highlight = { enable = true },
-        indent = { enable = true },
+      require("telescope").setup()
+    end,
+  },
+
+  -- Git表示
+  {
+    "lewis6991/gitsigns.nvim",
+    config = function()
+      require("gitsigns").setup()
+    end,
+  },
+
+  -- Git操作
+  "tpope/vim-fugitive",
+
+  -- LSPサーバー管理（Mason）
+  {
+    "williamboman/mason.nvim",
+    cmd = "Mason",
+    build = ":MasonUpdate",
+    config = function()
+      require("mason").setup({
+        ui = {
+          icons = {
+            package_installed = "✓",
+            package_pending = "➜",
+            package_uninstalled = "✗"
+          }
+        }
       })
     end,
   },
 
-  -- LSP設定
+  -- LSP設定（シンプル版）
   {
     "neovim/nvim-lspconfig",
-    dependencies = {
-      "williamboman/mason.nvim",
-      "williamboman/mason-lspconfig.nvim",
-    },
+    ft = { "lua", "python", "javascript", "typescript" },
     config = function()
-      require("mason").setup()
-      require("mason-lspconfig").setup({
-        ensure_installed = { 
-          "lua_ls", "tsserver", "pyright", "html", "cssls", "jsonls", "tailwindcss"
-        },
-      })
-
       local lspconfig = require("lspconfig")
-      local capabilities = require("cmp_nvim_lsp").default_capabilities()
-
-      -- LSPサーバーの設定
-      local servers = { "lua_ls", "tsserver", "pyright", "html", "cssls", "jsonls", "tailwindcss" }
-      for _, lsp in ipairs(servers) do
-        lspconfig[lsp].setup({
-          capabilities = capabilities,
-        })
-      end
-
-      -- Lua LSPの特別設定
+      
+      -- Lua LSP（最も使用頻度が高い）
       lspconfig.lua_ls.setup({
-        capabilities = capabilities,
         settings = {
           Lua = {
-            runtime = { version = "LuaJIT" },
-            diagnostics = { globals = { "vim" } },
-            workspace = { library = vim.api.nvim_get_runtime_file("", true) },
-            telemetry = { enable = false },
+            diagnostics = { globals = {"vim"} },
+            workspace = { checkThirdParty = false },
           },
         },
       })
+
+      -- LSPキーマップ（バッファローカル）
+      vim.api.nvim_create_autocmd("LspAttach", {
+        callback = function(ev)
+          local opts = { buffer = ev.buf }
+          vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
+          vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+          vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
+          vim.keymap.set("n", "<space>rn", vim.lsp.buf.rename, opts)
+          vim.keymap.set("n", "<space>ca", vim.lsp.buf.code_action, opts)
+        end,
+      })
     end,
   },
 
-  -- 自動補完
+  -- LSP補完追加
   {
     "hrsh7th/nvim-cmp",
+    event = "InsertEnter",
     dependencies = {
       "hrsh7th/cmp-nvim-lsp",
       "hrsh7th/cmp-buffer",
       "hrsh7th/cmp-path",
       "hrsh7th/cmp-cmdline",
-      "L3MON4D3/LuaSnip",
-      "saadparwaiz1/cmp_luasnip",
     },
     config = function()
       local cmp = require("cmp")
-      local luasnip = require("luasnip")
-
-      cmp.setup({
-        snippet = {
-          expand = function(args)
-            luasnip.lsp_expand(args.body)
-          end,
+      local capabilities = require("cmp_nvim_lsp").default_capabilities()
+      
+      -- LSPにcmp capabilitiesを設定
+      require("lspconfig").lua_ls.setup({
+        capabilities = capabilities,
+        settings = {
+          Lua = {
+            diagnostics = { globals = {"vim"} },
+            workspace = { checkThirdParty = false },
+          },
         },
+      })
+      
+      cmp.setup({
+        sources = cmp.config.sources({
+          { name = "nvim_lsp" },
+          { name = "buffer" },
+          { name = "path" },
+        }),
         mapping = cmp.mapping.preset.insert({
           ["<C-b>"] = cmp.mapping.scroll_docs(-4),
           ["<C-f>"] = cmp.mapping.scroll_docs(4),
           ["<C-Space>"] = cmp.mapping.complete(),
           ["<C-e>"] = cmp.mapping.abort(),
           ["<CR>"] = cmp.mapping.confirm({ select = true }),
-          ["<Tab>"] = cmp.mapping(function(fallback)
-            if cmp.visible() then
-              cmp.select_next_item()
-            elseif luasnip.expand_or_jumpable() then
-              luasnip.expand_or_jump()
-            else
-              fallback()
-            end
-          end, { "i", "s" }),
-          ["<S-Tab>"] = cmp.mapping(function(fallback)
-            if cmp.visible() then
-              cmp.select_prev_item()
-            elseif luasnip.jumpable(-1) then
-              luasnip.jump(-1)
-            else
-              fallback()
-            end
-          end, { "i", "s" }),
-        }),
-        sources = cmp.config.sources({
-          { name = "nvim_lsp" },
-          { name = "luasnip" },
-        }, {
-          { name = "buffer" },
-          { name = "path" },
+          ["<Tab>"] = cmp.mapping.select_next_item(),
+          ["<S-Tab>"] = cmp.mapping.select_prev_item(),
         }),
       })
     end,
   },
 
-  -- ファイル検索（Telescope）
+  -- AI補完プラグイン
   {
-    "nvim-telescope/telescope.nvim",
-    tag = "0.1.4",
-    dependencies = { "nvim-lua/plenary.nvim" },
-    config = function()
-      require("telescope").setup({
-        defaults = {
-          file_ignore_patterns = { "node_modules", ".git" },
-          prompt_prefix = "🔍 ",
-          selection_caret = "➤ ",
-        },
-        pickers = {
-          find_files = {
-            theme = "dropdown",
-          },
-          live_grep = {
-            theme = "dropdown",
-          },
-        },
-      })
-    end,
+    "Exafunction/windsurf.vim",
+    event = "BufEnter",
   },
-
-  -- Git統合
-  {
-    "lewis6991/gitsigns.nvim",
-    config = function()
-      require("gitsigns").setup({
-        signs = {
-          add = { text = "+" },
-          change = { text = "~" },
-          delete = { text = "_" },
-          topdelete = { text = "‾" },
-          changedelete = { text = "~" },
-        },
-        current_line_blame = true,
-      })
-    end,
-  },
-
-  -- Git操作（Fugitive）
-  {
-    "tpope/vim-fugitive",
-  },
-  -- AIコード補完
-  {
-    'Exafunction/windsurf.vim',
-    event = 'BufEnter'
-  }
 }
 
 -- lazy.nvimを初期化

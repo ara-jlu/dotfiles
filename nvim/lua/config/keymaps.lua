@@ -63,21 +63,18 @@ keymap("n", "<leader>fg", "<cmd>Telescope live_grep<CR>", { desc = "文字列検
 keymap("n", "<leader>fb", "<cmd>Telescope buffers<CR>", { desc = "バッファ検索" })
 keymap("n", "<leader>fh", "<cmd>Telescope help_tags<CR>", { desc = "ヘルプ検索" })
 
--- LSP機能
-keymap("n", "gd", vim.lsp.buf.definition, { desc = "定義にジャンプ" })
-keymap("n", "gD", vim.lsp.buf.declaration, { desc = "宣言にジャンプ" })
-keymap("n", "gr", vim.lsp.buf.references, { desc = "参照を表示" })
-keymap("n", "gi", vim.lsp.buf.implementation, { desc = "実装にジャンプ" })
-keymap("n", "K", vim.lsp.buf.hover, { desc = "ホバー情報を表示" })
-keymap("n", "<leader>rn", vim.lsp.buf.rename, { desc = "シンボル名変更" })
-keymap("n", "<leader>ca", vim.lsp.buf.code_action, { desc = "コードアクション" })
-keymap("n", "<leader>f", function() vim.lsp.buf.format({ async = true }) end, { desc = "コードフォーマット" })
-
--- 診断（エラー・警告）
-keymap("n", "<leader>d", vim.diagnostic.open_float, { desc = "診断情報を表示" })
+-- LSP診断（エラー・警告）
 keymap("n", "[d", vim.diagnostic.goto_prev, { desc = "前の診断" })
 keymap("n", "]d", vim.diagnostic.goto_next, { desc = "次の診断" })
+keymap("n", "<leader>d", vim.diagnostic.open_float, { desc = "診断情報を表示" })
 keymap("n", "<leader>dl", vim.diagnostic.setloclist, { desc = "診断リストを表示" })
+
+-- LSP機能（LSPアタッチ時に自動設定）
+-- gd: 定義ジャンプ
+-- K: ホバー情報
+-- gr: 参照一覧
+-- <space>rn: リネーム
+-- <space>ca: コードアクション
 
 -- Git（Fugitive）
 keymap("n", "<leader>gs", ":Git status<CR>", { desc = "Git status" })
