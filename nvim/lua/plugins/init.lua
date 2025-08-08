@@ -76,6 +76,47 @@ local plugins = {
     end,
   },
 
+  -- LSP設定
+  {
+    "neovim/nvim-lspconfig",
+    dependencies = {
+      "williamboman/mason.nvim",
+      "williamboman/mason-lspconfig.nvim",
+    },
+    config = function()
+      require("mason").setup()
+      require("mason-lspconfig").setup({
+        ensure_installed = { 
+          "lua_ls", "tsserver", "pyright", "html", "cssls", "jsonls", "tailwindcss"
+        },
+      })
+
+      local lspconfig = require("lspconfig")
+      local capabilities = require("cmp_nvim_lsp").default_capabilities()
+
+      -- LSPサーバーの設定
+      local servers = { "lua_ls", "tsserver", "pyright", "html", "cssls", "jsonls", "tailwindcss" }
+      for _, lsp in ipairs(servers) do
+        lspconfig[lsp].setup({
+          capabilities = capabilities,
+        })
+      end
+
+      -- Lua LSPの特別設定
+      lspconfig.lua_ls.setup({
+        capabilities = capabilities,
+        settings = {
+          Lua = {
+            runtime = { version = "LuaJIT" },
+            diagnostics = { globals = { "vim" } },
+            workspace = { library = vim.api.nvim_get_runtime_file("", true) },
+            telemetry = { enable = false },
+          },
+        },
+      })
+    end,
+  },
+
   -- AIコード補完
   {
     'Exafunction/windsurf.vim',
