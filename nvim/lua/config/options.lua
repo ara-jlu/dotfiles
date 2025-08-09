@@ -39,6 +39,11 @@ opt.timeoutlen = 300    -- キーマップのタイムアウト
 opt.scrolloff = 8       -- スクロール時の余白
 opt.sidescrolloff = 8   -- 横スクロール時の余白
 
+-- ページャー・メッセージ設定
+opt.more = false        -- ページャー無効化
+opt.cmdheight = 2       -- コマンドライン高さ
+opt.shortmess:append("c") -- 一部メッセージを短縮
+
 -- カラー設定
 opt.termguicolors = true -- 24bit色を有効
 vim.cmd("syntax on")     -- シンタックスハイライト有効
