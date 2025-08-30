@@ -60,13 +60,6 @@ return {
     event = "VeryLazy",
     config = function()
       require("lualine").setup({
-        options = {
-          theme = "github_dark",
-          globalstatus = true,
-        },
-        sections = {
-          lualine_x = { "encoding", "fileformat", "filetype" },
-        },
       })
     end,
   },
@@ -78,19 +71,7 @@ return {
     main = "ibl",
     config = function()
       require("ibl").setup({
-        indent = { char = "▎" },
-      })
-    end,
-  },
-
-  -- カーソル行ハイライト
-  {
-    "RRethy/vim-illuminate",
-    event = { "BufReadPost", "BufNewFile" },
-    config = function()
-      require("illuminate").configure({
-        delay = 200,
-        large_file_cutoff = 2000,
+        indent = { char = "┃" }
       })
     end,
   },

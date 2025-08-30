@@ -5,6 +5,10 @@ local opt = vim.opt
 -- シェル設定
 vim.o.shell = "/bin/zsh"
 
+-- エンコーディング設定
+opt.encoding = "utf-8"
+opt.fileencoding = "utf-8"
+
 -- インデント設定
 opt.shiftwidth = 4      -- インデント幅
 opt.tabstop = 4         -- タブ文字の幅
@@ -22,7 +26,7 @@ opt.smartcase = true    -- 大文字が含まれる場合は区別する
 opt.number = true       -- 行番号を表示
 opt.relativenumber = false -- 相対行番号を表示しない
 opt.cursorline = true   -- カーソル行をハイライト
-opt.wrap = false        -- 行の折り返しを無効
+opt.wrap = true         -- 行の折り返しを有効
 opt.signcolumn = "yes"  -- サインカラムを常に表示
 
 -- クリップボード設定
