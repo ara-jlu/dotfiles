@@ -13,7 +13,27 @@ return {
       "nvim-tree/nvim-web-devicons",
     },
     config = function()
-      require("nvim-tree").setup {}
+      require("nvim-tree").setup {
+        filters = {
+          dotfiles = false,  -- 隠しファイル（.envなど）を表示
+          git_ignored = false,  -- .gitignoreされたファイルも表示
+        },
+        view = {
+          width = 30,
+        },
+        renderer = {
+          group_empty = true,
+          highlight_git = "name",  -- 文字色でGitステータスを表示
+          icons = {
+            show = {
+              git = false,  -- Gitアイコン（記号）を非表示
+            },
+          },
+        },
+        git = {
+          enable = true,  -- Git統合を有効化
+        },
+      }
     end,
   },
 
