@@ -18,7 +18,6 @@ vim.opt.rtp:prepend(lazypath)
 require("lazy").setup({
   { import = "plugins.ui" },        -- UI・テーマ関連
   { import = "plugins.editor" },    -- エディタ・ファイル管理
-  { import = "plugins.lsp" },       -- LSP・自動補完
   { import = "plugins.git" },       -- Git統合
   { import = "plugins.treesitter" }, -- 構文ハイライト・編集支援
 }, {

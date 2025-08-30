@@ -3,6 +3,7 @@
 -- 基本設定を読み込み
 require("config.options")
 require("config.keymaps")
+require("config.lsp")
 
 -- プラグイン設定を読み込み
 require("plugins")
