@@ -1,0 +1,22 @@
+[alias]
+	# git -> g
+	# 使用例: g status, g commit, g push など
+
+	# checkout -b -> cob
+	cob = checkout -b
+
+	# push -> ps
+	ps = push
+
+	# branch -> b
+	b = branch
+
+	# branch -D -> bd
+	bd = branch -D
+
+	# その他便利なalias
+	st = status
+	co = checkout
+	cm = commit
+	pl = pull
+	lg = log --oneline --graph --decorate
