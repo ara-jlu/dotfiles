@@ -71,6 +71,7 @@ keymap("n", "<leader>tf", "<cmd>ToggleTerm direction=float<CR>", { desc = "フ�
 keymap("n", "<leader>th", "<cmd>ToggleTerm direction=horizontal<CR>", { desc = "水平ターミナル" })
 keymap("n", "<leader>tv", "<cmd>ToggleTerm direction=vertical size=80<CR>", { desc = "垂直ターミナル" })
 keymap("n", "<C-\\>", "<cmd>ToggleTerm<CR>", { desc = "ターミナル切り替え" })
+keymap("t", "jk", [[<C-\><C-n>]], { desc = "ターミナルでNormal mode" })
 
 -- LSP診断（エラー・警告）
 keymap("n", "[d", vim.diagnostic.goto_prev, { desc = "前の診断" })
