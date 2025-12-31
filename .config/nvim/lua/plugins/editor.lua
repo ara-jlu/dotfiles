@@ -1,6 +1,27 @@
 -- plugins/editor.lua - エディタ・ファイル管理関連プラグイン
 
 return {
+  -- プロジェクト全体検索・置換 (Spectre)
+  {
+    "nvim-pack/nvim-spectre",
+    dependencies = { "nvim-lua/plenary.nvim" },
+    keys = {
+      { "<leader>rr", function() require("spectre").open() end, desc = "Search & Replace" },
+      { "<leader>rw", function() require("spectre").open_visual({ select_word = true }) end, desc = "Replace Word" },
+      { "<leader>rf", function() require("spectre").open_file_search({ select_word = true }) end, desc = "Replace in File" },
+    },
+    config = function()
+      require("spectre").setup({
+        live_update = true,      -- tu: ファイル保存時に再検索
+        default = {
+          find = {
+            options = { "hidden", "ignore-case" },  -- th: 隠しファイル, ti: 大文字小文字区別しない
+          },
+        },
+      })
+    end,
+  },
+
   -- ファイルエクスプローラー (nvim-tree)
   {
     "nvim-tree/nvim-tree.lua",
@@ -42,7 +63,7 @@ return {
     "nvim-telescope/telescope.nvim", tag = "0.1.8",
     dependencies = { "nvim-lua/plenary.nvim" },
     keys = {
-      { "<leader>ff", "<cmd>Telescope find_files<cr>", desc = "Find Files" },
+      { "<leader>ff", "<cmd>Telescope find_files hidden=true<cr>", desc = "Find Files" },
       { "<leader>fg", "<cmd>Telescope live_grep<cr>", desc = "Live Grep" },
     },
   },
