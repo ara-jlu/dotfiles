@@ -20,6 +20,7 @@ require("lazy").setup({
   { import = "plugins.editor" },    -- エディタ・ファイル管理
   { import = "plugins.git" },       -- Git統合
   { import = "plugins.treesitter" }, -- 構文ハイライト・編集支援
+  { import = "plugins.ai" },        -- AI補完
 }, {
   defaults = {
     lazy = false,
