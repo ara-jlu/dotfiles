@@ -1,3 +1,6 @@
+[user]
+	name = daiki-jlu
+	email = daiki-jlu@users.noreply.github.com
 [alias]
 	# git -> g
 	# 使用例: g status, g commit, g push など
@@ -20,3 +23,4 @@
 	cm = commit
 	pl = pull
 	lg = log --oneline --graph --decorate
+
