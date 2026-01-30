@@ -55,6 +55,28 @@ backup_if_exists "$HOME/.zshrc"
 ln -sf "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
 echo "✓ zsh設定のリンクが完了しました"
 
+# Claude Code設定のセットアップ
+# 注意: ~/.claude/ には Claude Code の状態データ（history, plans, todos等）が含まれるため、
+#       ディレクトリ全体ではなく、commands と docs のみをシンボリックリンクする
+echo "Claude Code設定をセットアップしています..."
+
+# ~/.claude/ ディレクトリが存在しない場合は作成
+mkdir -p "$HOME/.claude"
+
+# commands ディレクトリのシンボリックリンク
+backup_if_exists "$HOME/.claude/commands"
+ln -sf "$DOTFILES_DIR/.claude/commands" "$HOME/.claude/commands"
+
+# docs ディレクトリのシンボリックリンク
+backup_if_exists "$HOME/.claude/docs"
+ln -sf "$DOTFILES_DIR/.claude/docs" "$HOME/.claude/docs"
+
+# settings.json のシンボリックリンク
+backup_if_exists "$HOME/.claude/settings.json"
+ln -sf "$DOTFILES_DIR/.claude/settings.json" "$HOME/.claude/settings.json"
+
+echo "✓ Claude Code設定のリンクが完了しました"
+
 echo ""
 echo "dotfilesのセットアップが完了しました！"
 echo "既存の設定ファイルはタイムスタンプ付きでバックアップされています。"

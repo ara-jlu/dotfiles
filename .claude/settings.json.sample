@@ -1,0 +1,16 @@
+{
+  "alwaysThinkingEnabled": true,
+  "env": {
+    "CONTEXT7_API_KEY": "<YOUR_CONTEXT7_API_KEY>",
+    "DISCORD_WEBHOOK_URL": "<YOUR_DISCORD_WEBHOOK_URL>",
+    "DISCORD_MENTION_USER": "<YOUR_DISCORD_USER_ID>",
+    "NOTION_TASK_DB_URL": "<YOUR_NOTION_TASK_DB_URL>",
+    "NOTION_NOTES_DB_URL": "<YOUR_NOTION_NOTES_DB_URL>"
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "playwright",
+    "context7",
+    "notion"
+  ]
+}
