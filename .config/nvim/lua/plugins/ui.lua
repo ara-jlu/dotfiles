@@ -19,38 +19,49 @@ return {
     priority = 900,
   },
 
-  -- スタートスクリーン (AstroNvimスタイル)
+  -- スタートスクリーン
   {
-    "goolord/alpha-nvim",
-    event = "VimEnter",
-    config = function()
-      local alpha = require("alpha")
-      local dashboard = require("alpha.themes.dashboard")
-
-      -- ヘッダー
-      dashboard.section.header.val = {
-        "                                                     ",
-        "  ███╗   ██╗███████╗ ██████╗ ██╗   ██╗██╗███╗   ███╗ ",
-        "  ████╗  ██║██╔════╝██╔═══██╗██║   ██║██║████╗ ████║ ",
-        "  ██╔██╗ ██║█████╗  ██║   ██║██║   ██║██║██╔████╔██║ ",
-        "  ██║╚██╗██║██╔══╝  ██║   ██║╚██╗ ██╔╝██║██║╚██╔╝██║ ",
-        "  ██║ ╚████║███████╗╚██████╔╝ ╚████╔╝ ██║██║ ╚═╝ ██║ ",
-        "  ╚═╝  ╚═══╝╚══════╝ ╚═════╝   ╚═══╝  ╚═╝╚═╝     ╚═╝ ",
-        "                                                     ",
-      }
-
-      -- メニューボタン
-      dashboard.section.buttons.val = {
-        dashboard.button("f", "  Find file", ":Telescope find_files <CR>"),
-        dashboard.button("n", "  New file", ":ene <BAR> startinsert <CR>"),
-        dashboard.button("r", "  Recently used files", ":Telescope oldfiles <CR>"),
-        dashboard.button("t", "  Find text", ":Telescope live_grep <CR>"),
-        dashboard.button("c", "  Configuration", ":e ~/.config/nvim/init.lua <CR>"),
-        dashboard.button("q", "  Quit Neovim", ":qa<CR>"),
-      }
-
-      alpha.setup(dashboard.opts)
-    end,
+    "folke/snacks.nvim",
+    lazy = false,
+    priority = 1000,
+    ---@type snacks.Config
+    opts = {
+      dashboard = {
+        preset = {
+          header = [[
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣤⡴⠶⠦⠴⠶⠶⠶⠶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⡞⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠹⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⡏⠰⢦⠴⠆⠀⠀⠀⠀⠀⢀⡀⠀⣀⠘⢲⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⡴⠶⣼⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⠋⠁⠀⠀⠹⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⡏⠁⠀⢸⡇⠀⠀⠀⠀⠀⠀⣀⠀⢀⡀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⠀⠀⠀⢿⡀⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⢉⣴⡌⠁⠀⠀⠀⠀⠀⠀⠀⢠⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⢰⡏⣉⢙⢛⡳⠾⠷⢦⣤⣀⣻⣄⠀⠀⠀⠀⠀⠘⠷⠟⠀⠀⠀⠀⠀⠀⠀⡰⠟⠛⢦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⢸⡇⠀⠈⠈⠉⠛⠲⠶⢦⣍⣉⣛⠶⠶⢤⣀⡀⠀⠀⠀⠀⠀⠀⢀⣠⡴⠞⠁⠀⠀⠘⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⣀⡀⠈⠉⠉⠛⠲⠆⢸⣷⠶⠶⠶⢦⣤⡶⠋⠁⠀⠀⠀⠀⠀⠘⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠘⣇⠀⠀⠀⠀⠀⣼⠋⢹⡆⠀⠀⠀⠀⠸⠎⣯⣉⣛⢳⡾⠋⠀⠀⠀⠀⠀⠀⡀⠀⠀⢸⡷⣄⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢿⠀⠀⠀⠀⠀⠘⠓⠞⠃⠀⠀⠀⠀⠰⡆⢿⠾⣏⣽⠁⠀⠀⠀⠀⠀⠀⣰⠷⢤⣄⣸⣇⢸⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢸⣇⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣧⢸⣿⣯⠿⠳⣤⣀⣀⡴⠶⠚⠁⠀⠀⠀⠉⠉⠉⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠙⠓⠶⠶⢦⣤⣀⣀⠀⠀⠀⠀⢹⣼⣏⣁⣴⣾⡿⠟⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠙⠓⠶⠦⣼⣃⣿⡿⠟⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀]],
+          keys = {
+            { icon = " ", key = "f", desc = "Find File", action = ":Telescope find_files" },
+            { icon = " ", key = "n", desc = "New File", action = ":ene | startinsert" },
+            { icon = " ", key = "r", desc = "Recent Files", action = ":Telescope oldfiles" },
+            { icon = " ", key = "t", desc = "Find Text", action = ":Telescope live_grep" },
+            { icon = " ", key = "c", desc = "Config", action = ":e ~/.config/nvim/init.lua" },
+            { icon = " ", key = "q", desc = "Quit", action = ":qa" },
+          },
+        },
+        sections = {
+          { section = "header" },
+          { section = "keys", gap = 1, padding = 1 },
+          { icon = " ", title = "Recent Files", section = "recent_files", indent = 2, padding = { 2, 2 } },
+          { section = "startup" },
+        },
+      },
+    },
   },
 
   -- ステータスライン
