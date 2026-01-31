@@ -55,6 +55,13 @@ backup_if_exists "$HOME/.zshrc"
 ln -sf "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
 echo "✓ zsh設定のリンクが完了しました"
 
+# wezterm設定のセットアップ
+echo "wezterm設定をセットアップしています..."
+backup_if_exists "$HOME/.config/wezterm"
+mkdir -p "$HOME/.config"
+ln -sf "$DOTFILES_DIR/.config/wezterm" "$HOME/.config/wezterm"
+echo "✓ wezterm設定のリンクが完了しました"
+
 # Claude Code設定のセットアップ
 # 注意: ~/.claude/ には Claude Code の状態データ（history, plans, todos等）が含まれるため、
 #       ディレクトリ全体ではなく、commands と docs のみをシンボリックリンクする
