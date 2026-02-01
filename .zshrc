@@ -15,3 +15,8 @@ alias g='git'
 # Claude Alias
 alias cc='claude'
 alias ccyolo='claude --dangerously-skip-permissions'
+
+# Ensure UTF-8 tty mode (fixes Japanese in iOS NeoServer + tmux)
+if [[ -t 0 ]]; then
+  stty iutf8 2>/dev/null
+fi
