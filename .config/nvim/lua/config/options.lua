@@ -37,6 +37,12 @@ opt.backup = false      -- バックアップファイル無効
 opt.writebackup = false -- 書き込み時バックアップ無効
 opt.swapfile = false    -- スワップファイル無効
 
+-- 外部変更の自動検知（Claude Code等で編集された場合に自動反映）
+opt.autoread = true
+vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold" }, {
+  command = "checktime",
+})
+
 -- その他の設定
 opt.updatetime = 250    -- 更新間隔を短く
 opt.timeoutlen = 300    -- キーマップのタイムアウト
