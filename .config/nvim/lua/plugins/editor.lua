@@ -103,6 +103,20 @@ return {
     end,
   },
 
+  -- j/k 長押し時の加速
+  {
+    "rainbowhxch/accelerated-jk.nvim",
+    keys = {
+      { "j", "<Plug>(accelerated_jk_gj)", mode = "n" },
+      { "k", "<Plug>(accelerated_jk_gk)", mode = "n" },
+    },
+    config = function()
+      require("accelerated-jk").setup({
+        acceleration_table = { 4, 8, 14, 22, 32 },
+      })
+    end,
+  },
+
   -- バッファライン
   {
     "akinsho/bufferline.nvim",
