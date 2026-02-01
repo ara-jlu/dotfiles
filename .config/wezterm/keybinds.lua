@@ -54,18 +54,33 @@ return {
         end),
       }),
     },
+    -- アプリ終了
+    { key = "q", mods = "SUPER", action = act.QuitApplication },
     -- コマンドパレット表示
     { key = "p", mods = "SUPER", action = act.ActivateCommandPalette },
-    -- Tab移動
-    { key = "Tab", mods = "CTRL", action = act.ActivateTabRelative(1) },
-    { key = "Tab", mods = "SHIFT|CTRL", action = act.ActivateTabRelative(-1) },
-    -- Tab入れ替え
-    { key = "{", mods = "LEADER", action = act({ MoveTabRelative = -1 }) },
-    -- Tab新規作成
-    { key = "t", mods = "SUPER", action = act({ SpawnTab = "CurrentPaneDomain" }) },
+    -- Tab新規作成 leader + c
+    { key = "c", mods = "LEADER", action = act({ SpawnTab = "CurrentPaneDomain" }) },
+    -- Tab切り替え leader + n/p
+    { key = "n", mods = "LEADER", action = act.ActivateTabRelative(1) },
+    { key = "p", mods = "LEADER", action = act.ActivateTabRelative(-1) },
+    -- Tab名前変更 leader + ,
+    {
+      key = ",",
+      mods = "LEADER",
+      action = act.PromptInputLine({
+        description = "(wezterm) Set tab title:",
+        action = wezterm.action_callback(function(window, pane, line)
+          if line then
+            window:active_tab():set_title(line)
+          end
+        end),
+      }),
+    },
+    -- Tab並び替え Cmd+Shift+←/→
+    { key = "LeftArrow", mods = "SUPER|SHIFT", action = act({ MoveTabRelative = -1 }) },
+    { key = "RightArrow", mods = "SUPER|SHIFT", action = act({ MoveTabRelative = 1 }) },
     -- Tabを閉じる
     { key = "w", mods = "SUPER", action = act({ CloseCurrentTab = { confirm = true } }) },
-    { key = "}", mods = "LEADER", action = act({ MoveTabRelative = 1 }) },
 
     -- 画面フルスクリーン切り替え
     { key = "Enter", mods = "ALT", action = act.ToggleFullScreen },
