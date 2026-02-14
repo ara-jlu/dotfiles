@@ -90,12 +90,14 @@ Bashツールで以下を確認：
 
 #### 2.3 要件分析
 
-引数がNotion URLの場合は `mcp__notion__notion-fetch` で内容を取得。
-テキストの場合はそのまま使用。
+引数がテキストの場合はそのまま要件として使用し、2.4へ進む。
 
-Notionページを取得したら、プロパティ「Notes」に紐づけられているページのうち、planタグがついているNotesページを `mcp__notion__notion-fetch` で取得し、詳細な仕様を確認してください。
+引数がNotion URLの場合：
+1. `mcp__notion__notion-fetch` でタスクページを取得（ステップ1.3で取得済みなら再取得不要）
+2. プロパティ「Notes」からplanタグ付きNotesページをすべて `mcp__notion__notion-fetch` で取得する（**主要な仕様書**として必ず確認）
+3. Notes内容を主要な仕様、タスクページ本文を補足情報として統合する
 
-ページ本文が空白で、かつplanタグ付きNotesも存在しない場合は、**処理を停止してユーザーに要件を確認**してください。要件が不明なまま実装を進めないでください。
+planタグ付きNotesが無い場合は、**処理を停止してユーザーに要件を確認**してください。
 
 **TodoWriteツールでタスク分解と計画を作成**してください。
 
@@ -299,6 +301,10 @@ gh pr create --title "<PR-title>" --body "<PR-body>"
 
 PRタイトルは変更内容を簡潔に表現してください。
 
+#### 6.5.5 Notionステータス更新
+
+引数がNotion URLの場合、`mcp__notion__notion-update-page` でタスクのステータスを「In Review」に更新する。
+
 #### 6.6 Discord通知
 
 PR作成が成功したら、Discord通知を送信：
@@ -344,6 +350,7 @@ Discord通知送信後、**即座にステップ7へ進んでください**。
 ✅ テスト: [実行 or スキップ]
 ✅ コミット作成: <commit-count>個
 ✅ PR作成: <PR-URL>
+✅ Notionステータス: In Review [Notion URLの場合のみ]
 
 次のアクション：
 - PR URLでレビュー依頼
