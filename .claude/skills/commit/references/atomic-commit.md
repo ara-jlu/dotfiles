@@ -63,8 +63,3 @@ git commit -m "test: Buttonコンポーネントのテストを追加"
 ## まとめ
 
 **タスク開始時点で論理的単位を計画**し、**実装が完了したら都度コミット（最低限動作する状態で）**する。後から分割しない。
-
-## 参照
-
-- コミット形式: `~/.claude/docs/git/commit-format.md`
-- PR作成前の確認: `~/.claude/docs/git/pull-request.md`

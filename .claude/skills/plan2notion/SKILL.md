@@ -1,6 +1,8 @@
 ---
 description: 詳細なヒアリングを行いNotionにページを作成
-argument-hint: [notion-url or initial task description]
+user-invocable: true
+disable-model-invocation: true
+argument-hint: "[notion-url or initial task description]"
 ---
 
 ## 設定
@@ -21,7 +23,7 @@ argument-hint: [notion-url or initial task description]
 
 ## 重要: ヒアリング実行規則
 
-**このコマンドのフェーズ1〜3では、必ず `AskUserQuestion` ツールを使用してユーザーに質問すること。**
+**このスキルのフェーズ1〜3では、必ず `AskUserQuestion` ツールを使用してユーザーに質問すること。**
 
 - 質問は必ず `AskUserQuestion` ツールで行い、ユーザーの回答を待ってから次に進むこと
 - **自分で回答を推測・生成して先に進むことは厳禁**（dangerous-permissionsモードでも同様）
@@ -32,7 +34,7 @@ argument-hint: [notion-url or initial task description]
 
 ### 0. 引数判定
 
-コマンド引数がNotion URLかテキストかを判定：
+引数 `$ARGUMENTS` がNotion URLかテキストかを判定：
 
 **Notion URLの場合:**
 1. `notion-fetch` ツールでTASKページを取得
@@ -159,22 +161,6 @@ Phase 1で全体の要件は収集済みのため、各サブタスク**固有�
 - options: "お任せ" / "技術的な指定あり"
 - 「技術的な指定あり」またはOther入力時は内容を反映し、必要に応じて追加の `AskUserQuestion` で深掘り
 
-### 3.5. Session ID取得
-
-Bashツールで以下を実行し、session IDを取得してください：
-```bash
-cat << 'SCRIPT_END' | bash
-SESSION_ID=$(ls -t ~/.claude/session-env 2>/dev/null | head -1)
-if [ -z "$SESSION_ID" ]; then
-  echo "N/A"
-else
-  echo "$SESSION_ID"
-fi
-SCRIPT_END
-```
-
-取得したSession IDをNotesページのコンテンツに含めます。
-
 ### 4. Notionページ作成
 
 **プロパティ設定（共通）:**
@@ -207,7 +193,7 @@ Notesページには必ず以下のセクションを含めてください：
 - **参考情報**セクション:
   ```
   ## 参考情報
-  - Claude Code SessionID: `<session-id>`
+  - Claude Code SessionID: `${CLAUDE_SESSION_ID}`
   ```
 
 **サブアイテム命名規則**:
@@ -227,4 +213,4 @@ Notesページには必ず以下のセクションを含めてください：
   - 親タスクURL（または単一タスクURL）
   - 親Notes URL（または単一Notes URL）
 
-NotesページURLは `/implementation` コマンドで使用できます。
+NotesページURLは `/implementation` スキルで使用できます。

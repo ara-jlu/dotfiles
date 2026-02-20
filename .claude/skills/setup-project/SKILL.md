@@ -1,10 +1,19 @@
 ---
 description: 新規プロジェクトで必要な.claude/配下のファイルを詳細ヒアリングしながら作成
+user-invocable: true
+disable-model-invocation: true
 ---
+
+# 動的コンテキスト
+
+プロジェクトファイル検出:
+```
+!`ls package.json docker-compose.yml pnpm-workspace.yaml tsconfig.json 2>/dev/null`
+```
 
 ## 概要
 
-新規プロジェクトのセットアップを支援するコマンドです。
+新規プロジェクトのセットアップを支援するスキルです。
 以下の3ファイルを作成します：
 
 - `.claude/settings.local.json` - プロジェクト固有の環境変数
@@ -44,7 +53,7 @@ description: 新規プロジェクトで必要な.claude/配下のファイル�
      - label: "MyApp"
 
 2. **Notion連携**
-   - question: "Notion連携を設定しますか？（plan2notionコマンドで使用）"
+   - question: "Notion連携を設定しますか？（plan2notionスキルで使用）"
    - header: "Notion"
    - options:
      - label: "はい"
@@ -98,7 +107,7 @@ description: 新規プロジェクトで必要な.claude/配下のファイル�
    - options:
      - label: "提案内容でOK"
 
-## Phase 4: ファイル生成
+## Phase 5: ファイル生成
 
 ヒアリング結果に基づいて以下のファイルを生成します。
 
@@ -115,60 +124,16 @@ description: 新規プロジェクトで必要な.claude/配下のファイル�
 
 ### 2. project/local-setup.md
 
-フレームワークとDockerの選択に基づいてテンプレートを生成：
-
-**Next.js + Docker の例:**
-```markdown
-# ローカル開発環境セットアップ
-
-## 必要な環境
-
-- Node.js 18+
-- Docker & Docker Compose
-[外部サービスに応じて追加]
-
-## 環境起動
-
-[選択された外部サービスの起動コマンド]
-
-## 開発開始
-
-[パッケージマネージャーに応じたコマンド]
-```
+フレームワークとDockerの選択に基づいてテンプレートを生成。
 
 ### 3. project/testing-strategy.md
 
-テスト関連の選択に基づいてテンプレートを生成：
-
-```markdown
-# テスト戦略
-
-## TDD推奨
-
-Red → Green → Refactor
-
-## ツール
-
-- **Unit**: [選択されたテストFW]
-- **E2E**: [選択されたE2Eツール]
-
-## カバレッジ目標
-
-[選択された目標]
-
-## 実行コマンド
-
-[Docker使用有無とパッケージマネージャーに応じたコマンド]
-
-## クリティカルパス（E2E必須）
-
-[プロジェクト概要から推測して記載]
-```
+テスト関連の選択に基づいてテンプレートを生成。
 
 ## 実行手順
 
 1. `.claude/` ディレクトリを確認・作成
-2. AskUserQuestionツールで Phase 1-3 のヒアリングを実行
+2. AskUserQuestionツールで Phase 2-4 のヒアリングを実行
 3. 回答に基づいてファイル内容を生成
 4. `.claude/project/` ディレクトリを作成
 5. 3つのファイルを書き込み
@@ -187,7 +152,7 @@ Red → Green → Refactor
 ## 次のステップ
 1. settings.local.json の NOTION_PROJECT_ID を確認・設定
 2. local-setup.md を参考に環境をセットアップ
-3. 実装開始時は /implementation コマンドを使用
+3. 実装開始時は /implementation スキルを使用
 ```
 
 ## 既存ファイルの扱い

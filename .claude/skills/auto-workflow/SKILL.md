@@ -1,11 +1,13 @@
 ---
 description: NotionタスクをブランチからPRまで完全自動実行
-argument-hint: [notion-url or requirement text]
+user-invocable: true
+disable-model-invocation: true
+argument-hint: "[notion-url or requirement text]"
 ---
 
-## ⚠️ 完全自動実行コマンド
+## 完全自動実行スキル
 
-このコマンドは**ユーザーの入力を待たずに全ステップを自動実行**します。
+このスキルは**ユーザーの入力を待たずに全ステップを自動実行**します。
 各ステップ完了後、必ず次のステップに進んでください。
 
 ---
@@ -35,7 +37,7 @@ git checkout main && git pull origin main
 
 #### 1.3 ブランチ名生成
 
-引数がNotion URLかテキストかを判定し、適切な方法でブランチ名を生成：
+引数 `$ARGUMENTS` がNotion URLかテキストかを判定し、適切な方法でブランチ名を生成：
 
 **パターンA: Notion URLの場合**
 1. `mcp__notion__notion-fetch` ツールでページを取得
@@ -78,9 +80,8 @@ git checkout -b <generated-branch-name>
 
 以下のドキュメントを読み込む（存在するもののみ）：
 - `CLAUDE.md`（プロジェクトルート）
-- `.claude/project/local-setup.md`（存在する場合）
-- `.claude/project/testing-strategy.md`（存在する場合）
-- `~/.claude/docs/development/docker-workflow.md`（Docker プロジェクトの場合）
+- `.claude/project/local-setup.md`
+- `.claude/project/testing-strategy.md`
 
 #### 2.2 環境確認
 
@@ -103,7 +104,7 @@ git checkout -b <generated-branch-name>
 
 planタグ付きNotesが無い場合は、**処理を停止してユーザーに要件を確認**してください。
 
-**TodoWriteツールでタスク分解と計画を作成**してください。
+**`TaskCreate` ツールでタスク分解と計画を作成**してください。
 
 #### 2.4 TDD実装
 
@@ -160,7 +161,7 @@ planタグ付きNotesが無い場合は、**処理を停止してユーザーに
 - CWS ストア提出
 - 認証が必要なサービスでの動作確認
 
-**⚠️ 重要**: 実装完了報告を出力したら、**即座にステップ3へ進んでください**。ここで停止しないでください。
+**重要**: 実装完了報告を出力したら、**即座にステップ3へ進んでください**。ここで停止しないでください。
 
 **エラー時**: 処理を停止し、エラー内容を報告してください。
 
@@ -194,24 +195,21 @@ git diff --name-only
 
 **注意**: このステップはステップ3でテスト実行が必要と判断された場合のみ実行してください。
 
-#### 4.1 準備
+テスト実行パターンの詳細は `references/test-patterns.md` を参照。
 
-以下のドキュメントを読み込む：
-- `~/.claude/docs/development/test-commands.md`
-- `~/.claude/docs/development/docker-workflow.md`
-
-#### 4.2 テスト実行
+#### 4.1 テスト実行
 
 プロジェクトの技術スタックに応じたテスト方法を選択:
 
 **パターンA: Docker プロジェクト**（`docker-compose.yml` が存在する場合）
-1. `docker-compose build` - Dockerイメージをビルド
-2. `docker-compose up -d` - コンテナをバックグラウンドで起動
-3. `docker-compose exec <service> npm run lint` - ESLintチェック
-4. `docker-compose exec <service> npm run typecheck` - TypeScript型チェック
-5. `docker-compose exec <service> npm run test` - ユニットテスト実行
-6. `docker-compose exec <service> npm run build` - 本番ビルド
-7. `docker-compose down` - コンテナ停止・削除
+1. `docker-compose.yml` からサービス名を自動検出
+2. `docker-compose build` - Dockerイメージをビルド
+3. `docker-compose up -d` - コンテナをバックグラウンドで起動
+4. `docker-compose exec <service> <pm> run lint` - ESLintチェック
+5. `docker-compose exec <service> <pm> run typecheck` - TypeScript型チェック
+6. `docker-compose exec <service> <pm> run test` - ユニットテスト実行
+7. `docker-compose exec <service> <pm> run build` - 本番ビルド
+8. `docker-compose down` - コンテナ停止・削除
 
 **パターンB: pnpm/Turborepo プロジェクト**（`pnpm-workspace.yaml` が存在する場合）
 1. `pnpm lint` - ESLintチェック（定義されている場合）
@@ -227,7 +225,7 @@ git diff --name-only
 
 `package.json` の scripts を確認し、存在するコマンドのみ実行する。
 
-#### 4.3 結果確認
+#### 4.2 結果確認
 
 - すべてpass: 「✅ テスト正常完了」と表示し、**即座にステップ5へ進んでください**
 - 1つでも失敗: 処理を停止し、エラー内容を報告してください
@@ -238,20 +236,16 @@ git diff --name-only
 
 ### ステップ5: コミット作成
 
-#### 5.1 準備
+コミットルールの詳細は `references/commit-rules.md` を参照。
 
-以下のドキュメントを読み込む：
-- `~/.claude/docs/git/commit-format.md`
-- `~/.claude/docs/git/atomic-commit.md`
-
-#### 5.2 変更内容確認
+#### 5.1 変更内容確認
 
 Bashツールで以下を**並列実行**：
 - `git status` - 変更ファイル一覧
 - `git diff` - 変更差分
 - `git log --oneline -5` - 最近のコミットメッセージ（スタイル参考）
 
-#### 5.3 コミットメッセージ生成
+#### 5.2 コミットメッセージ生成
 
 Semantic Commit形式でメッセージを生成：
 - `feat:` - 新機能追加
@@ -262,7 +256,7 @@ Semantic Commit形式でメッセージを生成：
 - `test:` - テスト追加・修正
 - `chore:` - ビルド・ツール設定変更
 
-#### 5.4 コミット実行
+#### 5.3 コミット実行
 
 **Atomic Commit原則**に従い、論理的単位でコミットを作成：
 
@@ -278,7 +272,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 複数の論理的変更がある場合は、それぞれ個別にコミットしてください。
 
-#### 5.5 完了
+#### 5.4 完了
 
 コミット作成が完了したら、**即座にステップ6へ進んでください**。
 
@@ -288,39 +282,20 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ### ステップ6: PR作成
 
-#### 6.1 準備
-
-以下のドキュメントを読み込む：
-- `~/.claude/docs/git/pull-request.md`
-
-#### 6.2 リモートへpush
+#### 6.1 リモートへpush
 
 Bashツールで以下を実行：
 ```bash
 git push -u origin <branch-name>
 ```
 
-#### 6.3 変更内容確認
+#### 6.2 変更内容確認
 
 Bashツールで以下を**並列実行**：
 - `git diff main...HEAD --name-only` - 変更ファイル一覧
 - `git log main..HEAD --oneline` - コミット一覧
 
-#### 6.3.5 Session ID取得
-
-Bashツールで以下を実行し、session IDを取得してください：
-```bash
-cat << 'SCRIPT_END' | bash
-SESSION_ID=$(ls -t ~/.claude/session-env 2>/dev/null | head -1)
-if [ -z "$SESSION_ID" ]; then
-  echo "N/A"
-else
-  echo "$SESSION_ID"
-fi
-SCRIPT_END
-```
-
-#### 6.3.7 UI変更のスクリーンショット取得（該当する場合のみ）
+#### 6.3 UI変更のスクリーンショット取得（該当する場合のみ）
 
 変更ファイルに UI 関連（`.tsx`, `.css`, `.html`, popup, content script 等）が含まれる場合：
 - Playwright MCP（`mcp__playwright__browser_navigate` + `mcp__playwright__browser_take_screenshot`）で対象画面をキャプチャ
@@ -328,7 +303,7 @@ SCRIPT_END
 
 #### 6.4 PR本文生成
 
-PRテンプレートに従って本文を生成：
+PRテンプレートに従って本文を生成（詳細は `references/pr-template.md` を参照）：
 
 ```markdown
 ## 概要
@@ -348,7 +323,7 @@ PRテンプレートに従って本文を生成：
 
 ## 関連リンク
 - Notion要件: [引数がNotion URLの場合はここに記載]
-- Claude Code SessionID: `<session-id>`
+- Claude Code SessionID: `${CLAUDE_SESSION_ID}`
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
@@ -362,11 +337,11 @@ gh pr create --title "<PR-title>" --body "<PR-body>"
 
 PRタイトルは変更内容を簡潔に表現してください。
 
-#### 6.5.5 Notionステータス更新
+#### 6.6 Notionステータス更新
 
 引数がNotion URLの場合、`mcp__notion__notion-update-page` でタスクのステータスを「In Review」に更新する。
 
-#### 6.5.7 ユーザーアクションタスク起票
+#### 6.7 ユーザーアクションタスク起票
 
 ステップ2.6で特定した「ユーザーアクション必要」項目がある場合、**Notionの Task DB にタスクとして起票**する。
 
@@ -391,19 +366,15 @@ PRタイトルは変更内容を簡潔に表現してください。
 - CWS 提出 → デベロッパーダッシュボードの操作手順
 - 手動動作確認 → 拡張インストール手順 + 確認ポイントのチェックリスト
 
-#### 6.6 Discord通知
+#### 6.8 Discord通知
 
 PR作成が成功したら、Discord通知を送信：
 
 Bashツールで以下を実行：
 ```bash
-# 前のコマンドで取得したPR URLを変数に格納（例: https://github.com/user/repo/pull/123）
 PR_URL="<gh pr createコマンドの出力URL>"
+DISCORD_SCRIPT="~/.claude/skills/auto-workflow/scripts/discord-notify.sh"
 
-# Discord通知スクリプトのパス
-DISCORD_SCRIPT="~/.claude/commands/discord-notify.sh"
-
-# Discord通知を送信（エラーでも処理継続）
 if [ -x "$DISCORD_SCRIPT" ]; then
   "$DISCORD_SCRIPT" \
     "🎉 PR作成完了" \
@@ -416,7 +387,7 @@ fi
 
 **注意**: Discord通知の失敗は処理継続に影響しません。
 
-#### 6.7 完了
+#### 6.9 完了
 
 Discord通知送信後、**即座にステップ7へ進んでください**。
 
@@ -455,4 +426,3 @@ Discord通知送信後、**即座にステップ7へ進んでください**。
 - **各ステップを明示的に進める**: 各ステップ完了後、必ず次のステップへ進んでください
 - **自動進行**: ユーザーの入力を待たずに、すべてのステップを自動的に実行してください
 - **エラー時は即座に停止**: エラーが発生した場合は処理を停止し、ユーザーに報告してください
-- **SlashCommandツール使用禁止**: このコマンド内では他のslashコマンドを呼び出さないでください

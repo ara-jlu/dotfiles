@@ -1,5 +1,23 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "alwaysThinkingEnabled": true,
+  "permissions": {
+    "allow": [
+      "mcp__pencil",
+      "mcp__notion__notion-fetch",
+      "mcp__notion__notion-search",
+      "mcp__notion__notion-create-pages",
+      "mcp__notion__notion-update-page",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_snapshot",
+      "Bash(gh pr create *)",
+      "Bash(gh pr view *)",
+      "Bash(git push *)",
+      "Bash(git checkout *)",
+      "Bash(git pull *)"
+    ]
+  },
   "env": {
     "CONTEXT7_API_KEY": "<YOUR_CONTEXT7_API_KEY>",
     "DISCORD_WEBHOOK_URL": "<YOUR_DISCORD_WEBHOOK_URL>",

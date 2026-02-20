@@ -1,12 +1,15 @@
 ---
 description: 新規ブランチ作成（Notion URLまたは要件から自動生成）
-argument-hint: [notion-url or requirement text]
+user-invocable: true
+argument-hint: "[notion-url or requirement text]"
 ---
 
-## 準備
+# 動的コンテキスト
 
-以下のドキュメントを読み込んでください：
-- `~/.claude/docs/git/branch-naming.md`
+現在のGit状態:
+```
+!`git status --short`
+```
 
 ## 実行手順
 
@@ -24,7 +27,7 @@ git pull origin main
 
 ### 3. ブランチ名生成
 
-引数がNotion URLかテキストかを判定し、それぞれ処理：
+引数 `$ARGUMENTS` がNotion URLかテキストかを判定し、それぞれ処理：
 
 #### パターンA: Notion URLの場合
 
@@ -52,6 +55,24 @@ git pull origin main
    - 例: "ユーザー認証機能を追加する" → "user-authentication"
 3. **ブランチ名組み立て**: `<type>/<slug>`
    - 例: `feature/user-authentication`
+
+## ブランチ命名規則
+
+**GitHub Flow**を採用。`main`ブランチが常にデプロイ可能な状態。
+
+```
+# タスクIDがある場合
+<type>/<task-id>-<簡潔な説明>
+
+# タスクIDがない場合
+<type>/<簡潔な説明>
+```
+
+| タイプ | 用途 | 例 |
+|-------|------|-----|
+| `feature/` | 新機能開発 | `feature/TASK-1-user-authentication` |
+| `hotfix/` | 緊急バグ修正 | `hotfix/TASK-2-critical-payment-error` |
+| `docs/` | ドキュメント更新 | `docs/update-api-specification` |
 
 ### 4. ブランチ作成
 
