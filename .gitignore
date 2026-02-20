@@ -1,1 +1,3 @@
 .claude/settings.json
+.claude/skills/
+.agents/.skill-lock.json

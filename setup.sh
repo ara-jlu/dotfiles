@@ -82,7 +82,17 @@ ln -sf "$DOTFILES_DIR/.claude/docs" "$HOME/.claude/docs"
 backup_if_exists "$HOME/.claude/settings.json"
 ln -sf "$DOTFILES_DIR/.claude/settings.json" "$HOME/.claude/settings.json"
 
+# skills ディレクトリのシンボリックリンク（vercel-labs/skills 用）
+backup_if_exists "$HOME/.claude/skills"
+ln -sf "$DOTFILES_DIR/.claude/skills" "$HOME/.claude/skills"
+
 echo "✓ Claude Code設定のリンクが完了しました"
+
+# Agent Skills のセットアップ
+echo "Agent Skills設定をセットアップしています..."
+backup_if_exists "$HOME/.agents"
+ln -sf "$DOTFILES_DIR/.agents" "$HOME/.agents"
+echo "✓ Agent Skills設定のリンクが完了しました"
 
 echo ""
 echo "dotfilesのセットアップが完了しました！"
