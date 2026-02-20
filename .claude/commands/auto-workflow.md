@@ -76,17 +76,21 @@ git checkout -b <generated-branch-name>
 
 #### 2.1 準備
 
-以下のドキュメントを読み込む：
-- `.claude/project/local-setup.md`
-- `.claude/project/testing-strategy.md`
-- `~/.claude/docs/development/docker-workflow.md`
-- `CLAUDE.md`
+以下のドキュメントを読み込む（存在するもののみ）：
+- `CLAUDE.md`（プロジェクトルート）
+- `.claude/project/local-setup.md`（存在する場合）
+- `.claude/project/testing-strategy.md`（存在する場合）
+- `~/.claude/docs/development/docker-workflow.md`（Docker プロジェクトの場合）
 
 #### 2.2 環境確認
 
-Bashツールで以下を確認：
-- Supabase起動状態: `supabase status` で確認
-- Docker起動状態: `docker ps` で確認
+プロジェクトの技術スタックに応じて必要な環境のみ確認する:
+
+- **Docker/Supabase**: `docker-compose.yml` または `supabase/` ディレクトリが存在する場合のみ確認
+  - `docker ps` で Docker 起動状態を確認
+  - `supabase status` で Supabase 起動状態を確認
+- **pnpm/npm**: `package.json` が存在する場合、パッケージマネージャーの利用可否を確認
+- **上記に該当しない場合**: 環境確認をスキップし次へ進む
 
 #### 2.3 要件分析
 
@@ -110,7 +114,25 @@ planタグ付きNotesが無い場合は、**処理を停止してユーザーに
 4. Atomic Commit意識（論理的単位で分割可能な粒度を意識）
 5. 最低限の動作確認
 
-#### 2.5 実装完了報告
+#### 2.5 E2E 動作確認（可能な範囲で）
+
+実装完了後、AI が検証可能な項目を Playwright MCP で確認:
+
+**AI が検証できるもの**:
+- Web ページの表示確認（`mcp__playwright__browser_navigate` + `mcp__playwright__browser_snapshot`）
+- DOM 要素の存在確認（セレクターで特定要素を検証）
+- コンソールエラーの有無（`mcp__playwright__browser_console_messages`）
+- ネットワークリクエストの確認（`mcp__playwright__browser_network_requests`）
+
+**AI が検証できないもの（ユーザーに依頼）**:
+- Chrome 拡張の実際のブラウザ上での動作（content script のページ注入等）
+- 認証が必要な外部サービスとの連携（AWS/Azure コンソール等）
+- ブラウザ拡張のインストール・有効化の確認
+
+検証可能な項目がある場合は実行し、結果を報告に含める。
+検証不可能な項目がある場合は「手動確認推奨」としてリストアップする。
+
+#### 2.6 実装完了報告
 
 実装が完了したら、以下の形式で報告：
 
@@ -122,6 +144,10 @@ planタグ付きNotesが無い場合は、**処理を停止してユーザーに
 
 ## 変更ファイル
 - [変更したファイルのリスト]
+
+## 動作確認
+- [AI検証結果（実施した場合）]
+- [ ] 手動確認推奨: [AI検証不可の項目（該当する場合）]
 ```
 
 **⚠️ 重要**: 実装完了報告を出力したら、**即座にステップ3へ進んでください**。ここで停止しないでください。
@@ -142,9 +168,9 @@ git diff --name-only
 #### 3.2 テスト要否判定
 
 変更ファイルが以下のいずれかに該当する場合は**テスト実行**：
-- `app/nextjs/src/` 配下のファイル変更がある
 - テストファイル（`.test.ts`, `.test.tsx`, `.spec.ts`, `.spec.tsx`）の変更がある
 - TypeScript/JavaScriptファイル（`.ts`, `.tsx`, `.js`, `.jsx`）の変更がある
+- テストスクリプトが `package.json` に定義されている
 
 上記に該当しない場合は**テストスキップ**：
 - 「コードファイルの変更がないため、テストをスキップします」と表示
@@ -166,15 +192,30 @@ git diff --name-only
 
 #### 4.2 テスト実行
 
-Bashツールで以下を**順次実行**し、すべてpassすることを確認：
+プロジェクトの技術スタックに応じたテスト方法を選択:
 
+**パターンA: Docker プロジェクト**（`docker-compose.yml` が存在する場合）
 1. `docker-compose build` - Dockerイメージをビルド
 2. `docker-compose up -d` - コンテナをバックグラウンドで起動
-3. `docker-compose exec nextjs npm run lint` - ESLintチェック
-4. `docker-compose exec nextjs npm run typecheck` - TypeScript型チェック
-5. `docker-compose exec nextjs npm run test` - ユニットテスト実行
-6. `docker-compose exec nextjs npm run build` - Next.js本番ビルド
+3. `docker-compose exec <service> npm run lint` - ESLintチェック
+4. `docker-compose exec <service> npm run typecheck` - TypeScript型チェック
+5. `docker-compose exec <service> npm run test` - ユニットテスト実行
+6. `docker-compose exec <service> npm run build` - 本番ビルド
 7. `docker-compose down` - コンテナ停止・削除
+
+**パターンB: pnpm/Turborepo プロジェクト**（`pnpm-workspace.yaml` が存在する場合）
+1. `pnpm lint` - ESLintチェック（定義されている場合）
+2. `pnpm typecheck` - TypeScript型チェック（定義されている場合）
+3. `pnpm test --filter=<affected-package>` - テスト実行
+4. `pnpm build --filter=<affected-package>` - ビルド確認
+
+**パターンC: npm/yarn プロジェクト**
+1. `npm run lint` / `yarn lint` - Lintチェック
+2. `npm run typecheck` / `yarn typecheck` - 型チェック
+3. `npm test` / `yarn test` - テスト実行
+4. `npm run build` / `yarn build` - ビルド確認
+
+`package.json` の scripts を確認し、存在するコマンドのみ実行する。
 
 #### 4.3 結果確認
 
@@ -269,6 +310,12 @@ fi
 SCRIPT_END
 ```
 
+#### 6.3.7 UI変更のスクリーンショット取得（該当する場合のみ）
+
+変更ファイルに UI 関連（`.tsx`, `.css`, `.html`, popup, content script 等）が含まれる場合：
+- Playwright MCP（`mcp__playwright__browser_navigate` + `mcp__playwright__browser_take_screenshot`）で対象画面をキャプチャ
+- キャプチャ取得できない場合はスキップし、PR 本文に「手動スクリーンショット添付推奨」と記載
+
 #### 6.4 PR本文生成
 
 PRテンプレートに従って本文を生成：
@@ -284,6 +331,10 @@ PRテンプレートに従って本文を生成：
 
 ## 変更理由
 - [なぜこの変更が必要か]
+
+## スクリーンショット
+[UI変更がある場合のみ。キャプチャ画像またはchecklist]
+- [ ] 手動スクリーンショット添付推奨（自動キャプチャ不可の場合）
 
 ## 関連リンク
 - Notion要件: [引数がNotion URLの場合はここに記載]
