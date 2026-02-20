@@ -321,12 +321,19 @@ PRテンプレートに従って本文を生成（詳細は `references/pr-templ
 [UI変更がある場合のみ。キャプチャ画像またはchecklist]
 - [ ] 手動スクリーンショット添付推奨（自動キャプチャ不可の場合）
 
+## ユーザーアクション必要
+[ステップ6.7で起票したタスクがある場合のみ記載。各タスクをNotionリンク付きチェックリストで列挙]
+- [ ] [タスク名1](Notion URL)
+- [ ] [タスク名2](Notion URL)
+
 ## 関連リンク
 - Notion要件: [引数がNotion URLの場合はここに記載]
 - Claude Code SessionID: `${CLAUDE_SESSION_ID}`
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
+
+**注意**: ステップ6.7でユーザーアクションタスクを起票した場合、PR本文の「ユーザーアクション必要」セクションに各タスクの Notion URL をリンク付きチェックリストとして含めること。タスクが無い場合はセクション自体を省略する。
 
 #### 6.5 PR作成
 
