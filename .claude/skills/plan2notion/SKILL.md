@@ -8,8 +8,8 @@ argument-hint: "[notion-url or initial task description]"
 ## 設定
 
 以下の環境変数を使用します（設定場所: `~/.claude/settings.json` または `.claude/settings.local.json`）：
-- `NOTION_TASK_DB_URL`: TASKデータベースURL
-- `NOTION_NOTES_DB_URL`: NotesデータベースURL
+- `NOTION_TASK_COLLECTION_URL`: Task DBのdata source URL（`collection://...`形式）
+- `NOTION_NOTES_COLLECTION_URL`: Notes DBのdata source URL（`collection://...`形式）
 - `NOTION_PROJECT_ID`: プロジェクトのNotion ID
 - `NOTION_PROJECT_NAME`: プロジェクト名（表示用）
 
