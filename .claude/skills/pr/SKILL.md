@@ -1,5 +1,5 @@
 ---
-description: PRテンプレート形式に従いプルリクエストを作成
+description: PR作成・プルリクエスト作成時に使用。日本語テンプレートに従いPRを作成する
 user-invocable: true
 ---
 

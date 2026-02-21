@@ -1,5 +1,5 @@
 ---
-description: Atomic Commit原則に従いセマンティックコミットを作成
+description: コミット作成時に使用。Atomic Commit原則とSemantic Commit形式に従う
 user-invocable: true
 ---
 

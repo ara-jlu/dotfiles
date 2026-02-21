@@ -1,5 +1,5 @@
 ---
-description: 新規ブランチ作成（Notion URLまたは要件から自動生成）
+description: ブランチ作成時に使用。命名規則に従いNotion URLまたは要件からブランチを生成する
 user-invocable: true
 argument-hint: "[notion-url or requirement text]"
 ---
