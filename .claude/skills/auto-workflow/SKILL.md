@@ -106,14 +106,23 @@ planタグ付きNotesが無い場合は、**処理を停止してユーザーに
 
 **`TaskCreate` ツールでタスク分解と計画を作成**してください。
 
-#### 2.4 TDD実装
+#### 2.4 TDD実装（Task完了ごとにコミット）
 
-以下のサイクルで実装を進めてください：
-1. テスト作成（推奨）
-2. 実装
-3. リファクタリング
-4. Atomic Commit意識（論理的単位で分割可能な粒度を意識）
-5. 最低限の動作確認
+`TaskCreate` で作成した各Taskに対して、以下のサイクルを繰り返す：
+
+1. **実装**: テスト作成（推奨） → 実装 → リファクタリング
+2. **動作確認**: 最低限の動作確認（ビルドエラー・明らかなバグがないこと）
+3. **コミット**: Task完了時に即コミット
+   ```bash
+   git add <task-related-files>
+   git commit -m "<type>: <subject>
+
+   🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+   Co-Authored-By: Claude <noreply@anthropic.com>"
+   ```
+4. **TaskUpdate**: Taskのステータスを `completed` に更新
+5. 次のTaskへ進む
 
 #### 2.5 E2E 動作確認（可能な範囲で）
 
@@ -234,47 +243,29 @@ git diff --name-only
 
 ---
 
-### ステップ5: コミット作成
+### ステップ5: 未コミット変更の確認
+
+ステップ2.4でTask完了ごとにコミット済みのため、ここでは残余変更の確認のみ行う。
+
+#### 5.1 残余変更確認
+
+Bashツールで `git status` を実行：
+- **未コミット変更がない場合**: そのままステップ6へ進む
+- **未コミット変更がある場合**: テスト修正等の変更をSemantic Commit形式でコミット
+  ```bash
+  git add <files>
+  git commit -m "<type>: <subject>
+
+  🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+  Co-Authored-By: Claude <noreply@anthropic.com>"
+  ```
 
 コミットルールの詳細は `references/commit-rules.md` を参照。
 
-#### 5.1 変更内容確認
+#### 5.2 完了
 
-Bashツールで以下を**並列実行**：
-- `git status` - 変更ファイル一覧
-- `git diff` - 変更差分
-- `git log --oneline -5` - 最近のコミットメッセージ（スタイル参考）
-
-#### 5.2 コミットメッセージ生成
-
-Semantic Commit形式でメッセージを生成：
-- `feat:` - 新機能追加
-- `fix:` - バグ修正
-- `docs:` - ドキュメント変更
-- `style:` - コードスタイル変更
-- `refactor:` - リファクタリング
-- `test:` - テスト追加・修正
-- `chore:` - ビルド・ツール設定変更
-
-#### 5.3 コミット実行
-
-**Atomic Commit原則**に従い、論理的単位でコミットを作成：
-
-Bashツールで以下を実行：
-```bash
-git add <files>
-git commit -m "<type>: <subject>
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-```
-
-複数の論理的変更がある場合は、それぞれ個別にコミットしてください。
-
-#### 5.4 完了
-
-コミット作成が完了したら、**即座にステップ6へ進んでください**。
+確認が完了したら、**即座にステップ6へ進んでください**。
 
 **エラー時**: 処理を停止し、エラー内容を報告してください。
 

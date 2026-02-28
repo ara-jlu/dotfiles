@@ -36,12 +36,14 @@ user-invocable: true
 ### 注意点
 
 - 簡潔で明確な説明（50文字以内目安）
-- 1コミット = 1つの論理的変更（Atomic Commit）
+- 1コミット = 1 Task（Atomic Commit）
 - 詳細なAtomic Commit原則は `references/atomic-commit.md` を参照
 
 ## 実行
 
-1. git status と git diff で変更内容を確認
-2. Semantic Commit形式でコミットメッセージを生成
-3. **Atomic Commit原則**に従い、論理的単位でコミットを作成
-4. 複数の論理的変更がある場合は、それぞれ個別にコミット
+1. `TaskList` ツールで完了済みTaskを確認（Taskがある場合）
+2. `git status` と `git diff` で変更内容を確認
+3. **Task単位でコミットを分割**：
+   - Taskがある場合: 各Taskに対応するファイル変更を特定し、Taskごとに個別コミット
+   - Taskがない場合: 変更内容を分析し、論理的単位ごとにコミット
+4. Semantic Commit形式でコミットメッセージを生成し、コミット実行
