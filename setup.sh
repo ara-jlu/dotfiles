@@ -88,6 +88,12 @@ ln -sf "$DOTFILES_DIR/.claude/skills" "$HOME/.claude/skills"
 
 echo "✓ Claude Code設定のリンクが完了しました"
 
+# AeroSpace設定のセットアップ
+echo "AeroSpace設定をセットアップしています..."
+backup_if_exists "$HOME/.config/aerospace"
+ln -sf "$DOTFILES_DIR/.config/aerospace" "$HOME/.config/aerospace"
+echo "✓ AeroSpace設定のリンクが完了しました"
+
 # Agent Skills のセットアップ
 echo "Agent Skills設定をセットアップしています..."
 backup_if_exists "$HOME/.agents"
