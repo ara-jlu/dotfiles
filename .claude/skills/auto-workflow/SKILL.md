@@ -309,8 +309,11 @@ Bashツールで以下を**並列実行**：
 - ユーザーインタラクションを伴う UX 確認（インストール・手動テスト等）
 
 **起票方法**:
-1. ステップ1.3で取得済みのタスクページ URL（引数の Notion URL）を親ページとして使用する
-2. `mcp__notion__notion-create-pages` で各アクション項目を**親タスクの子タスク**として作成する（`parent` に引数の Notion URL を指定）
+1. ステップ1.3で取得した親タスクページの `parent-data-source` URL（`collection://...`）から Task DB の data_source_id を取得する
+2. Task DB のスキーマを `mcp__notion__notion-fetch` で確認し、「親タスク」相当のリレーションプロパティ名を特定する（例: `親アイテム`）
+3. `mcp__notion__notion-create-pages` で各アクション項目を Task DB エントリとして作成する
+   - `parent`: `{ "type": "data_source_id", "data_source_id": "<Task DB の data_source_id>" }`
+   - プロパティ: `title`・`status: "Not started"`・`Project`（親タスクと同じ値）・親タスクリレーション（親タスクのURL）を設定
 
 **タスク内容の書き方**:
 - **タイトル**: `[ユーザー作業]` プレフィックス + 具体的なアクション名（例: 「[ユーザー作業] GA4 プロパティ作成と環境変数設定」）
