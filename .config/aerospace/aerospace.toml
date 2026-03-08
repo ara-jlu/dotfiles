@@ -7,10 +7,10 @@ config-version = 2
 
 # You can use it to add commands that run after AeroSpace startup.
 # Available commands : https://nikitabobko.github.io/AeroSpace/commands
-after-startup-command = []
+after-startup-command = ['exec-and-forget borders active_color=0xffe1e3e4 inactive_color=0xff494d64 width=3.0']
 
 # Start AeroSpace at login
-start-at-login = false
+start-at-login = true
 
 # Normalizations. See: https://nikitabobko.github.io/AeroSpace/guide#normalization
 enable-normalization-flatten-containers = true
@@ -45,9 +45,7 @@ automatically-unhide-macos-hidden-apps = false
 # even when they are invisible.
 # This config version is only available since 'config-version = 2'
 # Fallback value (if you omit the key): persistent-workspaces = []
-persistent-workspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B",
-                         "C", "D", "E", "F", "G", "I", "M", "N", "O", "P", "Q",
-                         "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+persistent-workspaces = ["W", "A", "C", "D", "M"]
 
 # A callback that runs every time binding mode changes
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
@@ -56,6 +54,42 @@ on-mode-changed = []
 
 # Possible values: (qwerty|dvorak|colemak)
 # See https://nikitabobko.github.io/AeroSpace/guide#key-mapping
+# Assign workspaces to monitors
+# See: https://nikitabobko.github.io/AeroSpace/guide#assign-workspaces-to-monitors
+[workspace-to-monitor-force-assignment]
+    D = 'VG258'                    # Discord → 縦モニタ
+    M = 'Built-in Retina Display'  # Brave/Finder → MacBook
+    # それ以外はすべて4Kメインに割り当て
+    1 = 'DELL U2720QM'
+    2 = 'DELL U2720QM'
+    3 = 'DELL U2720QM'
+    4 = 'DELL U2720QM'
+    5 = 'DELL U2720QM'
+    6 = 'DELL U2720QM'
+    7 = 'DELL U2720QM'
+    8 = 'DELL U2720QM'
+    9 = 'DELL U2720QM'
+    A = 'DELL U2720QM'
+    B = 'DELL U2720QM'
+    C = 'DELL U2720QM'
+    E = 'DELL U2720QM'
+    F = 'DELL U2720QM'
+    G = 'DELL U2720QM'
+    I = 'DELL U2720QM'
+    N = 'DELL U2720QM'
+    O = 'DELL U2720QM'
+    P = 'DELL U2720QM'
+    Q = 'DELL U2720QM'
+    R = 'DELL U2720QM'
+    S = 'DELL U2720QM'
+    T = 'DELL U2720QM'
+    U = 'DELL U2720QM'
+    V = 'DELL U2720QM'
+    W = 'DELL U2720QM'
+    X = 'DELL U2720QM'
+    Y = 'DELL U2720QM'
+    Z = 'DELL U2720QM'
+
 [key-mapping]
     preset = 'qwerty'
 
@@ -68,12 +102,12 @@ on-mode-changed = []
 #                 See:
 #                 https://nikitabobko.github.io/AeroSpace/guide#assign-workspaces-to-monitors
 [gaps]
-    inner.horizontal = 0
-    inner.vertical =   0
-    outer.left =       0
-    outer.bottom =     0
-    outer.top =        0
-    outer.right =      0
+    inner.horizontal = 8
+    inner.vertical =   8
+    outer.left =       8
+    outer.bottom =     8
+    outer.top =        8
+    outer.right =      8
 
 # 'main' binding mode declaration
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
@@ -217,3 +251,30 @@ on-mode-changed = []
     alt-shift-j = ['join-with down', 'mode main']
     alt-shift-k = ['join-with up', 'mode main']
     alt-shift-l = ['join-with right', 'mode main']
+
+# Auto-assign apps to workspaces
+# See: https://nikitabobko.github.io/AeroSpace/guide#on-window-detected
+
+[[on-window-detected]]
+if.app-id = 'com.github.wez.wezterm'
+run = 'move-node-to-workspace W'
+
+[[on-window-detected]]
+if.app-id = 'company.thebrowser.Browser'
+run = 'move-node-to-workspace A'
+
+[[on-window-detected]]
+if.app-id = 'com.google.Chrome'
+run = 'move-node-to-workspace C'
+
+[[on-window-detected]]
+if.app-id = 'com.hnc.Discord'
+run = 'move-node-to-workspace D'
+
+[[on-window-detected]]
+if.app-id = 'com.brave.Browser'
+run = 'move-node-to-workspace M'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.finder'
+run = 'move-node-to-workspace M'
