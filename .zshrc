@@ -10,11 +10,14 @@ setopt AUTO_CD            # ディレクトリ名だけでcd
 setopt CORRECT            # コマンドのtypo修正を提案
 setopt COMPLETE_IN_WORD   # 単語の途中でも補完
 
-# Git Alias
-alias g='git'
-# Claude Alias
-alias cc='claude'
-alias ccyolo='claude --dangerously-skip-permissions'
+# zsh-abbr (abbreviation expansion instead of aliases)
+source /opt/homebrew/share/zsh-abbr/zsh-abbr.zsh
+abbr -S -qq g=git
+abbr -S -qq cl=claude
+abbr -S -qq cld='claude --dangerously-skip-permissions'
+abbr -S -qq cldc='claude --dangerously-skip-permissions --continue'
+abbr -S -qq sleepon='sudo pmset disablesleep 0'
+abbr -S -qq sleepoff='sudo pmset disablesleep 1'
 
 # Ensure UTF-8 tty mode (fixes Japanese in iOS NeoServer + tmux)
 if [[ -t 0 ]]; then
