@@ -58,17 +58,6 @@ return {
     end,
   },
 
-  -- ファイル検索（Telescope）
-  {
-    "nvim-telescope/telescope.nvim", tag = "0.1.8",
-    dependencies = { "nvim-lua/plenary.nvim" },
-    cmd = { "Telescope" },
-    keys = {
-      { "<leader>ff", "<cmd>Telescope find_files hidden=true<cr>", desc = "Find Files" },
-      { "<leader>fg", "<cmd>Telescope live_grep<cr>", desc = "Live Grep" },
-    },
-  },
-
   -- ターミナル統合 (Toggleterm)
   {
     "akinsho/toggleterm.nvim",

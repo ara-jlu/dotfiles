@@ -6,6 +6,7 @@ config.font_size = 15.0
 config.use_ime = true
 config.window_background_opacity = 0.60
 config.macos_window_background_blur = 20
+config.enable_kitty_graphics = true
 
 ----------------------------------------------------
 -- Tab

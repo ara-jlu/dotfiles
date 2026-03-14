@@ -58,13 +58,26 @@ keymap("n", "<A-k>", ":m .-2<CR>==", { desc = "現在行を上に移動" })
 keymap("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "nvim-tree切り替え" })
 keymap("n", "<leader>fe", "<cmd>NvimTreeFocus<CR>", { desc = "nvim-treeフォーカス" })
 
--- Telescope（ファイル検索）
-keymap("n", "<leader>ff", "<cmd>Telescope find_files<CR>", { desc = "ファイル検索" })
-keymap("n", "<leader>fg", "<cmd>Telescope live_grep<CR>", { desc = "文字列検索" })
-keymap("n", "<leader>fb", "<cmd>Telescope buffers<CR>", { desc = "バッファ検索" })
-keymap("n", "<leader>fh", "<cmd>Telescope help_tags<CR>", { desc = "ヘルプ検索" })
-keymap("n", "<leader>fr", "<cmd>Telescope oldfiles<CR>", { desc = "最近のファイル" })
-keymap("n", "<leader>fw", "<cmd>Telescope grep_string<CR>", { desc = "カーソル下の単語検索" })
+-- ファイル検索（snacks.nvim pickerで設定済み - plugins/ui.lua）
+
+-- 画像ファイルを開いたら自動でQuickLookプレビュー（macOS）
+vim.api.nvim_create_autocmd("BufReadPost", {
+  pattern = { "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp", "*.webp", "*.svg", "*.ico", "*.avif", "*.heic" },
+  callback = function()
+    local file = vim.fn.expand("%:p")
+    vim.fn.jobstart({ "qlmanage", "-p", file }, { detach = true })
+    vim.defer_fn(function()
+      vim.fn.jobstart({
+        "osascript", "-e",
+        'tell application "System Events" to set frontmost of process "qlmanage" to true',
+      }, { detach = true })
+    end, 200)
+    -- バイナリを表示しても意味がないのでバッファを閉じて戻る
+    vim.defer_fn(function()
+      vim.cmd("bdelete")
+    end, 100)
+  end,
+})
 
 -- ターミナル（Toggleterm）
 keymap("n", "<leader>tf", "<cmd>ToggleTerm direction=float<CR>", { desc = "フローティングターミナル" })

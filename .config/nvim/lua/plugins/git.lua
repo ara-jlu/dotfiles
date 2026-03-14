@@ -64,7 +64,6 @@ return {
     dependencies = {
       "nvim-lua/plenary.nvim",
       "sindrets/diffview.nvim",
-      "nvim-telescope/telescope.nvim",
     },
     cmd = "Neogit",
     keys = {
@@ -89,7 +88,7 @@ return {
         -- 統合設定
         integrations = {
           diffview = true,
-          telescope = true,
+          snacks = true,
         },
         
         -- メインビューをフローティングに設定
