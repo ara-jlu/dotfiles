@@ -16,6 +16,7 @@ abbr -S -qq g=git
 abbr -S -qq cl=claude
 abbr -S -qq cld='claude --dangerously-skip-permissions'
 abbr -S -qq cldc='claude --dangerously-skip-permissions --continue'
+abbr -S -qq cla='claude --permission-mode auto'
 abbr -S -qq sleepon='sudo pmset disablesleep 0'
 abbr -S -qq sleepoff='sudo pmset disablesleep 1'
 
