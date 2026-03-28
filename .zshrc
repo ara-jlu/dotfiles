@@ -24,3 +24,10 @@ abbr -S -qq sleepoff='sudo pmset disablesleep 1'
 if [[ -t 0 ]]; then
   stty iutf8 2>/dev/null
 fi
+
+# bun completions
+[ -s "/Users/ara/.bun/_bun" ] && source "/Users/ara/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
