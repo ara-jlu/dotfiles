@@ -54,7 +54,7 @@ keymap("v", "K", ":m '<-2<CR>gv=gv", { desc = "選択行を上に移動" })
 keymap("n", "<A-j>", ":m .+1<CR>==", { desc = "現在行を下に移動" })
 keymap("n", "<A-k>", ":m .-2<CR>==", { desc = "現在行を上に移動" })
 
--- ファイルエクスプローラー（nvim-tree）
+-- ファイルエクスプローラー（nvim-tree: ドロワー俯瞰用 / oil: 編集はplugins/editor.luaのkeysで定義）
 keymap("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "nvim-tree切り替え" })
 keymap("n", "<leader>fe", "<cmd>NvimTreeFocus<CR>", { desc = "nvim-treeフォーカス" })
 
