@@ -22,7 +22,36 @@ return {
     end,
   },
 
-  -- ファイルエクスプローラー (nvim-tree)
+  -- ファイルエクスプローラー (oil.nvim) - バッファ編集スタイルでファイル操作
+  {
+    "stevearc/oil.nvim",
+    dependencies = { "nvim-tree/nvim-web-devicons" },
+    lazy = false,
+    keys = {
+      { "-", "<cmd>Oil<cr>", desc = "Oil: 親ディレクトリを開く" },
+      { "<leader>o", "<cmd>Oil --float<cr>", desc = "Oil: フロート表示" },
+    },
+    opts = {
+      default_file_explorer = true,
+      delete_to_trash = true,
+      skip_confirm_for_simple_edits = false,
+      view_options = {
+        show_hidden = true,
+      },
+      float = {
+        padding = 2,
+        max_width = 100,
+        max_height = 30,
+        border = "rounded",
+      },
+      lsp_file_methods = {
+        enabled = true,
+        timeout_ms = 1000,
+      },
+    },
+  },
+
+  -- ファイルエクスプローラー (nvim-tree) - プロジェクト全体俯瞰用ドロワー
   {
     "nvim-tree/nvim-tree.lua",
     version = "*",
