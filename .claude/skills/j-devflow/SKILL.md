@@ -9,38 +9,38 @@ description: Use when taking a feature or bugfix from a one-line idea through to
 
 A **thin sequencer** over the superpowers spine and the Joifup adapters. It orchestrates — it does not wrap: it never injects instructions into the underlying skills or reshapes their output. It only decides **order, session boundaries, handoff artifacts, and gates**. Compute (superpowers) and persistence (Joifup) stay separate.
 
-The flow runs across **three sessions**, connected by file handoff (not shared context):
+The flow has **three phases**, connected by file handoff (the persisted `notes/plan/` entry is the contract):
 
-- **Session A — Plan** (interactive): idea → design → plan, persisted to Joifup.
-- **Session B — Implement** (mostly autonomous): reads the persisted plan, builds and reviews.
-- **Session C — Approve** (human): the approval gate. Merge lives only here.
+- **Phase A — Plan** (interactive): idea → design → plan, persisted to Joifup.
+- **Phase B — Implement**: reads the persisted plan, builds and reviews.
+- **Phase C — Approve** (human): the approval gate. Merge lives only here.
 
-**Why separate A and B:** a fresh Session B forces the plan to be a complete, self-contained contract (the persisted `notes/plan/` entry is the handoff), and keeps the planning dialogue out of the implementation context.
+**Same session by default.** Run A → B → C in one session. SDD already gives each task a fresh subagent (isolated context), so implementation isolation does **not** need a session boundary. Open a **fresh session for Phase B only when** Phase A's dialogue was long or context is tight — a fresh Phase B additionally forces the plan to be self-contained and keeps the planning dialogue out of the orchestrator's context, but the cost (copy the handoff, `/clear`, paste) is usually not worth it for a solo run.
 
 ## When to Use
 
 - Any non-trivial feature/bugfix that should follow the full spine.
-- NOT for a quick one-file edit (just do it), and NOT to merge (that is Session C, human-owned).
+- NOT for a quick one-file edit (just do it), and NOT to merge (that is Phase C, human-owned).
 
 ## Runbook
 
 Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/folder names — never hardcode them.
 
-**Session A — Plan (interactive)**
+**Phase A — Plan (interactive)**
 1. Prepare the Joifup **Task** under `tasks/`: new → run `/j-task`; existing backlog → use its filename id. Capture that id — everything keys off it.
 2. Branch: superpowers naming **+ inject the TASK-id** (e.g. `feature/001-slug`); isolate via `superpowers:using-git-worktrees`. Do not use the repo `branch` skill (Notion-oriented).
 3. `superpowers:brainstorming` → design. **HUMAN GATE 1: design approval — no code until approved.** Never a subagent (it is the design dialogue). When it writes the design doc, target a **staging path** (scratchpad) — **not** `docs/superpowers/specs/` — and do **not** commit it there. Step 4 is the spec's only commit.
 4. `md2joifup` the staged spec → `notes/document/` (`--type document --task <id>`). This move + frontmatter is the **single commit** of the spec. (If brainstorming already committed it under `docs/superpowers/specs/`, md2joifup's default move removes it — commit that relocation.)
 5. `superpowers:writing-plans` → task-decomposed plan. Same rule: write it to a **staging path**, **not** `docs/superpowers/plans/`, and do **not** commit it there.
-6. `md2joifup` the staged plan → `notes/plan/` (`--type plan --task <id>`) — the **single commit** of the plan. Optionally move the Task to In progress. **This is the handoff artifact. Session A ends.**
+6. `md2joifup` the staged plan → `notes/plan/` (`--type plan --task <id>`) — the **single commit** of the plan. Optionally move the Task to In progress. **This is the handoff artifact. Phase A ends.**
 
-**Session B — Implement (fresh session)**
+**Phase B — Implement (same session by default; fresh session only if context is heavy)**
 7. Read the persisted plan. `superpowers:subagent-driven-development`: fresh subagent per task, English atomic commits, `task-reviewer` per task; add `agentType: ecc:security-reviewer` on any task touching auth/input/secrets/API/sensitive data. The Driver keeps the orchestration/fix loop — only per-task units are subagents.
 8. SDD auto whole-branch review: inject `ecc:<lang>-reviewer` by changed language (+ `ecc:security-reviewer` if the diff warrants). Critical/Important are blocking → fix loop until clean.
 9. `superpowers:verification-before-completion` + tests green.
 10. `j-finish`: push → PR (Japanese) → Task → In review → 承認待ち task → Discord. **The machine stops here.**
 
-**Session C — Approve (human)**
+**Phase C — Approve (human)**
 11. Human reviews. On approval: Task → Done, commit `chore(joifup): approve <task-id>` (English), merge. **HUMAN GATE 2. Nothing auto-merges.**
 
 ## Guards for autonomous runs
@@ -48,11 +48,11 @@ Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/fol
 - **Design gate (before step 7):** hard stop — never write code before design approval, even unattended.
 - **Fix-loop exit (before step 10):** no open Critical/Important from any reviewer.
 - **Before step 10's external actions:** PR/Discord/status are externally visible and hard to undo — checkpoint on green tests + clean review first.
-- **Merge/Done:** structurally impossible for the machine — reserved for Session C.
+- **Merge/Done:** structurally impossible for the machine — reserved for Phase C (human).
 
 ## Common Mistakes
 
-- Collapsing Sessions A and B into one context — defeats the plan-as-contract handoff.
+- Letting the plan lean on unstated Phase-A context — the plan must be a self-contained contract a fresh SDD orchestrator (or a future reader) can run without the design dialogue. (This, not a session boundary, is what matters; SDD isolates each task regardless.)
 - Wrapping: editing what superpowers/adapters do instead of just sequencing them.
-- Merging or marking Done from Session B — that is the human gate.
+- Merging or marking Done from Phase B (the machine) — that is the human gate.
 - Letting brainstorming/writing-plans commit the spec/plan at their superpowers defaults (`docs/superpowers/specs|plans/`) — those are not Joifup-indexed (`**/notes/**` only) or Task-linked. Stage them uncommitted; `md2joifup` is the only commit, into `notes/document/` and `notes/plan/`.
