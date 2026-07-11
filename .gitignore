@@ -3,3 +3,6 @@
 
 # 私的な学習メモ（git管理外）
 notes/document/.private/
+
+# Joifup daemon のバックアップ（書き換え前 .orig）
+*.orig
