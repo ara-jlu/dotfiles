@@ -208,17 +208,35 @@ def main():
                                 args.project, pr_url)
         print(f"user-action task: {dest}")
 
-    # 5. Discord
+    # 5. Discord — rich embed (matches auto-workflow/scripts/discord-notify.sh:
+    #    title / description / color / fields[プロジェクト, ブランチ] / timestamp)
     if not args.no_discord:
         webhook = os.environ.get("DISCORD_WEBHOOK_URL", "")
         mention = os.environ.get("DISCORD_MENTION_USER", "")
-        content = (f"<@{mention}> レビュー依頼です 🙏\n"
-                   f"**{parent_title}**\n実装完了。PRを作成しました。\n"
-                   f"PR: {pr_url}\nJoifup Task を {args.status} に更新済み。"
-                   f"承認後、そちらのセッションで Done → main マージをお願いします。")
-        payload = json.dumps(
-            {"content": content, "allowed_mentions": {"users": [mention]}},
-            ensure_ascii=False)
+        color = int(os.environ.get("DISCORD_COLOR", "5814783"))  # 0x58B0FF
+        project_dir = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+        project_name = os.path.basename(os.path.abspath(project_dir))
+        description = (f"お疲れ様です。\n"
+                       f"**{parent_title}** タスクの実装が完了しました。\n"
+                       f"レビューをお願いいたします。\n"
+                       f"PR: {pr_url}")
+        timestamp = datetime.datetime.now(
+            datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        embed = {
+            "title": "👀 レビュー依頼",
+            "description": description,
+            "color": color,
+            "fields": [
+                {"name": "プロジェクト", "value": project_name, "inline": True},
+                {"name": "ブランチ", "value": head, "inline": True},
+            ],
+            "timestamp": timestamp,
+        }
+        payload = json.dumps({
+            "content": f"<@{mention}>" if mention else "",
+            "embeds": [embed],
+            "allowed_mentions": {"users": [mention] if mention else []},
+        }, ensure_ascii=False)
         if not webhook and not args.dry_run:
             die("DISCORD_WEBHOOK_URL not set")
         run(["curl", "-sS", "-X", "POST", webhook or "$DISCORD_WEBHOOK_URL",

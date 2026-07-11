@@ -38,7 +38,7 @@ Toggle off parts with `--no-pr` / `--no-user-action` / `--no-discord`. `--dry-ru
 
 - **Surgical status edit** — only the `status:` line flips (validated against the tasks schema); every other frontmatter key, relation, and body byte is preserved. It refuses `Done`/`Cancelled`.
 - **Approval task** — a child `承認待ち: <title>` Task (status Not started, `parent` = the finished task's id) so the approval surfaces in Joifup.
-- **Scoped Discord** — Japanese, `allowed_mentions` limited to the owner, PR link included; `CLAUDE_SESSION_ID` is never posted.
+- **Scoped Discord** — a Japanese rich embed titled 「👀 レビュー依頼」 (same shape as `auto-workflow/scripts/discord-notify.sh`: description + color + プロジェクト/ブランチ fields + timestamp), with the PR link and `allowed_mentions` limited to the owner; `CLAUDE_SESSION_ID` is never posted. Overridable via `DISCORD_COLOR`.
 
 ## Common Mistakes
 
