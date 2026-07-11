@@ -48,7 +48,7 @@
 
 - Strategy: GitHub Flow（main が常にデプロイ可能）
 - Commit: Semantic Commit 形式（英語）。Atomic Commit（1 commit = 1 logical change）
-- Branch: superpowers 準拠命名 ＋ **Joifup タスクのファイル名 id を注入**（例: `feature/001-slug`。TASK-id = tasks/ のファイル名 id。type 分類は superpowers に委ねる）
+- Branch: superpowers 準拠命名 ＋ **Joifup タスクのファイル名 id を注入**（例: `feature/001-slug`。TASK-id = tasks/ のファイル名 id。daemon の `ID: TASK-N` とは**別物で一致せず**、関係・ブランチ・`--task` には使わない。type 分類は superpowers に委ねる）
 - Worktree: superpowers `using-git-worktrees`（`.worktrees/` に隔離）
 
 ## Quality

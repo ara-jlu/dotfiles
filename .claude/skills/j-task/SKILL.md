@@ -30,7 +30,7 @@ Captures a Joifup **Task** (status `Not started`) into `tasks/`. Standalone and 
 
 ## Identifier
 
-The task's **filename id** (`NNN-slug`) is the single operational identifier (relations, branch, references). The daemon's `ID: TASK-N` is Joifup-internal and naturally aligns. Branch (later, in j-devflow) = `feature/<filename-id>`.
+The task's **filename id** (`NNN-slug`) is the single operational identifier — relations, branch, and `--task`/`--parent` all use it. The daemon's `ID: TASK-N` is a **separate** internal auto-increment that does **NOT** match the filename number (they diverge — e.g. file `085-…` vs `ID: TASK-48`); never use `ID` for relations, the branch, or `--task`. Branch (later, in j-devflow) = `feature/<filename-id>`.
 
 ## Common Mistakes
 

@@ -29,7 +29,7 @@ python3 scripts/md2joifup.py <source.md> --type <tag> \
 — creates `tasks/NNN-slug.md` with house-style frontmatter (title/status/Project/parent, timestamps, no ID). `--status` is validated against the tasks schema. `--db notes` (default) is unchanged.
 
 - `--type` — a Notes **content tag** (`plan`, `document`, `log`, `research`, `memo`); validated against the schema's tag options.
-- `--task` — link an existing Task by **id** (not a path). Branch detection is the caller's job: resolve the current TASK-id (`git rev-parse --abbrev-ref HEAD` → `TASK-\d+` → the `tasks/NNN-*.md` id) and pass it here.
+- `--task` — link an existing Task by its **filename id** (`NNN-slug`; not a path, and **not** the daemon `ID: TASK-N` — those diverge). Branch detection is the caller's job: the branch is `feature/<filename-id>`, so strip the `feature/` prefix to get the id and pass it here. `task_number()` derives the note's filename number from this id, so passing the daemon `ID` would mis-number the note.
 - `--new-task "TITLE"` — create a fresh house-style Task and link it; for a note that spawns its own task (e.g. a new investigation). Pass `--new-task-slug` (English) alongside a non-ASCII title, else the task filename slug degrades.
 - `--project` — else inherited from the Task, else the sole project in `projects/`.
 - `--slug` — override; default is a slug of the title (**pass an English slug for non-ASCII titles**, else it degrades to the type), else the type.

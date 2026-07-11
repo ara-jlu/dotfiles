@@ -54,7 +54,7 @@ Joifup には識別子が2系統ある:
 **決定: ファイル名 id を単一の運用識別子とする。**
 
 - 理由: 即時・daemon 非依存（自動化が堅牢）／識別子1つで frontmatter・ブランチ・plan/PR を貫通／人間可読（番号＋slug）。
-- daemon の `TASK-N` は「tasks を1から数える」ので、単一 `tasks/` ＋ md2joifup 起票なら **ファイル名番号＝TASK-N** で自然に揃い、WebUI ともズレない。万一ズレても（削除欠番等）ファイル名 id を正とする。
+- daemon の `TASK-N` は **ファイル名番号とは別物で一致しない**（採番機構が違う。実例: task `085-…` / daemon `TASK-48`）。運用は常にファイル名 id を正とし、関係・ブランチ・`--task`/`--parent` に daemon `ID` を使わない（使うと `task_number()` がノートを誤番号化する）。
 - **ブランチ** = `feature/<ファイル名id>`（例 `feature/001-ai-harness`）。
 - **CLAUDE.md 更新**: 「TASK-id」の定義を「Joifup タスクのファイル名 id」に再定義（現 `feature/TASK-123-slug` の記述を更新）。
 
