@@ -1,2 +1,5 @@
 .claude/settings.json
 .agents/.skill-lock.json
+
+# 私的な学習メモ（git管理外）
+notes/document/.private/
