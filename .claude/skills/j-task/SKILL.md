@@ -25,7 +25,7 @@ Captures a Joifup **Task** (status `Not started`) into `tasks/`. Standalone and 
 3. **Resolve Project:** pass `--project` if known; else `md2joifup` falls back to the sole `projects/` entry.
 4. **Create:**
    - Single: `python3 ~/.claude/skills/md2joifup/scripts/md2joifup.py <tmp>.md --db tasks --status "Not started" --slug <en-slug>`.
-   - Decomposed: create the parent first, capture its filename id, then each child with `--parent <parent-id>` (write `parent` on children only; the daemon syncs `children`).
+   - Decomposed: create the parent first, capture its filename id, then each child with `--parent <parent-id>` (write `parent` on children only; the daemon is expected to sync `children` — Joifup Plan 079).
 5. **Report** the created task path(s). No branch, no implementation.
 
 ## Identifier

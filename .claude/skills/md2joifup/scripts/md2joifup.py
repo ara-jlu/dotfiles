@@ -266,7 +266,7 @@ def main():
 
     today = datetime.date.today().isoformat()
     if args.db == "tasks":
-        projects = parse_csv(args.project) or primary_project(args.notes_dir)
+        projects = projects or primary_project(args.notes_dir)
         items = [("title", title), ("status", args.status)]
         if projects:
             items.append(("Project", rel_val(projects)))
