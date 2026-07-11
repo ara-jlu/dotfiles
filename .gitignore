@@ -6,3 +6,6 @@ notes/document/.private/
 
 # Joifup daemon のバックアップ（書き換え前 .orig）
 *.orig
+
+# superpowers SDD 進捗レジャー（スクラッチ）
+.superpowers/
