@@ -28,7 +28,7 @@ Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/fol
 
 **Session A — Plan (interactive)**
 1. Prepare the Joifup **Task** under `tasks/`: new → run `/j-task`; existing backlog → use its filename id. Capture that id — everything keys off it.
-2. Branch: superpowers naming **+ inject the TASK-id** (e.g. `feature/TASK-638-slug`); isolate via `superpowers:using-git-worktrees`. Do not use the repo `branch` skill (Notion-oriented).
+2. Branch: superpowers naming **+ inject the TASK-id** (e.g. `feature/001-slug`); isolate via `superpowers:using-git-worktrees`. Do not use the repo `branch` skill (Notion-oriented).
 3. `superpowers:brainstorming` → design. **HUMAN GATE 1: design approval — no code until approved.** Never a subagent (it is the design dialogue).
 4. `md2joifup` the approved spec → `notes/document/` (type `document`).
 5. `superpowers:writing-plans` → task-decomposed plan.
