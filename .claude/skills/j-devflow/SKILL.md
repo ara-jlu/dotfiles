@@ -27,7 +27,7 @@ The flow runs across **three sessions**, connected by file handoff (not shared c
 Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/folder names — never hardcode them.
 
 **Session A — Plan (interactive)**
-1. Confirm/create the Joifup **Task** under `tasks/`; capture its id — everything keys off it.
+1. Prepare the Joifup **Task** under `tasks/`: new → run `/j-task`; existing backlog → use its filename id. Capture that id — everything keys off it.
 2. Branch: superpowers naming **+ inject the TASK-id** (e.g. `feature/TASK-638-slug`); isolate via `superpowers:using-git-worktrees`. Do not use the repo `branch` skill (Notion-oriented).
 3. `superpowers:brainstorming` → design. **HUMAN GATE 1: design approval — no code until approved.** Never a subagent (it is the design dialogue).
 4. `md2joifup` the approved spec → `notes/document/` (type `document`).
