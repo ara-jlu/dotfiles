@@ -202,6 +202,15 @@ def parse_csv(values):
     return out
 
 
+def require_task(tasks_dir, task_id, flag):
+    """Fail loudly if a relation id doesn't resolve to a real task file.
+    Catches passing the daemon `ID: TASK-N` (or a bare number) instead of the
+    filename id — which would silently mis-number the note via task_number()."""
+    if not os.path.isfile(os.path.join(tasks_dir, f"{task_id}.md")):
+        die(f"{flag} '{task_id}' does not resolve to a file in {tasks_dir} — "
+            f"use the task's filename id (NNN-slug), not the daemon ID (TASK-N)")
+
+
 def main():
     ap = argparse.ArgumentParser(prog="md2joifup")
     ap.add_argument("source", help="source markdown (sp artifact or hand-authored)")
@@ -254,6 +263,12 @@ def main():
 
     projects = parse_csv(args.project)
     tasks = parse_csv(args.task)
+
+    # relation ids must resolve to real task files (reject daemon ID: TASK-N)
+    for t in tasks:
+        require_task(tasks_dir, t, "--task")
+    if args.db == "tasks" and args.parent:
+        require_task(tasks_dir, args.parent, "--parent")
 
     with open(args.source, "r", encoding="utf-8") as f:
         raw = f.read()
