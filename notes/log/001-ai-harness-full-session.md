@@ -1,4 +1,5 @@
 ---
+ID: NOTE-4
 title: AIハーネス構築 全体作業ログ [2026-07-11]
 tag: [log]
 Project: devops

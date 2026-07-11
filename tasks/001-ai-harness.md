@@ -1,4 +1,5 @@
 ---
+ID: TASK-1
 title: AIハーネス構築
 status: In progress
 Project: devops
