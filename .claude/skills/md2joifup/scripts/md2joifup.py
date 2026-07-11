@@ -205,8 +205,13 @@ def parse_csv(values):
 def main():
     ap = argparse.ArgumentParser(prog="md2joifup")
     ap.add_argument("source", help="source markdown (sp artifact or hand-authored)")
-    ap.add_argument("--type", required=True,
-                    help="Notes content tag (e.g. plan, document, log, research)")
+    ap.add_argument("--db", choices=["notes", "tasks"], default="notes",
+                    help="target Joifup DB (default: notes)")
+    ap.add_argument("--type",
+                    help="Notes content tag (notes db)")
+    ap.add_argument("--status", default="Not started",
+                    help="Task status (tasks db)")
+    ap.add_argument("--parent", help="parent Task id (tasks db)")
     ap.add_argument("--project", action="append",
                     help="Project id(s); repeat or comma-separate")
     ap.add_argument("--task", action="append",
@@ -228,18 +233,27 @@ def main():
     if not os.path.isfile(args.source):
         die(f"source not found: {args.source}")
 
-    schema = load_schema(find_schema("notes", args.notes_dir))
-    props = schema.get("properties", {})
+    if args.db == "notes" and not args.type:
+        die("--type is required for --db notes")
 
-    # --- validate type against schema tag options (no hardcoding) ---
-    valid_tags = {o["value"] for o in props.get("tag", {}).get("options", [])}
-    if valid_tags and args.type not in valid_tags:
-        die(f"--type '{args.type}' not in schema tags: {sorted(valid_tags)}")
+    tasks_dir = args.tasks_dir or os.path.join(
+        os.path.dirname(os.path.abspath(args.notes_dir)), "tasks")
+
+    if args.db == "tasks":
+        schema = load_schema(find_schema("tasks", tasks_dir))
+        groups = schema.get("properties", {}).get("status", {}).get("groups", {})
+        valid = {o["value"] for g in groups.values() for o in g}
+        if valid and args.status not in valid:
+            die(f"--status '{args.status}' not in schema: {sorted(valid)}")
+    else:
+        schema = load_schema(find_schema("notes", args.notes_dir))
+        props = schema.get("properties", {})
+        valid_tags = {o["value"] for o in props.get("tag", {}).get("options", [])}
+        if valid_tags and args.type not in valid_tags:
+            die(f"--type '{args.type}' not in schema tags: {sorted(valid_tags)}")
 
     projects = parse_csv(args.project)
     tasks = parse_csv(args.task)
-    tasks_dir = args.tasks_dir or os.path.join(
-        os.path.dirname(os.path.abspath(args.notes_dir)), "tasks")
 
     with open(args.source, "r", encoding="utf-8") as f:
         raw = f.read()
@@ -250,40 +264,55 @@ def main():
         die("no H1 or title found in source")
     body = strip_scaffolding(body)
 
-    # --- resolve Task + Project ---
-    if args.new_task:
-        proj = projects or primary_project(args.notes_dir)
-        new_id = create_task(tasks_dir, args.new_task, proj,
-                             slug=args.new_task_slug)
-        tasks.append(new_id)
-        if not projects:
-            projects = proj
-    if tasks and not projects:
-        projects = inherit_project(tasks_dir, tasks)
-    if not projects:
-        projects = primary_project(args.notes_dir)
-
-    # --- assemble ordered frontmatter (house style) ---
     today = datetime.date.today().isoformat()
-    items = [("title", title), ("tag", [args.type])]
-    if projects:
-        items.append(("Project", rel_val(projects)))
-    if tasks:
-        items.append(("Task", rel_val(tasks)))
-    if "created_at" not in src_fm:
-        items.append(("created_at", today))
-    if "updated_at" not in src_fm:
-        items.append(("updated_at", today))
-    # preserve source's extra keys (incl. its own created_at/updated_at); ID is auto
-    used = {k for k, _ in items}
-    for k, v in src_fm.items():
-        if k not in used and k != "ID":
-            items.append((k, v))
+    if args.db == "tasks":
+        projects = parse_csv(args.project) or primary_project(args.notes_dir)
+        items = [("title", title), ("status", args.status)]
+        if projects:
+            items.append(("Project", rel_val(projects)))
+        if args.parent:
+            items.append(("parent", args.parent))
+        items += [("created_at", today), ("updated_at", today)]
+        for k, v in src_fm.items():
+            if k not in {kk for kk, _ in items} and k != "ID":
+                items.append((k, v))
+        dest_dir = tasks_dir
+        num = next_number(dest_dir)
+    else:
+        # --- resolve Task + Project ---
+        if args.new_task:
+            proj = projects or primary_project(args.notes_dir)
+            new_id = create_task(tasks_dir, args.new_task, proj,
+                                 slug=args.new_task_slug)
+            tasks.append(new_id)
+            if not projects:
+                projects = proj
+        if tasks and not projects:
+            projects = inherit_project(tasks_dir, tasks)
+        if not projects:
+            projects = primary_project(args.notes_dir)
 
-    # --- filename: task number wins, else next in dir ---
-    dest_dir = os.path.join(args.notes_dir, args.type)
-    num = task_number(tasks) or next_number(dest_dir)
-    slug = args.slug or slugify(title) or args.type
+        # --- assemble ordered frontmatter (house style) ---
+        items = [("title", title), ("tag", [args.type])]
+        if projects:
+            items.append(("Project", rel_val(projects)))
+        if tasks:
+            items.append(("Task", rel_val(tasks)))
+        if "created_at" not in src_fm:
+            items.append(("created_at", today))
+        if "updated_at" not in src_fm:
+            items.append(("updated_at", today))
+        # preserve source's extra keys (incl. its own created_at/updated_at); ID is auto
+        used = {k for k, _ in items}
+        for k, v in src_fm.items():
+            if k not in used and k != "ID":
+                items.append((k, v))
+
+        # --- filename: task number wins, else next in dir ---
+        dest_dir = os.path.join(args.notes_dir, args.type)
+        num = task_number(tasks) or next_number(dest_dir)
+
+    slug = args.slug or slugify(title) or (args.type or "task")
     dest = os.path.join(dest_dir, f"{num}-{slug}.md")
 
     os.makedirs(dest_dir, exist_ok=True)
