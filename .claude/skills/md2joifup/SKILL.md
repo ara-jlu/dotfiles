@@ -24,6 +24,10 @@ python3 scripts/md2joifup.py <source.md> --type <tag> \
   [--notes-dir DIR] [--tasks-dir DIR] [--slug SLUG] [--keep-source]
 ```
 
+**Task creation (tasks db):**
+`python3 scripts/md2joifup.py <body.md> --db tasks [--status "Not started"] [--parent ID] [--project ID] [--slug EN-SLUG]`
+— creates `tasks/NNN-slug.md` with house-style frontmatter (title/status/Project/parent, timestamps, no ID). `--status` is validated against the tasks schema. `--db notes` (default) is unchanged.
+
 - `--type` — a Notes **content tag** (`plan`, `document`, `log`, `research`, `memo`); validated against the schema's tag options.
 - `--task` — link an existing Task by **id** (not a path). Branch detection is the caller's job: resolve the current TASK-id (`git rev-parse --abbrev-ref HEAD` → `TASK-\d+` → the `tasks/NNN-*.md` id) and pass it here.
 - `--new-task "TITLE"` — create a fresh house-style Task and link it; for a note that spawns its own task (e.g. a new investigation). Pass `--new-task-slug` (English) alongside a non-ASCII title, else the task filename slug degrades.
