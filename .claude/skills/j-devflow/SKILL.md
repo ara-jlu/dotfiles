@@ -29,10 +29,10 @@ Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/fol
 **Session A — Plan (interactive)**
 1. Prepare the Joifup **Task** under `tasks/`: new → run `/j-task`; existing backlog → use its filename id. Capture that id — everything keys off it.
 2. Branch: superpowers naming **+ inject the TASK-id** (e.g. `feature/001-slug`); isolate via `superpowers:using-git-worktrees`. Do not use the repo `branch` skill (Notion-oriented).
-3. `superpowers:brainstorming` → design. **HUMAN GATE 1: design approval — no code until approved.** Never a subagent (it is the design dialogue).
-4. `md2joifup` the approved spec → `notes/document/` (type `document`).
-5. `superpowers:writing-plans` → task-decomposed plan.
-6. `md2joifup` the plan → `notes/plan/` (type `plan`). Optionally move the Task to In progress. **This is the handoff artifact. Session A ends.**
+3. `superpowers:brainstorming` → design. **HUMAN GATE 1: design approval — no code until approved.** Never a subagent (it is the design dialogue). When it writes the design doc, target a **staging path** (scratchpad) — **not** `docs/superpowers/specs/` — and do **not** commit it there. Step 4 is the spec's only commit.
+4. `md2joifup` the staged spec → `notes/document/` (`--type document --task <id>`). This move + frontmatter is the **single commit** of the spec. (If brainstorming already committed it under `docs/superpowers/specs/`, md2joifup's default move removes it — commit that relocation.)
+5. `superpowers:writing-plans` → task-decomposed plan. Same rule: write it to a **staging path**, **not** `docs/superpowers/plans/`, and do **not** commit it there.
+6. `md2joifup` the staged plan → `notes/plan/` (`--type plan --task <id>`) — the **single commit** of the plan. Optionally move the Task to In progress. **This is the handoff artifact. Session A ends.**
 
 **Session B — Implement (fresh session)**
 7. Read the persisted plan. `superpowers:subagent-driven-development`: fresh subagent per task, English atomic commits, `task-reviewer` per task; add `agentType: ecc:security-reviewer` on any task touching auth/input/secrets/API/sensitive data. The Driver keeps the orchestration/fix loop — only per-task units are subagents.
@@ -55,3 +55,4 @@ Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/fol
 - Collapsing Sessions A and B into one context — defeats the plan-as-contract handoff.
 - Wrapping: editing what superpowers/adapters do instead of just sequencing them.
 - Merging or marking Done from Session B — that is the human gate.
+- Letting brainstorming/writing-plans commit the spec/plan at their superpowers defaults (`docs/superpowers/specs|plans/`) — those are not Joifup-indexed (`**/notes/**` only) or Task-linked. Stage them uncommitted; `md2joifup` is the only commit, into `notes/document/` and `notes/plan/`.
