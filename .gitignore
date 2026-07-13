@@ -9,3 +9,6 @@ notes/document/.private/
 
 # superpowers SDD 進捗レジャー（スクラッチ）
 .superpowers/
+
+# superpowers worktrees
+.worktrees/
