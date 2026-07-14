@@ -2,7 +2,7 @@
 ID: TASK-74
 Project: devops
 created_at: '2026-07-13'
-status: In review
+status: Done
 title: j-finish のレビュー依頼を UAT 手順提示型に改善
 updated_at: '2026-07-13'
 ---
