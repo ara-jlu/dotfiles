@@ -105,7 +105,6 @@ def main():
     ap.add_argument("--base", default="main")
     ap.add_argument("--head", help="branch (default: current)")
     ap.add_argument("--status", default="In review", help="pre-approval status")
-    ap.add_argument("--project", help="Project id to inherit onto the action task")
     ap.add_argument("--no-pr", action="store_true")
     ap.add_argument("--no-discord", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
