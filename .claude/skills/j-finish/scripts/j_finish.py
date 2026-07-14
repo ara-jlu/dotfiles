@@ -9,16 +9,14 @@ captured before it is referenced downstream:
   2. open the PR (body authored in Japanese by the caller; --pr-body-file)
   3. move the Joifup Task -> "In review" (SURGICAL: only the status line;
      every other frontmatter key/relation/body byte is preserved)
-  4. file a user-action Task ("承認待ち") as a child of the task, so the
-     approval surfaces in the human's Joifup task list
-  5. notify Discord (Japanese, scoped mention, PR link)
+  4. notify Discord (Japanese, scoped mention, PR link)
 
 It never marks the task Done and never merges — the human's approval session
 owns status->Done + `chore(joifup): approve TASK-xxx` + merge.
 
 Network/side-effect steps (git/gh/curl) are gated by --dry-run, which prints
 the exact commands instead of running them. The local file mechanics (status
-edit, user-action task) run in both modes so they can be verified.
+edit) runs in both modes so it can be verified.
 """
 import argparse
 import datetime
@@ -99,60 +97,6 @@ def read_title(task_file):
     return os.path.splitext(os.path.basename(task_file))[0]
 
 
-def next_number(d):
-    if not os.path.isdir(d):
-        return "001"
-    nums = [int(m.group(1)) for name in os.listdir(d)
-            if (m := re.match(r"^(\d+)-", name))]
-    return str((max(nums) + 1) if nums else 1).zfill(3)
-
-
-def slugify(text):
-    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-
-
-_QUOTE_START = "-?:#&*!|>'\"%@`,[]{} "
-
-
-def fmt_scalar(v):
-    if not isinstance(v, str):
-        return str(v)
-    if v == "" or v[0] in _QUOTE_START or v[-1] == " " or ":" in v or "#" in v:
-        return "'" + v.replace("'", "''") + "'"
-    return v
-
-
-def emit_frontmatter(items):
-    lines = []
-    for k, v in items:
-        if isinstance(v, list):
-            lines.append(f"{k}: [{', '.join(fmt_scalar(x) for x in v)}]")
-        else:
-            lines.append(f"{k}: {fmt_scalar(v)}")
-    return "\n".join(lines)
-
-
-def file_user_action(tasks_dir, parent_id, parent_title, project, pr_url):
-    """Create a '承認待ち' Task as a child of the finished task."""
-    num = next_number(tasks_dir)
-    slug = slugify(f"approve {parent_title}") or "approve"
-    dest = os.path.join(tasks_dir, f"{num}-{slug}.md")
-    today = datetime.date.today().isoformat()
-    items = [("title", f"承認待ち: {parent_title}"),
-             ("status", "Not started"),
-             ("parent", parent_id)]
-    if project:
-        items.append(("Project", project))  # single value -> scalar
-    items += [("created_at", today), ("updated_at", today)]
-    fm_yaml = emit_frontmatter(items)
-    body = (f"# 承認待ち: {parent_title}\n\n"
-            f"レビュー承認をお願いします。承認後、このセッションで親Taskを "
-            f"`In review` → `Done` に更新し main へマージしてください。\n\n"
-            f"- PR: {pr_url}\n- 親Task: {parent_id}\n")
-    open(dest, "w", encoding="utf-8").write(f"---\n{fm_yaml}\n---\n\n{body}")
-    return dest
-
-
 def main():
     ap = argparse.ArgumentParser(prog="j-finish")
     ap.add_argument("--task-file", required=True, help="Joifup Task md to finish")
@@ -161,9 +105,7 @@ def main():
     ap.add_argument("--base", default="main")
     ap.add_argument("--head", help="branch (default: current)")
     ap.add_argument("--status", default="In review", help="pre-approval status")
-    ap.add_argument("--project", help="Project id to inherit onto the action task")
     ap.add_argument("--no-pr", action="store_true")
-    ap.add_argument("--no-user-action", action="store_true")
     ap.add_argument("--no-discord", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
@@ -202,13 +144,7 @@ def main():
     surgical_status(args.task_file, args.status)
     print(f"status -> {args.status}: {args.task_file}")
 
-    # 4. user-action task
-    if not args.no_user_action:
-        dest = file_user_action(tasks_dir, parent_id, parent_title,
-                                args.project, pr_url)
-        print(f"user-action task: {dest}")
-
-    # 5. Discord — rich embed (matches auto-workflow/scripts/discord-notify.sh:
+    # 4. Discord — rich embed (matches auto-workflow/scripts/discord-notify.sh:
     #    title / description / color / fields[プロジェクト, ブランチ] / timestamp)
     if not args.no_discord:
         webhook = os.environ.get("DISCORD_WEBHOOK_URL", "")
