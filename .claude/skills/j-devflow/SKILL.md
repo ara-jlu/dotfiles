@@ -38,7 +38,7 @@ Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/fol
 7. Read the persisted plan. `superpowers:subagent-driven-development`: fresh subagent per task, English atomic commits, `task-reviewer` per task; add `agentType: ecc:security-reviewer` on any task touching auth/input/secrets/API/sensitive data. The Driver keeps the orchestration/fix loop — only per-task units are subagents.
 8. SDD auto whole-branch review: inject `ecc:<lang>-reviewer` by changed language (+ `ecc:security-reviewer` if the diff warrants). Critical/Important are blocking → fix loop until clean.
 9. `superpowers:verification-before-completion` + tests green.
-10. `j-finish`: push → PR (Japanese) → Task → In review → 承認待ち task → Discord. **The machine stops here.**
+10. `j-finish`: push → PR (Japanese) → Task → In review → Discord, then present the UAT (acceptance-test) review request — light = do the verification prep and show the steps as text; heavy = file a verification user-action task (`md2joifup --db tasks`) and present its file. No approval-only task is filed. **The machine stops here.**
 
 **Phase C — Approve (human)**
 11. Human reviews. On approval: Task → Done, commit `chore(joifup): approve <task-id>` (English), merge. **HUMAN GATE 2. Nothing auto-merges.**
