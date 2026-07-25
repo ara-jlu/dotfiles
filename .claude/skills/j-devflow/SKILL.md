@@ -38,7 +38,7 @@ Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/fol
 7. Read the persisted plan. `superpowers:subagent-driven-development`: fresh subagent per task, English atomic commits, `task-reviewer` per task; add `agentType: ecc:security-reviewer` on any task touching auth/input/secrets/API/sensitive data. The Driver keeps the orchestration/fix loop — only per-task units are subagents.
 8. SDD auto whole-branch review: inject `ecc:<lang>-reviewer` by changed language (+ `ecc:security-reviewer` if the diff warrants). Critical/Important are blocking → fix loop until clean.
 9. `superpowers:verification-before-completion` + tests green.
-10. `j-finish`: push → PR (Japanese) → Task → In review → Discord, then present the UAT (acceptance-test) review request — light = do the verification prep and show the steps as text; heavy = file a verification user-action task (`md2joifup --db tasks`) and present its file. No approval-only task is filed. **The machine stops here.**
+10. **UAT 自動化 + `j-finish`**: UI 変更を含む branch は `pnpm uat --task <id>` を実行して `.uat-evidence/<id>/` に証跡を生成し commit する（spec で確定した受け入れ基準を `apps/web/e2e/<id>.uat.spec.ts` に書いてから）。PR には pr-body recipe の `## 受け入れ基準` と `## UAT 証跡`（summary.md の PASS/FAIL 表）を載せる。その後 `j-finish` が push→PR→Task→In review→Discord を行う。**UAT ユーザーアクション task は file しない**（旧 heavy 分岐は廃止）。UI を含まない変更では UAT を省略し `## テスト` のみで良い。**The machine stops here.**
 
 **Phase C — Approve (human)**
 11. Human reviews. On approval: Task → Done, commit `chore(joifup): approve <task-id>` (English), merge. **HUMAN GATE 2. Nothing auto-merges.**
