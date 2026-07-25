@@ -29,6 +29,12 @@
 ## テスト
 - [実行したテストと結果（グリーン等）。未実行ならその旨]
 
+## 受け入れ基準
+- [ ] [この変更で満たすべき受け入れ基準を checklist で。旧 UAT task の walk-through をここに inline 展開]
+
+## UAT 証跡
+[.uat-evidence/<TASK>/summary.md の PASS/FAIL 表を転記。screenshot は private repo のため PR body には埋め込まず、`.uat-evidence/<TASK>/` を Files changed タブで確認する旨を明記]
+
 ## レビュー観点
 - [diff の焦点。特に auth / 入力 / 秘密 / API / 機微データに触れる箇所は明記]
 
@@ -45,6 +51,8 @@
 - `## レビュー観点` は diff の実面から起こす（テンプレ文でなく変更に即して）。
 - 該当セクションが空なら省いてよい（`## テスト` を除く。テストは必ず状態を書く）。
 - フッタ `🤖 Generated with [Claude Code](https://claude.com/claude-code)` は必須。
+- **UI 変更を含む PR は `## UAT 証跡` 必須**（`pnpm uat --task <id>` を実行し `.uat-evidence/<id>/summary.md` を転記）。UI を含まない変更では省略可。
+- `## 受け入れ基準` は旧 UAT task の checklist を PR に inline 展開したもの（UAT task はもう file しない）。
 
 ## 例
 
