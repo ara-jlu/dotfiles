@@ -41,7 +41,7 @@ Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/fol
 10. **UAT 自動化 + `j-finish`**: UI 変更を含む branch は `pnpm uat --task <id>` を実行して `.uat-evidence/<id>/` に証跡を生成し commit する（spec で確定した受け入れ基準を `apps/web/e2e/<id>.uat.spec.ts` に書いてから）。PR には pr-body recipe の `## 受け入れ基準` と `## UAT 証跡`（summary.md の PASS/FAIL 表）を載せる。その後 `j-finish` が push→PR→Task→In review→Discord を行う。**UAT ユーザーアクション task は file しない**（旧 heavy 分岐は廃止）。UI を含まない変更では UAT を省略し `## テスト` のみで良い。**The machine stops here.**
 
 **Phase C — Approve (human)**
-11. Human reviews. On approval: Task → Done, commit `chore(joifup): approve <task-id>` (English), merge. **HUMAN GATE 2. Nothing auto-merges.**
+11. Human reviews. On approval: Task → Done, commit `chore(joifup): approve <task-id>` (English), merge. Once merged, **remove the isolated worktree without prompting** (`ExitWorktree`, or `git worktree remove`) — it is disposable post-merge, so cleanup needs no separate approval; do not ask. **HUMAN GATE 2. Nothing auto-merges** — the human owns only the approval/merge decision; the post-merge worktree cleanup is automatic.
 
 ## Guards for autonomous runs
 
