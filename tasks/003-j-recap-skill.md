@@ -1,6 +1,6 @@
 ---
 title: j-recap スキル（作業成果の外部向けまとめ）を新規作成
-status: Not started
+status: Done
 Project: devops
 created_at: 2026-07-26
 updated_at: 2026-07-26
