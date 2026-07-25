@@ -97,6 +97,31 @@ def read_title(task_file):
     return os.path.splitext(os.path.basename(task_file))[0]
 
 
+def _warn_missing_uat_evidence(head_range):
+    """Warn (never block) if apps/web changed without committed .uat-evidence/.
+
+    Read-only: shells out to `git diff --name-only <head_range>`. Runs even
+    under --dry-run since it has no side effects. Never raises and never
+    calls die() — some apps/web diffs are non-UI (e.g. config-only), and if
+    git itself fails (e.g. origin/main not fetched locally) the check is
+    silently skipped rather than blocking the finish flow.
+    """
+    try:
+        changed = subprocess.run(
+            ["git", "diff", "--name-only", head_range],
+            capture_output=True, text=True, check=True,
+        ).stdout.splitlines()
+    except (subprocess.CalledProcessError, OSError):
+        return
+    touches_ui = any(p.startswith("apps/web/") and not p.startswith("apps/web/e2e/")
+                      for p in changed)
+    has_evidence = any(p.startswith(".uat-evidence/") for p in changed)
+    if touches_ui and not has_evidence:
+        print("j-finish: WARNING — apps/web changed but no .uat-evidence/ "
+              "committed. Run `pnpm uat --task <id>` and commit the evidence "
+              "before opening the PR.", file=sys.stderr)
+
+
 def main():
     ap = argparse.ArgumentParser(prog="j-finish")
     ap.add_argument("--task-file", required=True, help="Joifup Task md to finish")
@@ -127,6 +152,11 @@ def main():
 
     head = args.head or run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
                             dry_run=False) or "HEAD"
+
+    # Pre-flight (read-only, advisory): warn if apps/web changed without
+    # committed UAT evidence. Runs even under --dry-run; never blocks, since
+    # not every apps/web diff is UI-facing.
+    _warn_missing_uat_evidence(f"origin/{args.base}...HEAD")
 
     # 1. push
     run(["git", "push", "-u", "origin", head], args.dry_run)

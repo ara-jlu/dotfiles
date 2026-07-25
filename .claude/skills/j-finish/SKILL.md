@@ -32,15 +32,14 @@ python3 scripts/j_finish.py --task-file <tasks/NNN-*.md> \
 
 Toggle off parts with `--no-pr` / `--no-discord`. `--dry-run` prints the git/gh/curl it would run while still performing the local file edits.
 
-4. **Present the UAT (acceptance-test) review request.** The approver *runs* the change, they do not read code. The *content* of the UAT is yours (like the PR body); the script does not carry it. Judge how heavy the verification is and branch:
-   - **Light** (a few steps the approver can follow inline): first do the verification prep yourself so they can start immediately — restart the daemon, start the dev server, seed data, whatever this change needs (project-specific; decide it in-session, there is no config for it). Then present the UAT steps as session text.
-   - **Heavy** (many cases, order-dependent, multi-environment, or worth keeping): file a user-action Task carrying the verification cases via `md2joifup --db tasks` (content authored by you), and present its file path. Do the prep as in the light case.
+4. **UAT 証跡を PR に載せる。** 承認者はコードを読まず、証跡を見て承認する。UI 変更を含む場合は `pnpm uat --task <id>` を回して `.uat-evidence/<id>/` を commit し、PR 本文の `## UAT 証跡` に `summary.md` の PASS/FAIL 表を転記する（screenshot は private repo のため Files changed タブで閲覧）。受け入れ基準は `## 受け入れ基準` に inline 展開する。**UAT ユーザーアクション task は新規 file しない**（旧 light/heavy 分岐・md2joifup --db tasks による UAT task 発行は廃止）。UI を含まない変更では UAT を省略してよい。
 5. **Report** the PR URL and hand off: tell the user it awaits their approval (after they run the UAT).
 
 ## What the script guarantees
 
 - **Surgical status edit** — only the `status:` line flips (validated against the tasks schema); every other frontmatter key, relation, and body byte is preserved. It refuses `Done`/`Cancelled`.
 - **Scoped Discord** — a Japanese rich embed titled 「👀 レビュー依頼」 (same shape as `auto-workflow/scripts/discord-notify.sh`: description + color + プロジェクト/ブランチ fields + timestamp), with the PR link and `allowed_mentions` limited to the owner; `CLAUDE_SESSION_ID` is never posted. Overridable via `DISCORD_COLOR`.
+- **UAT evidence check** — warns (never blocks) if `apps/web/` changed but no `.uat-evidence/` was committed in the push range; runs under `--dry-run` too, since it is read-only.
 
 ## Common Mistakes
 
@@ -48,3 +47,5 @@ Toggle off parts with `--no-pr` / `--no-discord`. `--dry-run` prints the git/gh/
 - Writing relation values as file paths — they are **ids** (e.g. `042-...`, `638-...`).
 - Setting Done or merging — that is the human approval gate, not j-finish.
 - Commit language: the approval commit is **English**; the PR body is **Japanese**.
+- UI 変更なのに `.uat-evidence/<id>/` を commit せず PR を出す — 証跡が空になる（`pnpm uat` を回す）。
+- UAT ユーザーアクション task を新規 file する — 廃止済み。受け入れ基準は PR の `## 受け入れ基準` に inline する。
