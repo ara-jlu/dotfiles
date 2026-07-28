@@ -22,6 +22,23 @@ The flow has **three phases**, connected by file handoff (the persisted `notes/p
 - Any non-trivial feature/bugfix that should follow the full spine.
 - NOT for a quick one-file edit (just do it), and NOT to merge (that is Phase C, human-owned).
 
+## Modes: attended (default) vs `-auto`
+
+Invoked as `/j-devflow <id>` (attended) or `/j-devflow <id> -auto` (autonomous). The flag changes **only HUMAN GATE 1 (design approval)** — never GATE 2 (merge), which is human in both modes.
+
+- **attended (default):** brainstorming presents its recommended approach; the **human** approves at GATE 1.
+- **`-auto`:** brainstorming runs fully (codebase exploration, alternatives, design doc) and the session **auto-approves its own recommended approach** at GATE 1, then proceeds — no human wait. The task body is only the starting idea (overview-level by j-task design), **not** the design authority; the design comes from brainstorming.
+
+**Why `-auto` is safe:** the design is still persisted to `notes/document/` and surfaced in the PR, and **GATE 2 (merge) is always human**. Auto-approving GATE 1 therefore risks only *rework* (a design rejected at PR review), never an unsafe merge.
+
+**`-auto` escalation triggers — pause and ask the dispatcher (do NOT auto-approve):**
+- schema change / data migration / deletion / security・auth policy / public API-contract change — irreversible, high blast-radius (GATE 2 is too late);
+- brainstorming judges the work does not fit a single spec / needs decomposition — a scope decision, not a design one;
+- the recommended approach is a genuine close call or carries a material tradeoff (e.g. data integrity vs speed) — a call a human should make;
+- the fix-loop cannot clear all Critical/Important.
+
+Otherwise (recommendation clearly dominant, low-risk) auto-approve and continue. Escalation is **pause-and-ask to the dispatcher** (the launching PM/session), not a hard fail: stop, surface the question, resume on the answer. The dispatcher must therefore watch for a session that has stopped on a question, not only for the finished PR.
+
 ## Runbook
 
 Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/folder names — never hardcode them.
@@ -29,7 +46,7 @@ Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/fol
 **Phase A — Plan (interactive)**
 1. Prepare the Joifup **Task** under `tasks/`: new → run `/j-task`; existing backlog → use its filename id. Capture that id — everything keys off it.
 2. Branch: superpowers naming **+ inject the TASK-id** (e.g. `feature/001-slug`); isolate via `superpowers:using-git-worktrees`. Do not use the repo `branch` skill (Notion-oriented).
-3. `superpowers:brainstorming` → design. **HUMAN GATE 1: design approval — no code until approved.** Never a subagent (it is the design dialogue). When it writes the design doc, target a **staging path** (scratchpad) — **not** `docs/superpowers/specs/` — and do **not** commit it there. Step 4 is the spec's only commit.
+3. `superpowers:brainstorming` → design. **HUMAN GATE 1: design approval — no code until approved** (attended: the human approves; `-auto`: the session auto-approves brainstorming's own recommended approach, escalating per **Modes**). Never a subagent (it is the design dialogue). When it writes the design doc, target a **staging path** (scratchpad) — **not** `docs/superpowers/specs/` — and do **not** commit it there. Step 4 is the spec's only commit.
 4. `md2joifup` the staged spec → `notes/document/` (`--type document --task <id>`). This move + frontmatter is the **single commit** of the spec. (If brainstorming already committed it under `docs/superpowers/specs/`, md2joifup's default move removes it — commit that relocation.)
 5. `superpowers:writing-plans` → task-decomposed plan. Same rule: write it to a **staging path**, **not** `docs/superpowers/plans/`, and do **not** commit it there.
 6. `md2joifup` the staged plan → `notes/plan/` (`--type plan --task <id>`) — the **single commit** of the plan. Optionally move the Task to In progress. **This is the handoff artifact. Phase A ends.**
@@ -43,12 +60,12 @@ Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/fol
 **Phase C — Approve (human)**
 11. Human reviews. On approval: Task → Done, commit `chore(joifup): approve <task-id>` (English), merge. Once merged, **remove the isolated worktree without prompting** (`ExitWorktree`, or `git worktree remove`) — it is disposable post-merge, so cleanup needs no separate approval; do not ask. **HUMAN GATE 2. Nothing auto-merges** — the human owns only the approval/merge decision; the post-merge worktree cleanup is automatic.
 
-## Guards for autonomous runs
+## Guards (both modes)
 
-- **Design gate (before step 7):** hard stop — never write code before design approval, even unattended.
-- **Fix-loop exit (before step 10):** no open Critical/Important from any reviewer.
+- **Design gate (before step 7):** never write code before design approval. attended → the human approves; `-auto` → brainstorming's own recommendation is auto-approved **unless** an escalation trigger fires (see **Modes**), then pause-and-ask the dispatcher. Never fabricate approval from the overview-level task body.
+- **Fix-loop exit (before step 10):** no open Critical/Important from any reviewer — `-auto` must not lower this bar.
 - **Before step 10's external actions:** PR/Discord/status are externally visible and hard to undo — checkpoint on green tests + clean review first.
-- **Merge/Done:** structurally impossible for the machine — reserved for Phase C (human).
+- **Merge/Done:** structurally impossible for the machine — reserved for Phase C (human), in both modes.
 
 ## Common Mistakes
 
