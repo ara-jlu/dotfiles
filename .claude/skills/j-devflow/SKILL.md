@@ -22,7 +22,16 @@ The flow has **three phases**, connected by file handoff (the persisted `notes/p
 - Any non-trivial feature/bugfix that should follow the full spine.
 - NOT for a quick one-file edit (just do it), and NOT to merge (that is Phase C, human-owned).
 
-## Modes: attended (default) vs `-auto`
+## Modes: two independent axes
+
+j-devflow has two independent mode flags controlling two different risk axes. They compose freely: `/j-devflow <id>`, `-auto`, `-light`, or `-light -auto`.
+
+- **`-auto`** controls **GATE 1 (design approval)** — attended (default) vs auto-approved.
+- **`-light`** controls **Phase B execution structure** — full (per-task subagent + per-task review) vs light (single-session inline implementation + one final review).
+
+They target different risks and don't have to be used together, but in practice **`-light` alone is rarely useful**: its motivating case (a chain of follow-up tasks burning tokens on process overhead) only pays off when GATE 1 is also unattended, so `-light -auto` is the expected pairing.
+
+### GATE 1: attended (default) vs `-auto`
 
 Invoked as `/j-devflow <id>` (attended) or `/j-devflow <id> -auto` (autonomous). The flag changes **only HUMAN GATE 1 (design approval)** — never GATE 2 (merge), which is human in both modes.
 
@@ -39,6 +48,23 @@ Invoked as `/j-devflow <id>` (attended) or `/j-devflow <id> -auto` (autonomous).
 
 Otherwise (recommendation clearly dominant, low-risk) auto-approve and continue. Escalation is **pause-and-ask to the dispatcher** (the launching PM/session), not a hard fail: stop, surface the question, resume on the answer. The dispatcher must therefore watch for a session that has stopped on a question, not only for the finished PR.
 
+### Phase B: full (default) vs `-light`
+
+- **full (default):** `subagent-driven-development` — fresh subagent per task, `task-reviewer` per task, then a final whole-branch review. See Runbook step 7-8.
+- **`-light`:** same-session inline implementation (`superpowers:executing-plans`, no fresh subagent per task) for all plan tasks, followed by **one final whole-branch review only** — no per-task review. See Runbook step 7-8 for the branch.
+
+**Why `-light` is safe:** the final whole-branch review is *always* dispatched to a fresh subagent that receives only the diff — never the implementing session's own conversation context. This is true in both full and light Phase B, and it is the invariant `-light` must never weaken: the implementer must never review its own work, because a session that shares context with its own implementation decisions tends to rubber-stamp them (self-review bias). Losing the per-task early-catch net is an accepted tradeoff for `-light`-eligible tasks (see escalation triggers below for when that tradeoff stops being safe); losing reviewer independence is not.
+
+**Who decides which tasks get `-light`:** the dispatching PM session, at launch time — j-devflow does not judge task eligibility itself (mirrors how `-auto`'s launch choice works). See `joifup-pm/SKILL.md`.
+
+**`-light` escalation triggers — pause and ask the dispatcher, fall back to full Phase B for the rest of the task:**
+- the diff touches auth / input / secrets / API / sensitive data — the same category that already requires `ecc:security-reviewer` in full mode; a single final review is not enough here;
+- a schema change, data migration, deletion, or public API-contract change turns out to be needed — same irreversible/high-blast-radius category as the `-auto` triggers;
+- the scope grows beyond what was expected (e.g. an assumed 1-2 file fix spreads into unrelated modules) — the "light is enough" premise no longer holds;
+- the final whole-branch review returns any Critical/Important — work the fix-loop as usual, but note that `-light` skipped the earlier catch point.
+
+Same pause-and-ask mechanism as `-auto`: stop, surface the question to the dispatcher, resume on the answer.
+
 ## Runbook
 
 Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/folder names — never hardcode them.
@@ -52,19 +78,21 @@ Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/fol
 6. `md2joifup` the staged plan → `notes/plan/` (`--type plan --task <id>`) — the **single commit** of the plan. Optionally move the Task to In progress. **This is the handoff artifact. Phase A ends.**
 
 **Phase B — Implement (same session by default; fresh session only if context is heavy)**
-7. Read the persisted plan. `superpowers:subagent-driven-development`: fresh subagent per task, English atomic commits, `task-reviewer` per task; add `agentType: ecc:security-reviewer` on any task touching auth/input/secrets/API/sensitive data. The Driver keeps the orchestration/fix loop — only per-task units are subagents.
-   - **Worktree-pinning contract (every SDD dispatch — implementer, fix, reviewer; both modes):** Agent subagents do **not** inherit this session's `EnterWorktree` cwd — a fresh subagent starts in the primary checkout. So each dispatch MUST: (a) state `Worktree root: <WT>` (the `$WT` from step 2), never a blank/relative "Work from"; (b) make the subagent's **first action** `cd "<WT>"` then assert `test "$(git rev-parse --show-toplevel)" = "<WT>"` — on mismatch **STOP and report BLOCKED**, never edit or run cargo/pnpm in the fallback dir; (c) keep every path relative to `<WT>` (or `<WT>/…`) and **forbid literal primary paths** (`/Users/…/joifup/…` lacking the `.claude/worktrees/<branch>/` segment); (d) pin builds/tests to the worktree manifest — Rust: `cargo … --manifest-path "<WT>/apps/desktop/src-tauri/Cargo.toml"`; never a bare `cargo`/`cargo fmt`/`pnpm` that trusts cwd.
-8. SDD auto whole-branch review: inject `ecc:<lang>-reviewer` by changed language (+ `ecc:security-reviewer` if the diff warrants). Critical/Important are blocking → fix loop until clean.
+7. Read the persisted plan, then branch on Phase B mode:
+   - **full (default):** `superpowers:subagent-driven-development` — fresh subagent per task, English atomic commits, `task-reviewer` per task; add `agentType: ecc:security-reviewer` on any task touching auth/input/secrets/API/sensitive data. The Driver keeps the orchestration/fix loop — only per-task units are subagents.
+   - **`-light`:** `superpowers:executing-plans` — execute all plan tasks in this same session (no fresh subagent per task, no per-task `task-reviewer`). English atomic commits per task, same as full mode. Watch for the `-light` escalation triggers below while implementing; if one fires, stop and pause-and-ask the dispatcher rather than continuing inline.
+   - **Worktree-pinning contract (every subagent dispatch — implementer, fix, reviewer; full and `-light` alike):** In `-light` mode the inline implementation runs in *this* session (already `EnterWorktree`'d, so no pinning contract needed for implementation itself) — but the **final whole-branch review subagent still needs it**, since it is always a fresh dispatch regardless of Phase B mode. Agent subagents do **not** inherit this session's `EnterWorktree` cwd — a fresh subagent starts in the primary checkout. So each dispatch MUST: (a) state `Worktree root: <WT>` (the `$WT` from step 2), never a blank/relative "Work from"; (b) make the subagent's **first action** `cd "<WT>"` then assert `test "$(git rev-parse --show-toplevel)" = "<WT>"` — on mismatch **STOP and report BLOCKED**, never edit or run cargo/pnpm in the fallback dir; (c) keep every path relative to `<WT>` (or `<WT>/…`) and **forbid literal primary paths** (`/Users/…/joifup/…` lacking the `.claude/worktrees/<branch>/` segment); (d) pin builds/tests to the worktree manifest — Rust: `cargo … --manifest-path "<WT>/apps/desktop/src-tauri/Cargo.toml"`; never a bare `cargo`/`cargo fmt`/`pnpm` that trusts cwd.
+8. Whole-branch review: inject `ecc:<lang>-reviewer` by changed language (+ `ecc:security-reviewer` if the diff warrants), dispatched fresh with **only the diff** — never the implementing session's conversation context, in full mode or `-light` alike. Critical/Important are blocking → fix loop until clean; re-review after a fix goes through the same fresh-diff-only dispatch, not a self-check by the session that made the fix. **In `-light` mode this is the only review the change receives** — there is no per-task review preceding it.
 9. `superpowers:verification-before-completion` + tests green.
 10. **UAT 自動化 + `j-finish`**: UI 変更を含む branch は `pnpm uat --task <id>` を実行して `.uat-evidence/<id>/` に証跡を生成し commit する（spec で確定した受け入れ基準を `apps/web/e2e/<id>.uat.spec.ts` に書いてから）。PR には pr-body recipe の `## 受け入れ基準` と `## UAT 証跡`（summary.md の PASS/FAIL 表）を載せる。その後 `j-finish` が push→PR→Task→In review→Discord を行う。**UAT ユーザーアクション task は file しない**（旧 heavy 分岐は廃止）。UI を含まない変更では UAT を省略し `## テスト` のみで良い。**The machine stops here.**
 
 **Phase C — Approve (human)**
 11. Human reviews. On approval: Task → Done, commit `chore(joifup): approve <task-id>` (English), merge. Once merged, **remove the isolated worktree without prompting** (`ExitWorktree`, or `git worktree remove`) — it is disposable post-merge, so cleanup needs no separate approval; do not ask. **HUMAN GATE 2. Nothing auto-merges** — the human owns only the approval/merge decision; the post-merge worktree cleanup is automatic.
 
-## Guards (both modes)
+## Guards (all mode combinations)
 
 - **Design gate (before step 7):** never write code before design approval. attended → the human approves; `-auto` → brainstorming's own recommendation is auto-approved **unless** an escalation trigger fires (see **Modes**), then pause-and-ask the dispatcher. Never fabricate approval from the overview-level task body.
-- **Fix-loop exit (before step 10):** no open Critical/Important from any reviewer — `-auto` must not lower this bar.
+- **Fix-loop exit (before step 10):** no open Critical/Important from any reviewer — neither `-auto` nor `-light` may lower this bar.
 - **Before step 10's external actions:** PR/Discord/status are externally visible and hard to undo — checkpoint on green tests + clean review first.
 - **Merge/Done:** structurally impossible for the machine — reserved for Phase C (human), in both modes.
 - **Worktree isolation (every subagent, `-auto` included):** the dispatch is the only thing keeping a subagent out of the primary checkout — `EnterWorktree` moves only THIS session, not its subagents. No dispatch goes out without the `cd "<WT>"` + `git rev-parse --show-toplevel` equality assert as the subagent's first step; a subagent that can't confirm it is in `<WT>` BLOCKs rather than editing primary. Cheap (one shell check, once, at dispatch start) vs the far larger cost of a primary leak + recovery. Root cause: tasks/156.
@@ -76,3 +104,4 @@ Read the Joifup schema (`.joifup/databases/<id>/schema.yaml`) for status/tag/fol
 - Merging or marking Done from Phase B (the machine) — that is the human gate.
 - Letting brainstorming/writing-plans commit the spec/plan at their superpowers defaults (`docs/superpowers/specs|plans/`) — those are not Joifup-indexed (`**/notes/**` only) or Task-linked. Stage them uncommitted; `md2joifup` is the only commit, into `notes/document/` and `notes/plan/`.
 - Naming a branch with a slash (`feature/154-…`) or dispatching an SDD subagent without pinning it to `<WT>` — the subagent silently lands in the primary checkout and edits / `cargo fmt`s there (observed: tasks 154, 155). Hyphen-name the branch and carry `<WT>` + the toplevel assertion in every dispatch.
+- **Letting the `-light` implementing session review its own diff** — defeats the one safety net `-light` still has. The final whole-branch review must always be a fresh subagent dispatch that receives only the diff, never the implementing session's own conversation context, in `-light` mode most of all (there is no earlier per-task review to catch what a compromised final review misses).
