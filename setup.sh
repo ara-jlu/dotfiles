@@ -64,7 +64,7 @@ echo "✓ wezterm設定のリンクが完了しました"
 
 # Claude Code設定のセットアップ
 # 注意: ~/.claude/ には Claude Code の状態データ（history, plans, todos等）が含まれるため、
-#       ディレクトリ全体ではなく、commands と docs のみをシンボリックリンクする
+#       ディレクトリ全体ではなく、commands / docs / settings.json / skills / CLAUDE.md を個別にシンボリックリンクする
 echo "Claude Code設定をセットアップしています..."
 
 # ~/.claude/ ディレクトリが存在しない場合は作成
@@ -85,6 +85,10 @@ ln -sf "$DOTFILES_DIR/.claude/settings.json" "$HOME/.claude/settings.json"
 # skills ディレクトリのシンボリックリンク（vercel-labs/skills 用）
 backup_if_exists "$HOME/.claude/skills"
 ln -sf "$DOTFILES_DIR/.claude/skills" "$HOME/.claude/skills"
+
+# CLAUDE.md のシンボリックリンク（グローバルハーネス原則。これが無いと Claude Code がユーザー記憶としてロードしない）
+backup_if_exists "$HOME/.claude/CLAUDE.md"
+ln -sf "$DOTFILES_DIR/.claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 
 echo "✓ Claude Code設定のリンクが完了しました"
 
