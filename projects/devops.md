@@ -4,6 +4,17 @@ created_at: '2026-07-11'
 status: In Progress
 title: DevOps
 updated_at: '2026-07-11'
+Notes:
+- 001-j-task-design
+- 003-j-recap-design
+- 001-j-task
+- 003-j-recap-plan
+- 002-macos-tmux-tcc-operation-not-permitted
+- 002-macos-tmux-tcc-troubleshoot
+Tasks:
+- 003-j-recap-skill
+- 001-ai-harness
+
 ---
 # DevOps
 

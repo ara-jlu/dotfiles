@@ -1,10 +1,14 @@
 ---
+ID: NOTE-33
 title: j-task タスク起票スキル Implementation Plan
 tag: [plan]
 Project: devops
 Task: 001-ai-harness
 created_at: 2026-07-11
 updated_at: 2026-07-11
+Tasks:
+- 001-ai-harness
+
 ---
 
 # j-task タスク起票スキル Implementation Plan
