@@ -1,10 +1,14 @@
 ---
+ID: NOTE-119
 title: j-recap — 作業成果の外部向けまとめスキル 設計
 tag: [document]
 Project: devops
 Task: 003-j-recap-skill
 created_at: 2026-07-26
 updated_at: 2026-07-26
+Tasks:
+- 003-j-recap-skill
+
 ---
 
 # j-recap — 作業成果の外部向けまとめスキル 設計

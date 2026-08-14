@@ -1,10 +1,14 @@
 ---
+ID: NOTE-32
 title: j-task 設計 — Joifup タスク起票スキル
 tag: [document]
 Project: devops
 Task: 001-ai-harness
 created_at: 2026-07-11
 updated_at: 2026-07-11
+Tasks:
+- 001-ai-harness
+
 ---
 
 # j-task 設計 — Joifup タスク起票スキル

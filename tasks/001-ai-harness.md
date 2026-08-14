@@ -5,6 +5,10 @@ status: In progress
 Project: devops
 created_at: 2026-07-11
 updated_at: 2026-07-11
+Notes:
+- 001-j-task-design
+- 001-j-task
+
 ---
 
 # AIハーネス構築

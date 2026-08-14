@@ -1,10 +1,14 @@
 ---
+ID: NOTE-120
 title: j-recap スキル実装 Implementation Plan
 tag: [plan]
 Project: devops
 Task: 003-j-recap-skill
 created_at: 2026-07-26
 updated_at: 2026-07-26
+Tasks:
+- 003-j-recap-skill
+
 ---
 
 # j-recap スキル実装 Implementation Plan
