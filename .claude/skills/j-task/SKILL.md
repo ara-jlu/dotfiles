@@ -21,12 +21,21 @@ Captures a Joifup **Task** (status `Not started`) into `tasks/`. Standalone and 
 1. **Assess granularity.** A task = one "requirements-refinement unit" (one j-devflow cycle: brainstorming→plan→implement).
    - Fits one unit → **single task** (create immediately).
    - Too large / multiple independent pieces → **coarse-decompose**: propose a parent (umbrella) + child titles, get quick confirmation, then create.
-2. **Generate content:** a Japanese `title` and an **overview-level** body (no deep requirements). Derive an English `--slug`.
+2. **Generate content:** a Japanese `title` and a body per **Body** below. Derive an English `--slug`.
 3. **Resolve Project:** pass `--project` if known; else `md2joifup` falls back to the sole `projects/` entry.
 4. **Create:**
    - Single: `python3 ~/.claude/skills/md2joifup/scripts/md2joifup.py <tmp>.md --db tasks --status "Not started" --slug <en-slug>`.
    - Decomposed: create the parent first, capture its filename id, then each child with `--parent <parent-id>` (write `parent` on children only; the daemon is expected to sync `children` — Joifup Plan 079).
 5. **Report** the created task path(s). No branch, no implementation.
+
+## Body
+
+Overview-level only. Detailed requirements belong to the task's brainstorming.
+
+- **Sections:** `## 概要` (required) + `## 背景` (only when "why now" is not self-evident). No other sections.
+- **Size guideline:** 概要 3-5 lines, 背景 3 lines or fewer, whole file around 1,500 B. A guideline, not a cap — but when in doubt, cut.
+- **Never write:** analysis, research findings, quotes, trade-off comparisons, implementation approach, acceptance criteria. All of it belongs to brainstorming and the plan.
+- **Do not match an existing task's granularity.** A referenced task written in detail is not the standard — **this rule wins.**
 
 ## Identifier
 
@@ -36,5 +45,6 @@ The task's **filename id** (`NNN-slug`) is the single operational identifier —
 
 - Writing frontmatter or `ID` by hand — `md2joifup` owns it (daemon assigns `ID`).
 - Degraded slug from a Japanese title — pass an English `--slug`.
-- Deep requirements at capture — keep the body overview-level; detail belongs in brainstorming.
+- Analysis / quotes / trade-offs in the body — the implementer gets bound to the filer's reading of the problem, and a misunderstanding rides along.
+- Pulled toward a referenced task's granularity — the Body rules win.
 - Hand-writing `children` back-refs — write `parent` on children only.
