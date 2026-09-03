@@ -19,7 +19,7 @@ updated_at: 2026-09-02
 
 - 変更対象は `.claude/skills/j-task/SKILL.md` の **1 ファイルのみ**。`md2joifup`、既存タスク本文（`tasks/001`〜`004`、他リポジトリを含む）には一切触れない。
 - 追記は **英語**（既存ファイルが全編英語のため）。ただしタスク本文の節名 `## 概要` / `## 背景` は日本語のまま扱う。
-- 分量は **上限ではなく目安**。「a guideline, not a cap」の語を落とさない。
+- 分量は **上限ではなく目安**。「A guideline, not a cap」の語を落とさない。
 - 自己検査ステップも機械チェックも **追加しない**（設計で明示的に却下済み）。
 - 同ファイル内の `Branch (later, in j-devflow) = feature/<filename-id>` という古い記述には **触れない**（スコープ外と設計で明記）。
 - 実行可能なテストは存在しない。検証は `grep` による記述の存在／不在の確認と、目視の一貫性チェックで行う。
@@ -58,7 +58,7 @@ Run:
 F=".claude/skills/j-task/SKILL.md"
 fail=0
 grep -q '^## Body$' "$F"                        || { echo "NG: ## Body 節が無い"; fail=1; }
-grep -q 'a guideline, not a cap' "$F"           || { echo "NG: 目安の但し書きが無い"; fail=1; }
+grep -q 'A guideline, not a cap' "$F"           || { echo "NG: 目安の但し書きが無い"; fail=1; }
 grep -q "Do not match an existing task's granularity" "$F" || { echo "NG: 粒度優先の明記が無い"; fail=1; }
 grep -q 'a body per \*\*Body\*\* below' "$F"    || { echo "NG: Flow が Body を参照していない"; fail=1; }
 grep -q 'Deep requirements at capture' "$F"     && { echo "NG: 旧 Common Mistakes 行が残っている"; fail=1; }
@@ -108,13 +108,15 @@ FAILED
 
 Overview-level only. Detailed requirements belong to the task's brainstorming.
 
-- **Sections:** `## 概要` (required) + `## 背景` (only when "why now" is not self-evident). No other sections.
+- **Sections:** `# <title>` (H1 — `md2joifup` takes the task title from it; without it the run dies) + `## 概要` (required) + `## 背景` (only when "why now" is not self-evident). No other `##` sections.
 - **Size guideline:** 概要 3-5 lines, 背景 3 lines or fewer, whole file around 1,500 B. A guideline, not a cap — but when in doubt, cut.
 - **Never write:** analysis, research findings, quotes, trade-off comparisons, implementation approach, acceptance criteria. All of it belongs to brainstorming and the plan.
 - **Do not match an existing task's granularity.** A referenced task written in detail is not the standard — **this rule wins.**
 ```
 
 注意: 既存ファイルの箇条書きは 1 項目 1 行（折り返さない）で書かれている。上記もその形に揃えてあるので、途中で改行を入れないこと。
+
+（`**Sections:**` の H1 の記述は whole-branch レビューの指摘を受けて追記したもの。`md2joifup` は H1 からタイトルを取るため、H1 に触れないと本文を書いた時点で `no H1 or title found in source` で落ちる。）
 
 - [ ] **Step 4: Common Mistakes の 1 行を 2 行に差し替える**
 
