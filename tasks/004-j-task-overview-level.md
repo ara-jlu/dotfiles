@@ -1,6 +1,6 @@
 ---
 title: j-task の overview-level を実効化する
-status: In progress
+status: In review
 Project: devops
 created_at: 2026-09-02
 updated_at: 2026-09-02
