@@ -26,6 +26,8 @@
 - **Spec準拠 = superpowers task-reviewer**（plan/brief に紐づく判定。ECC には無い）。
 - **コード品質・セキュリティ = ECC 言語別 reviewer**（言語イディオム・フレームワーク固有の罠・OWASP）。
 - **最終 whole-branch レビュー**（SDD が全タスク後に自動 dispatch）で、変更言語に対応する `ecc:<lang>-reviewer` を `agentType` 指定で dispatch。review-package の diff を渡し、diff 集中を指示する（コードベースを漁らせない）。
+  - **例外: 「タスクNに申し送った」「ファイルXに反映した」という主張が差分に含まれるときは、その送り先のファイルもパッケージに入れる。** 変更されていないファイルは diff に現れないので、**「変わるべきだったのに変わっていない」は原理的に検査できない**（実例: fde `tasks/028` は申し送りを証跡・設計書・PR 本文の3箇所に書き、実際に読まれる `tasks/029` には書いていなかった。全レビューが通過し、PM が後から発見した）。
+  - **顧客・外部に渡る文書を含む差分では、その節を頭から通しで読むレビューを1回入れる。** 想定読み手の実状（未接触・設定なし・開発の経緯を知らない）を明示して渡す。**差分レビューは「文書として読むとおかしい」を構造的に見つけられない**（同上の実例で、確定文に受注側の作業事故が残り、用語の未定義と同時に見落とされた）。
 - 差分が auth / 入力 / 秘密 / API / 機微データに触れる場合は `ecc:security-reviewer` も dispatch。
 - **タスク毎レビュー**は superpowers task-reviewer を維持し、上記セキュリティ該当タスクのみ `ecc:security-reviewer` を追加。
 - Critical / Important はどの reviewer 由来でもブロッキング。修正は superpowers の fix-dispatch ループに合流。
