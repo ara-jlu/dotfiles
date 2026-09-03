@@ -68,7 +68,7 @@ grep -q 'Branch (later, in j-devflow) = `feature/<filename-id>`' "$F" || { echo 
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILED"
 ```
 
-Expected（変更前）: 以下の 6 行の NG が出て `FAILED` で終わる。
+Expected（変更前）: 以下の 7 行の NG が出て `FAILED` で終わる。
 
 ```
 NG: ## Body 節が無い
@@ -162,8 +162,8 @@ git commit -m "feat(j-task): add Body rules to keep task bodies overview-level"
 
 ## 検証（タスク完了後）
 
-`.claude/skills/j-task/SKILL.md` 以外に差分が無いことを確認する。
+`.claude/skills/j-task/SKILL.md` と `tasks/004-j-task-overview-level.md` 以外に差分が無いことを確認する。
 
 Run: `git diff --stat main...HEAD -- . ':!notes'`
 
-Expected: `.claude/skills/j-task/SKILL.md` の 1 ファイルのみが並ぶこと。
+Expected: `.claude/skills/j-task/SKILL.md` と `tasks/004-j-task-overview-level.md` の 2 ファイルが並ぶこと。後者は `status` frontmatter の変更のみ（タスク本文は無変更。これが Global Constraint の要求事項）。

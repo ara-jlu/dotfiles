@@ -32,7 +32,7 @@ Captures a Joifup **Task** (status `Not started`) into `tasks/`. Standalone and 
 
 Overview-level only. Detailed requirements belong to the task's brainstorming.
 
-- **Sections:** `## 概要` (required) + `## 背景` (only when "why now" is not self-evident). No other sections.
+- **Sections:** `# <title>` (H1 — `md2joifup` takes the task title from it; without it the run dies) + `## 概要` (required) + `## 背景` (only when "why now" is not self-evident). No other `##` sections.
 - **Size guideline:** 概要 3-5 lines, 背景 3 lines or fewer, whole file around 1,500 B. A guideline, not a cap — but when in doubt, cut.
 - **Never write:** analysis, research findings, quotes, trade-off comparisons, implementation approach, acceptance criteria. All of it belongs to brainstorming and the plan.
 - **Do not match an existing task's granularity.** A referenced task written in detail is not the standard — **this rule wins.**
