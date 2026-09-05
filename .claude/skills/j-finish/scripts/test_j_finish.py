@@ -90,5 +90,6 @@ class TestAttachFailureMessage(unittest.TestCase):
         self.assertIn("push されておらず", msg)
         self.assertIn("作成されていません", msg)
 
+
 if __name__ == "__main__":
     unittest.main()
