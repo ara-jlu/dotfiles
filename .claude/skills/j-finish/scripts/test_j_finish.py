@@ -68,12 +68,27 @@ class TestAttachFailureMessage(unittest.TestCase):
             RuntimeError("gh pr comment failed"),
             "https://github.com/acme/repo/pull/42",
             ".uat-evidence/005",
-            "/repo/.claude/skills/j-finish/scripts")
+            "/repo/.claude/skills/j-finish/scripts",
+            dry_run=False)
         self.assertIn("https://github.com/acme/repo/pull/42", msg)
         self.assertIn(".uat-evidence/005", msg)
         self.assertIn(
             "/repo/.claude/skills/j-finish/scripts/uat_attach.py", msg)
         self.assertIn("--no-pr", msg)
+
+    def test_dry_run_message_does_not_claim_push_or_pr_creation(self):
+        msg = jf._attach_failure_message(
+            RuntimeError("gh 2.40.0 検出: gh 2.99.0 以上が必要です"),
+            jf.PLACEHOLDER_PR_URL,
+            ".uat-evidence/005",
+            "/repo/.claude/skills/j-finish/scripts",
+            dry_run=True)
+        self.assertNotIn("push 済み", msg)
+        self.assertNotIn("作成済み", msg)
+        self.assertIn(".uat-evidence/005", msg)
+        # 実際には何も実行されていないことを明言する。
+        self.assertIn("push されておらず", msg)
+        self.assertIn("作成されていません", msg)
 
 if __name__ == "__main__":
     unittest.main()
