@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import j_finish as jf
 
+
 class TestWarnUatEvidence(unittest.TestCase):
     def test_warns_when_ui_changed_without_a_local_evidence_run(self):
         warnings = jf._warn_uat_evidence(
