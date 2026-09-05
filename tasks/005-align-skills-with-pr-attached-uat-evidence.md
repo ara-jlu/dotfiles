@@ -2,7 +2,7 @@
 ID: TASK-458
 Project: devops
 created_at: '2026-09-05'
-status: In review
+status: Done
 title: UAT 証跡の PR 添付化に skill 側を合わせる
 updated_at: '2026-09-05'
 ---
