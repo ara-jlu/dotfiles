@@ -7,9 +7,11 @@ captured before it is referenced downstream:
 
   1. push the branch
   2. open the PR (body authored in Japanese by the caller; --pr-body-file)
-  3. move the Joifup Task -> "In review" (SURGICAL: only the status line;
+  3. attach UAT evidence to the PR as a comment (--uat-evidence-dir; screenshots
+     and videos, never committed to the repo)
+  4. move the Joifup Task -> "In review" (SURGICAL: only the status line;
      every other frontmatter key/relation/body byte is preserved)
-  4. notify Discord (Japanese, scoped mention, PR link)
+  5. notify Discord (Japanese, scoped mention, PR link)
 
 It never marks the task Done and never merges — the human's approval session
 owns status->Done + `chore(joifup): approve TASK-xxx` + merge.
@@ -30,6 +32,9 @@ try:
     import yaml
 except ImportError:
     sys.exit("j-finish: PyYAML is required (pip install pyyaml)")
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from uat_attach import AttachError, attach_evidence  # noqa: E402
 
 
 def die(msg):
@@ -97,29 +102,53 @@ def read_title(task_file):
     return os.path.splitext(os.path.basename(task_file))[0]
 
 
-def _warn_missing_uat_evidence(head_range):
-    """Warn (never block) if apps/web changed without committed .uat-evidence/.
-
-    Read-only: shells out to `git diff --name-only <head_range>`. Runs even
-    under --dry-run since it has no side effects. Never raises and never
-    calls die() — some apps/web diffs are non-UI (e.g. config-only), and if
-    git itself fails (e.g. origin/main not fetched locally) the check is
-    silently skipped rather than blocking the finish flow.
-    """
+def _changed_paths(head_range):
+    """push 範囲で変わったパス。git が失敗したら空 (チェックを黙って諦める)。"""
     try:
-        changed = subprocess.run(
+        return subprocess.run(
             ["git", "diff", "--name-only", head_range],
             capture_output=True, text=True, check=True,
         ).stdout.splitlines()
     except (subprocess.CalledProcessError, OSError):
-        return
+        return []
+
+def _warn_uat_evidence(changed, evidence_dir, exists=os.path.isfile):
+    """UAT 証跡まわりを警告する (never blocks)。返り値は出した警告の一覧。
+
+    joifup tasks/295 で証跡は commit せず PR に添付する形になった。旧実装は
+    「diff に .uat-evidence/ が無ければ警告」で、意味がちょうど反転していた。
+    見るべきものは 2 つに変わる:
+
+      1. UI を変えたのに `pnpm uat` を回した形跡 (results.jsonl) が手元に無い
+         — 証跡ゼロの PR が出る
+      2. .uat-evidence/ が commit されている — 新しい失敗様式。gitignore が
+         無い repo で起きる
+
+    ブロックしないのは旧実装と同じ: apps/web の diff が非 UI (config だけ)
+    のこともあるため。
+    """
+    warnings = []
     touches_ui = any(p.startswith("apps/web/") and not p.startswith("apps/web/e2e/")
-                      for p in changed)
-    has_evidence = any(p.startswith(".uat-evidence/") for p in changed)
-    if touches_ui and not has_evidence:
-        print("j-finish: WARNING — apps/web changed but no .uat-evidence/ "
-              "committed. Run `pnpm uat --task <id>` and commit the evidence "
-              "before opening the PR.", file=sys.stderr)
+                     for p in changed)
+    committed = [p for p in changed if p.startswith(".uat-evidence/")]
+    if committed:
+        warnings.append(
+            "j-finish: WARNING — .uat-evidence/ が commit されています "
+            f"（例: {committed[0]}）。証跡は commit せず PR に添付します。"
+            " .gitignore を確認してください")
+    if touches_ui:
+        if not evidence_dir:
+            warnings.append(
+                "j-finish: WARNING — apps/web が変わっていますが "
+                "--uat-evidence-dir が指定されていません。証跡が PR に付きません")
+        elif not exists(os.path.join(evidence_dir, "results.jsonl")):
+            warnings.append(
+                f"j-finish: WARNING — apps/web が変わっていますが {evidence_dir}"
+                "/results.jsonl がありません。`pnpm uat --task <id>` を回して"
+                " ください")
+    for w in warnings:
+        print(w, file=sys.stderr)
+    return warnings
 
 
 def main():
@@ -132,6 +161,9 @@ def main():
     ap.add_argument("--status", default="In review", help="pre-approval status")
     ap.add_argument("--no-pr", action="store_true")
     ap.add_argument("--no-discord", action="store_true")
+    ap.add_argument("--uat-evidence-dir",
+                    help="UAT 証跡 dir（例: .uat-evidence/005）。"
+                         "指定すると PR 作成後に証跡コメントを添付する")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -153,10 +185,11 @@ def main():
     head = args.head or run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
                             dry_run=False) or "HEAD"
 
-    # Pre-flight (read-only, advisory): warn if apps/web changed without
-    # committed UAT evidence. Runs even under --dry-run; never blocks, since
-    # not every apps/web diff is UI-facing.
-    _warn_missing_uat_evidence(f"origin/{args.base}...HEAD")
+    # Pre-flight (read-only, advisory): warn if apps/web changed without a
+    # local UAT evidence run, or if .uat-evidence/ was committed. Runs even
+    # under --dry-run; never blocks, since not every apps/web diff is UI-facing.
+    _warn_uat_evidence(_changed_paths(f"origin/{args.base}...HEAD"),
+                       args.uat_evidence_dir)
 
     # 1. push
     run(["git", "push", "-u", "origin", head], args.dry_run)
@@ -170,11 +203,22 @@ def main():
         if not args.dry_run and out:
             pr_url = out.splitlines()[-1].strip()
 
-    # 3. surgical status edit (runs in dry-run too, so it is verifiable)
+    # 3. UAT 証跡コメント（画像・動画を PR に添付）
+    if args.uat_evidence_dir and not args.no_pr:
+        task_id = os.path.basename(args.uat_evidence_dir.rstrip("/"))
+        try:
+            comment_url = attach_evidence(pr_url, args.uat_evidence_dir, task_id,
+                                          args.dry_run)
+        except AttachError as exc:
+            die(f"UAT 証跡の添付に失敗: {exc}")
+        if comment_url:
+            print(f"UAT 証跡: {comment_url}")
+
+    # 4. surgical status edit (runs in dry-run too, so it is verifiable)
     surgical_status(args.task_file, args.status)
     print(f"status -> {args.status}: {args.task_file}")
 
-    # 4. Discord — rich embed (matches auto-workflow/scripts/discord-notify.sh:
+    # 5. Discord — rich embed (matches auto-workflow/scripts/discord-notify.sh:
     #    title / description / color / fields[プロジェクト, ブランチ] / timestamp)
     if not args.no_discord:
         webhook = os.environ.get("DISCORD_WEBHOOK_URL", "")
