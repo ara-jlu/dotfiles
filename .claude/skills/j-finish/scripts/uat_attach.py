@@ -30,6 +30,7 @@ MIN_GH_VERSION = (2, 99, 0)
 MAX_ATTACH = 50
 VIDEO_EXTS = (".webm", ".mp4")
 
+
 def parse_gh_version(text):
     """`gh --version` の出力から (major, minor, patch) を取り出す。
 
@@ -40,6 +41,7 @@ def parse_gh_version(text):
     if not m:
         return None
     return tuple(int(g) for g in m.groups())
+
 
 def parse_results(text):
     """results.jsonl を行ごとに parse する。
@@ -64,16 +66,20 @@ def parse_results(text):
         rows.append(value)
     return rows, skipped
 
+
 def shot_rows(rows):
     """証跡行 (kind == "shot") だけを取り出す。残りは step() の判定行。"""
     return [r for r in rows if r.get("kind") == "shot"]
 
+
 def is_video(file):
     return str(file or "").lower().endswith(VIDEO_EXTS)
+
 
 def _escape_alt(name):
     """markdown の alt text 内で `[` `]` を殺す (リンク構文が壊れるため)。"""
     return str(name or "").replace("[", "\\[").replace("]", "\\]")
+
 
 def render_comment(task, shots):
     """証跡コメントの本文を組み立てる。
@@ -94,10 +100,12 @@ def render_comment(task, shots):
         lines += [""]
     return "\n".join(lines)
 
+
 def attach_args(evidence_dir, shots):
     """`--attach <path>#<alt>` の引数列を作る。
 
     `name` が空のときだけ `#` を落とす (gh はその場合ファイル名を alt に使う)。
+    パスの妥当性は validate_shots() が先に見ている前提。
     """
     args = []
     for s in shots:
@@ -106,12 +114,52 @@ def attach_args(evidence_dir, shots):
         args += ["--attach", f"{path}#{name}" if name else path]
     return args
 
+
+def validate_shots(evidence_dir, shots, realpath=os.path.realpath,
+                   islink=os.path.islink):
+    """証跡行の `file` が evidence_dir の中に収まっていることを確かめる。
+
+    ここは **GitHub へアップロードする前の最後の関門**である。添付は一度
+    上げると取り消せない (コメントを消してもアセットは残る) ので、`file` に
+    `../../.ssh/id_rsa` のような値が入った results.jsonl や、証跡 dir に
+    紛れ込んだ symlink を、そのまま `gh --attach` に渡してはならない。
+
+    joifup 側の slug() は ASCII の basename しか作らないが、その不変条件を
+    守っているのは別リポジトリの生成側であって、こちらではない。壊れた
+    results.jsonl・手で編集された行・spec が書いた任意の file 値がここに
+    届きうる以上、渡す側で確かめる。
+
+    違反は AttachError で止める — 黙って読み飛ばすと、証跡が欠けたまま
+    PASS の PR が出る。
+    """
+    root = realpath(evidence_dir)
+    for s in shots:
+        file = s.get("file")
+        if not file or not str(file).strip():
+            raise AttachError(
+                f"証跡行に file がありません: {s.get('name', '(名前なし)')}")
+        path = f"{evidence_dir.rstrip('/')}/{file}"
+        if islink(path):
+            raise AttachError(
+                f"証跡が symlink です ({file})。リンク先を辿って想定外の"
+                " ファイルを上げないため拒否します")
+        resolved = realpath(path)
+        if resolved != root and not resolved.startswith(root + os.sep):
+            raise AttachError(
+                f"証跡 {file} が証跡 dir ({evidence_dir}) の外を指しています"
+                f" ({resolved})。添付は取り消せないため拒否します")
+
+
 def body_with_evidence_link(body, url):
     """PR 本文の `## UAT 証跡` 節の末尾に証跡コメントへのリンクを足す。
 
     節が無ければ None を返す (本文の別の場所に押し込むと、読み手が探す場所と
     ずれる)。GitHub のアンカーはコメント単位なので、証跡表の行ごとにリンクを
     張ることはできない — リンクは 1 本 (設計 D3)。
+
+    既に `証跡コメント:` の行があれば **置き換える**。gh pr edit が失敗した
+    後の復旧手順はこのスクリプトの再実行なので、追記にすると本文にリンクが
+    2 本並ぶ。
     """
     lines = (body or "").split("\n")
     start = None
@@ -126,13 +174,18 @@ def body_with_evidence_link(body, url):
         if lines[i].startswith("## "):
             end = i
             break
-    tail = end
-    while tail > start + 1 and not lines[tail - 1].strip():
+    section = [ln for ln in lines[start:end]
+               if not ln.strip().startswith("証跡コメント:")]
+    tail = len(section)
+    while tail > 1 and not section[tail - 1].strip():
         tail -= 1
-    return "\n".join(lines[:tail] + ["", f"証跡コメント: {url}", ""] + lines[end:])
+    return "\n".join(lines[:start] + section[:tail]
+                     + ["", f"証跡コメント: {url}", ""] + lines[end:])
+
 
 class AttachError(Exception):
     """添付が成立しなかった。握り潰さず呼び出し側を止めるための例外。"""
+
 
 def _run(cmd):
     """`gh` を実行し stdout を返す。非 0 は AttachError にする。
@@ -140,22 +193,38 @@ def _run(cmd):
     gh は部分失敗のとき「成功したぶんでコメントを作り、非 0 で終了する」ので、
     終了コードを握り潰すと証跡が欠けたまま PASS に見える (設計のエラー
     ハンドリング節)。stderr をそのまま載せて止める。
+
+    gh が入っていない場合の OSError も AttachError にする。素の OSError の
+    まま抜けると、呼び出し側 (j_finish) の except AttachError を素通りして
+    traceback で落ち、push と PR 作成が済んだ状態の復旧案内が出ない。
     """
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True)
+    except OSError as exc:
+        raise AttachError(f"{cmd[0]} を実行できません: {exc}") from exc
     if res.returncode != 0:
         raise AttachError(
             f"{' '.join(cmd)} が exit {res.returncode} で失敗\n{res.stderr.strip()}")
     return res.stdout.strip()
 
+
 def _read(path):
     with open(path, encoding="utf-8") as fh:
         return fh.read()
 
-def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=None):
+
+def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=None,
+                    required=False):
     """UAT 証跡を PR にコメントとして添付し、そのコメント URL を返す。
 
     証跡が 1 つも無ければ何もせず None を返す — UI を変えない PR は証跡が
     無いのが正常だから。runner / reader は差し替え可能 (テスト用)。
+
+    `required=True` のときは、証跡が無いこと自体を AttachError にする。
+    呼び出し側が証跡 dir を **明示的に指定した** 場合 (j_finish の
+    --uat-evidence-dir) は「証跡がある」と主張しているので、stale な id や
+    typo で 0 件だったときに黙って進むと、PASS と書かれた本文と添付ゼロの
+    PR のまま status が In review に飛び Discord まで鳴る。
     """
     run = runner or _run
     read = reader or _read
@@ -171,6 +240,11 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
     try:
         text = read(results_path)
     except FileNotFoundError:
+        if required:
+            raise AttachError(
+                f"{results_path} がありません。証跡 dir を明示的に指定して"
+                " いるので、証跡ゼロのまま先へ進みません。`pnpm uat --task"
+                " <id>` を回したか、id が合っているか確かめてください")
         print(f"uat-attach: {evidence_dir}/results.jsonl が無いので添付をスキップ",
               file=sys.stderr)
         return None
@@ -186,12 +260,18 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
               " — 証跡が不完全な可能性があります", file=sys.stderr)
     shots = shot_rows(rows)
     if not shots:
+        if required:
+            raise AttachError(
+                f"{results_path} に証跡行 (kind=\"shot\") が 1 件もありません。"
+                " 証跡 dir を明示的に指定しているので、証跡ゼロのまま先へ"
+                " 進みません")
         print("uat-attach: 証跡が 0 件のため添付しません", file=sys.stderr)
         return None
     if len(shots) > MAX_ATTACH:
         raise AttachError(
             f"証跡が {len(shots)} 件あり gh の上限 {MAX_ATTACH} を超えています。"
             " 分割ではなく shot() を減らしてください")
+    validate_shots(evidence_dir, shots)
 
     body = render_comment(task, shots)
     args = attach_args(evidence_dir, shots)
@@ -201,15 +281,24 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
 
     pr_body = run(["gh", "pr", "view", pr, "--json", "body", "--jq", ".body"])
 
+    # 先に fh.name を束縛してから書く。delete=False なので、write が
+    # 落ちたときに名前が未束縛だと finally の unlink に辿り着けず temp が残る。
     with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False,
                                      encoding="utf-8") as fh:
-        fh.write(body)
         body_file = fh.name
+        fh.write(body)
     try:
         url = run(["gh", "pr", "comment", pr, "--body-file", body_file] + args)
     finally:
         os.unlink(body_file)
     url = url.splitlines()[-1].strip() if url else ""
+    if not url:
+        # gh が exit 0 なのに URL を返さなかった。ここで進むと本文に
+        # 「証跡コメント: 」だけの死んだラベルを書き込み、呼び出し側には
+        # falsy が返って「証跡なし」と同じ扱いになる — 失敗が成功に見える。
+        raise AttachError(
+            "gh pr comment が成功しましたが証跡コメントの URL を返しません"
+            "でした。添付が本当に付いたか PR を確認してください")
 
     linked = body_with_evidence_link(pr_body, url)
     if linked is None:
@@ -218,8 +307,8 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
     else:
         with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False,
                                          encoding="utf-8") as fh:
-            fh.write(linked)
             edit_file = fh.name
+            fh.write(linked)
         try:
             run(["gh", "pr", "edit", pr, "--body-file", edit_file])
         except AttachError as exc:
@@ -234,6 +323,7 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
         finally:
             os.unlink(edit_file)
     return url
+
 
 def main():
     ap = argparse.ArgumentParser(
@@ -253,6 +343,7 @@ def main():
         sys.exit(f"uat-attach: {exc}")
     if url:
         print(url)
+
 
 if __name__ == "__main__":
     main()
