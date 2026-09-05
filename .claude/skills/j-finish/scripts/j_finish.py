@@ -18,7 +18,10 @@ owns status->Done + `chore(joifup): approve TASK-xxx` + merge.
 
 Network/side-effect steps (git/gh/curl) are gated by --dry-run, which prints
 the exact commands instead of running them. The local file mechanics (status
-edit) runs in both modes so it can be verified.
+edit) runs in both modes so it can be verified. Two read-only steps also run
+in both modes, because they change nothing and their answers are what makes
+the dry run worth reading: the UAT evidence pre-flight, and the evidence
+attach's own `gh --version` check plus its read of results.jsonl.
 """
 import argparse
 import datetime
@@ -158,6 +161,7 @@ def _changed_paths(head_range):
     except (subprocess.CalledProcessError, OSError):
         return []
 
+
 def _warn_uat_evidence(changed, evidence_dir, exists=os.path.isfile):
     """UAT 証跡まわりを警告する (never blocks)。返り値は出した警告の一覧。
 
@@ -256,8 +260,11 @@ def main():
                 f"証跡 ({args.uat_evidence_dir}) を添付できません")
         task_id = os.path.basename(args.uat_evidence_dir.rstrip("/"))
         try:
+            # required=True: --uat-evidence-dir を明示的に渡した以上、
+            # 証跡ゼロは「UI を変えない PR」ではなく指定ミスか uat の回し
+            # 忘れ。黙って通すと PASS 表示のまま In review + Discord まで進む。
             comment_url = attach_evidence(pr_url, args.uat_evidence_dir, task_id,
-                                          args.dry_run)
+                                          args.dry_run, required=True)
         except AttachError as exc:
             die(_attach_failure_message(
                 exc, pr_url, args.uat_evidence_dir,
