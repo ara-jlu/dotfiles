@@ -36,9 +36,41 @@ except ImportError:
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from uat_attach import AttachError, attach_evidence  # noqa: E402
 
+# gh pr create が stdout を返さなかった (dry-run / 空応答) ときの pr_url 初期値。
+# この値のまま attach_evidence() に渡すと `gh pr comment <PR_URL> ...` が実行され、
+# 本当の原因 (URL を取れなかったこと) ではなく無意味な placeholder 名でエラーになる。
+PLACEHOLDER_PR_URL = "<PR_URL>"
+
 
 def die(msg):
     sys.exit(f"j-finish: {msg}")
+
+
+def _pr_url_missing(pr_url):
+    """gh pr create から実際の PR URL を取得できていないかを判定する。"""
+    return not pr_url or pr_url == PLACEHOLDER_PR_URL
+
+
+def _attach_failure_message(exc, pr_url, evidence_dir, script_dir):
+    """UAT 証跡の添付が失敗したときの die() メッセージを組み立てる。
+
+    この時点で push と PR 作成は完了しているが証跡は添付されておらず、
+    タスクのステータス変更と Discord 通知はまだ実行していない
+    (半端な「成功」に見える状態を作らないための意図的な停止)。
+    人が手で証跡を添付し、残りの手順だけを再実行できるよう復旧コマンドを示す。
+    """
+    uat_attach = os.path.join(script_dir, "uat_attach.py")
+    return (
+        f"UAT 証跡の添付に失敗: {exc}\n"
+        f"ブランチは push 済み、PR も作成済みです ({pr_url})。"
+        "証跡はまだ添付されていません。"
+        "タスクのステータスは変更しておらず、Discord にも通知していません。\n"
+        "復旧手順:\n"
+        f"  1) 手動で証跡を添付する:\n"
+        f"     python3 {uat_attach} --evidence-dir {evidence_dir} --pr {pr_url}\n"
+        "  2) その後 j_finish.py を --no-pr 付きで再実行し、"
+        "ステータス変更と Discord 通知を完了させてください。"
+    )
 
 
 def find_schema(db, start_dir):
@@ -195,7 +227,7 @@ def main():
     run(["git", "push", "-u", "origin", head], args.dry_run)
 
     # 2. PR
-    pr_url = "<PR_URL>"
+    pr_url = PLACEHOLDER_PR_URL
     if not args.no_pr:
         out = run(["gh", "pr", "create", "--base", args.base, "--head", head,
                    "--title", args.pr_title, "--body-file", args.pr_body_file],
@@ -205,12 +237,17 @@ def main():
 
     # 3. UAT 証跡コメント（画像・動画を PR に添付）
     if args.uat_evidence_dir and not args.no_pr:
+        if not args.dry_run and _pr_url_missing(pr_url):
+            die("gh pr create から PR URL を取得できませんでした。"
+                f"証跡 ({args.uat_evidence_dir}) を添付できません")
         task_id = os.path.basename(args.uat_evidence_dir.rstrip("/"))
         try:
             comment_url = attach_evidence(pr_url, args.uat_evidence_dir, task_id,
                                           args.dry_run)
         except AttachError as exc:
-            die(f"UAT 証跡の添付に失敗: {exc}")
+            die(_attach_failure_message(
+                exc, pr_url, args.uat_evidence_dir,
+                os.path.dirname(os.path.abspath(__file__))))
         if comment_url:
             print(f"UAT 証跡: {comment_url}")
 
