@@ -4,7 +4,9 @@
   python3 .claude/skills/j-finish/scripts/test_uat_attach.py
 """
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -132,9 +134,8 @@ class TestValidateShots(unittest.TestCase):
         self.assertIsNone(self._validate([{"name": "x", "file": "shot-01.png"}]))
 
     def test_rejects_a_path_escaping_the_evidence_dir(self):
-        with self.assertRaises(ua.AttachError) as cm:
+        with self.assertRaises(ua.AttachError):
             self._validate([{"name": "x", "file": "../../.ssh/id_rsa"}])
-        self.assertIn("外", str(cm.exception))
 
     def test_rejects_a_symlink(self):
         with self.assertRaises(ua.AttachError) as cm:
@@ -148,6 +149,46 @@ class TestValidateShots(unittest.TestCase):
         with self.assertRaises(ua.AttachError):
             self._validate([{"name": "x", "file": "  "}])
 
+    def test_rejects_anything_that_is_not_a_plain_basename(self):
+        # NUL は subprocess が ValueError で落とす (OSError ではないので
+        # _run を素通りする)。`#` は gh の <file>#<alt> 区切りなので、含むと
+        # gh が見るパスが検査した文字列とずれる。`/` は絶対パスと `..` と
+        # サブディレクトリをまとめて閉じる。
+        for bad in ["a\x00.png", "a.png#alt", "/etc/passwd", "sub/a.png",
+                    "..\\a.png", ".", ".."]:
+            with self.subTest(file=bad), self.assertRaises(ua.AttachError):
+                self._validate([{"name": "x", "file": bad}])
+
+
+class TestValidateShotsOnDisk(unittest.TestCase):
+    """本物の os.path を通した封じ込め。ここが最後の関門なので実物で見る。"""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.evidence = os.path.join(self.tmp, "evidence")
+        os.mkdir(self.evidence)
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def test_accepts_a_real_file_inside_the_dir(self):
+        open(os.path.join(self.evidence, "shot-01.png"), "w").close()
+        self.assertIsNone(
+            ua.validate_shots(self.evidence, [{"name": "x", "file": "shot-01.png"}]))
+
+    def test_rejects_a_symlink_pointing_outside(self):
+        secret = os.path.join(self.tmp, "secret.txt")
+        open(secret, "w").close()
+        os.symlink(secret, os.path.join(self.evidence, "shot-01.png"))
+        with self.assertRaises(ua.AttachError):
+            ua.validate_shots(self.evidence, [{"name": "x", "file": "shot-01.png"}])
+
+    def test_rejects_a_traversal_through_a_symlinked_parent(self):
+        # 親が symlink のケースは islink(最終要素) では捕まらない。
+        # realpath の封じ込めが効いていることを実物で確かめる。
+        os.symlink(self.tmp, os.path.join(self.evidence, "up"))
+        with self.assertRaises(ua.AttachError):
+            ua.validate_shots(self.evidence,
+                              [{"name": "x", "file": "up/secret.txt"}])
+
 
 class TestRun(unittest.TestCase):
     """`gh の失敗を握り潰さない` という契約そのもののテスト。"""
@@ -157,6 +198,12 @@ class TestRun(unittest.TestCase):
             ua._run(["sh", "-c", "echo boom >&2; exit 3"])
         self.assertIn("exit 3", str(cm.exception))
         self.assertIn("boom", str(cm.exception))
+
+    def test_a_null_byte_is_an_attach_error_not_a_raw_value_error(self):
+        # subprocess は NUL に ValueError を投げる。OSError ではないので
+        # _run の except を素通りし、j_finish の except AttachError も抜ける。
+        with self.assertRaises(ua.AttachError):
+            ua._run(["echo", "a\x00b"])
 
     def test_a_missing_binary_is_an_attach_error_not_a_raw_oserror(self):
         # 素の OSError は j_finish の except AttachError を素通りして
