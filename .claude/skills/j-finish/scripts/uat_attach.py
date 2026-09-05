@@ -230,14 +230,22 @@ def body_with_evidence_link(body, url):
 class AttachError(Exception):
     """添付が成立しなかった。握り潰さず呼び出し側を止めるための例外。
 
-    `comment_url` が入っているものは「証跡コメントは投稿済みだが、その後で
-    失敗した」という意味。添付は取り消せないので、呼び出し側は復旧案内で
-    「もう一度添付しろ」と言ってはならない (二重にアップロードされる)。
+    添付は取り消せないので、復旧案内は「コメントがどこまで進んだか」で
+    分かれる。状態は 3 つある。
+
+      - どちらのフラグも無い: コメントは作られていない。素直に再実行できる。
+      - `comment_url` あり: コメントは投稿済みで URL も判っている。残りは
+        本文へのリンク追記だけ。「もう一度添付しろ」は二重アップロードになる。
+      - `comment_maybe_posted`: コメントが作られているかもしれないが URL が
+        判らない。gh は部分失敗のとき「成功したぶんでコメントを作り、非 0 で
+        終了する」ので、失敗＝未投稿とは限らない。**再実行の前に PR を目で
+        確かめる**しかない。
     """
 
-    def __init__(self, message, comment_url=None):
+    def __init__(self, message, comment_url=None, comment_maybe_posted=False):
         super().__init__(message)
         self.comment_url = comment_url
+        self.comment_maybe_posted = comment_maybe_posted or bool(comment_url)
 
 
 def _run(cmd):
@@ -350,10 +358,14 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
         print(f"uat-attach: {evidence_dir}/results.jsonl が無いので添付をスキップ",
               file=sys.stderr)
         return None
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         # ファイルが無い (正常なスキップ) 以外の読み取りエラーは握り潰さない。
         # PermissionError や IsADirectoryError まで無いことにすると、
         # 証跡が実際にはあるのに「無い扱い」で PASS を報告してしまう。
+        # ValueError も要る: worker が multi-byte の途中で切った行を残すと
+        # UnicodeDecodeError (= ValueError) になり、parse_results が壊れた行を
+        # 落とす前に _read で落ちる。素のまま抜けると j_finish の
+        # except AttachError を素通りして復旧案内が出ない。
         raise AttachError(f"{results_path} の読み取りに失敗: {exc}") from exc
 
     rows, skipped = parse_results(text)
@@ -386,6 +398,14 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
     body_file = _write_temp(body)
     try:
         url = run(["gh", "pr", "comment", pr, "--body-file", body_file] + args)
+    except AttachError as exc:
+        # gh の非 0 は「何も起きなかった」を意味しない — 部分失敗のときは
+        # 成功したぶんでコメントを作ってから落ちる (_run の docstring)。
+        # 未投稿として扱うと、復旧案内が二重アップロードを指示してしまう。
+        raise AttachError(
+            f"{exc}\n証跡コメントが部分的に作られている可能性があります。"
+            " 再実行の前に PR を確認してください",
+            comment_maybe_posted=True) from exc
     finally:
         _unlink_quietly(body_file)
     url = url.splitlines()[-1].strip() if url else ""
@@ -395,7 +415,8 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
         # falsy が返って「証跡なし」と同じ扱いになる — 失敗が成功に見える。
         raise AttachError(
             "gh pr comment が成功しましたが証跡コメントの URL を返しません"
-            "でした。添付が本当に付いたか PR を確認してください")
+            "でした。添付が本当に付いたか PR を確認してください",
+            comment_maybe_posted=True)
 
     linked = body_with_evidence_link(pr_body, url)
     if linked is None:
@@ -419,7 +440,7 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
             raise AttachError(
                 f"証跡コメントの投稿には成功しました ({url}) が、PR 本文への"
                 f"リンク追記に失敗しました: {exc}。証跡は既に PR にあるので"
-                " 再アップロードは不要です", comment_url=url) from exc
+                "再アップロードは不要です", comment_url=url) from exc
         finally:
             if edit_file:
                 _unlink_quietly(edit_file)

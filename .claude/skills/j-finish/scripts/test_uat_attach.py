@@ -285,6 +285,17 @@ class TestRun(unittest.TestCase):
         with self.assertRaises(ua.AttachError):
             ua._run(["echo", "a\x00b"])
 
+    def test_unlink_quietly_does_not_mask_the_error_in_flight(self):
+        # finally からの後始末が例外を上書きすると、添付済みかどうかを伝える
+        # AttachError が消えて復旧案内が出なくなる。
+        try:
+            try:
+                raise ua.AttachError("original")
+            finally:
+                ua._unlink_quietly("/definitely/not/here.md")
+        except ua.AttachError as exc:
+            self.assertEqual(str(exc), "original")
+
     def test_a_missing_binary_is_an_attach_error_not_a_raw_oserror(self):
         # 素の OSError は j_finish の except AttachError を素通りして
         # traceback で落ち、push/PR 済みの復旧案内が出ない。
@@ -403,6 +414,33 @@ class TestAttachEvidence(unittest.TestCase):
                                  reader=lambda p: self.RESULTS)
         self.assertIsNone(url)
         self.assertEqual(len(runner.calls), 1)
+
+    def test_a_failing_gh_pr_comment_is_flagged_as_maybe_posted(self):
+        # gh は部分失敗のとき、成功したぶんでコメントを作ってから落ちる。
+        # 未投稿と決めつけると、復旧案内が二重アップロードを指示する。
+        runner = FakeRunner([
+            "gh version 2.100.0 (2026-09-03)",
+            "## UAT 証跡\n\n| step |\n",
+            ua.AttachError("gh pr comment が exit 1 で失敗"),
+        ])
+        with self.assertRaises(ua.AttachError) as cm:
+            ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
+                               runner=runner, reader=lambda p: self.RESULTS)
+        self.assertTrue(cm.exception.comment_maybe_posted)
+        self.assertIsNone(cm.exception.comment_url)
+
+    def test_an_undecodable_results_file_is_an_attach_error(self):
+        # worker が multi-byte の途中で切ると UnicodeDecodeError (= ValueError)。
+        # 素のまま抜けると j_finish の except AttachError を素通りする。
+        runner = FakeRunner(["gh version 2.100.0 (2026-09-03)"])
+
+        def broken(path):
+            raise UnicodeDecodeError("utf-8", b"\xe5\x88", 0, 2,
+                                     "unexpected end of data")
+
+        with self.assertRaises(ua.AttachError):
+            ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
+                               runner=runner, reader=broken)
 
     def test_stops_when_gh_pr_comment_returns_no_url(self):
         # exit 0 なのに URL が空。ここで進むと本文に死んだラベルを書き、
