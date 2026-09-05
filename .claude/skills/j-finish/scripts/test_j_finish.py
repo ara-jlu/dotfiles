@@ -49,5 +49,31 @@ class TestWarnUatEvidence(unittest.TestCase):
             ".uat-evidence/005", exists=lambda p: False)
         self.assertEqual(len(warnings), 2)
 
+
+class TestPrUrlMissing(unittest.TestCase):
+    def test_placeholder_pr_url_is_rejected(self):
+        self.assertTrue(jf._pr_url_missing(jf.PLACEHOLDER_PR_URL))
+
+    def test_empty_pr_url_is_rejected(self):
+        self.assertTrue(jf._pr_url_missing(""))
+
+    def test_real_pr_url_is_accepted(self):
+        self.assertFalse(
+            jf._pr_url_missing("https://github.com/acme/repo/pull/42"))
+
+
+class TestAttachFailureMessage(unittest.TestCase):
+    def test_message_names_recovery_details(self):
+        msg = jf._attach_failure_message(
+            RuntimeError("gh pr comment failed"),
+            "https://github.com/acme/repo/pull/42",
+            ".uat-evidence/005",
+            "/repo/.claude/skills/j-finish/scripts")
+        self.assertIn("https://github.com/acme/repo/pull/42", msg)
+        self.assertIn(".uat-evidence/005", msg)
+        self.assertIn(
+            "/repo/.claude/skills/j-finish/scripts/uat_attach.py", msg)
+        self.assertIn("--no-pr", msg)
+
 if __name__ == "__main__":
     unittest.main()
