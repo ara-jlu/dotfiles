@@ -143,6 +143,12 @@ def validate_shots(evidence_dir, shots, realpath=os.path.realpath,
     違反は AttachError で止める — 黙って読み飛ばすと、証跡が欠けたまま
     PASS の PR が出る。
     """
+    # evidence_dir 自身も `<dir>/<file>#<alt>` の一部として gh に渡るので、
+    # `#` や NUL が入っていれば gh が切り出すパスは検査した物とずれる。
+    if "#" in evidence_dir or "\x00" in evidence_dir or not _encodable(evidence_dir):
+        raise AttachError(
+            f"証跡 dir に `#`・NUL・utf-8 にできない文字は使えません"
+            f" ({evidence_dir!r})")
     root = realpath(evidence_dir)
     for s in shots:
         file = s.get("file")
@@ -222,7 +228,16 @@ def body_with_evidence_link(body, url):
 
 
 class AttachError(Exception):
-    """添付が成立しなかった。握り潰さず呼び出し側を止めるための例外。"""
+    """添付が成立しなかった。握り潰さず呼び出し側を止めるための例外。
+
+    `comment_url` が入っているものは「証跡コメントは投稿済みだが、その後で
+    失敗した」という意味。添付は取り消せないので、呼び出し側は復旧案内で
+    「もう一度添付しろ」と言ってはならない (二重にアップロードされる)。
+    """
+
+    def __init__(self, message, comment_url=None):
+        super().__init__(message)
+        self.comment_url = comment_url
 
 
 def _run(cmd):
@@ -261,28 +276,43 @@ def _write_temp(text):
     ValueError であって AttachError ではないので、そのまま抜けると呼び出し側
     (j_finish) の except AttachError を素通りし、push/PR 済みの復旧案内が
     出ないまま traceback で落ちる。両方ここで閉じる。
+
+    temp の **生成** も try の中に入れる。TMPDIR が read-only なら生成の時点で
+    PermissionError が出るが、これも AttachError でなければ同じ穴になる。
     """
-    fh = tempfile.NamedTemporaryFile("w", suffix=".md", delete=False,
-                                     encoding="utf-8")
-    path = fh.name
+    fh = None
+    path = None
     try:
+        fh = tempfile.NamedTemporaryFile("w", suffix=".md", delete=False,
+                                         encoding="utf-8")
+        path = fh.name
         fh.write(text)
-        # close() は try の中に置く。TextIOWrapper の write はバッファに
-        # 積むだけで、実際の write(2) は flush = close のときに走る。ENOSPC
-        # のような一番ありそうな失敗はここでしか出ない。
+        # close() も try の中。TextIOWrapper の write はバッファに積むだけで、
+        # 実際の write(2) は flush = close のときに走る。ENOSPC のような
+        # 一番ありそうな失敗はここでしか出ない。
         fh.close()
     except (ValueError, OSError) as exc:
-        try:
-            fh.close()
-        except OSError:
-            pass
-        try:
-            os.unlink(path)
-        except OSError:
-            # 消せなくても、元の失敗のほうを伝えるのが先。
-            pass
+        if fh is not None:
+            try:
+                fh.close()
+            except OSError:
+                pass
+        if path is not None:
+            try:
+                os.unlink(path)
+            except OSError:
+                # 消せなくても、元の失敗のほうを伝えるのが先。
+                pass
         raise AttachError(f"証跡コメント本文を書き出せません: {exc}") from exc
     return path
+
+
+def _unlink_quietly(path):
+    """finally からの後始末。unlink の失敗で伝播中の例外を上書きしない。"""
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
 
 
 def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=None,
@@ -357,7 +387,7 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
     try:
         url = run(["gh", "pr", "comment", pr, "--body-file", body_file] + args)
     finally:
-        os.unlink(body_file)
+        _unlink_quietly(body_file)
     url = url.splitlines()[-1].strip() if url else ""
     if not url:
         # gh が exit 0 なのに URL を返さなかった。ここで進むと本文に
@@ -389,10 +419,10 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
             raise AttachError(
                 f"証跡コメントの投稿には成功しました ({url}) が、PR 本文への"
                 f"リンク追記に失敗しました: {exc}。証跡は既に PR にあるので"
-                " 再アップロードは不要です") from exc
+                " 再アップロードは不要です", comment_url=url) from exc
         finally:
             if edit_file:
-                os.unlink(edit_file)
+                _unlink_quietly(edit_file)
     return url
 
 

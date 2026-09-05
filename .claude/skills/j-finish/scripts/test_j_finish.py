@@ -92,6 +92,20 @@ class TestAttachFailureMessage(unittest.TestCase):
         self.assertIn("作成されていません", msg)
 
 
+    def test_a_posted_comment_is_not_told_to_upload_again(self):
+        # 添付は取り消せない。コメント投稿後の失敗で「手動で証跡を添付する」
+        # と案内すると、人が二重にアップロードしてしまう。
+        exc = RuntimeError("gh pr edit failed")
+        exc.comment_url = "https://github.com/o/r/pull/1#issuecomment-9"
+        msg = jf._attach_failure_message(
+            exc, "https://github.com/o/r/pull/1", ".uat-evidence/005",
+            "/repo/.claude/skills/j-finish/scripts", dry_run=False)
+        self.assertIn("#issuecomment-9", msg)
+        self.assertNotIn("証跡はまだ添付されていません", msg)
+        self.assertNotIn("--evidence-dir", msg)
+        self.assertIn("--no-pr", msg)
+
+
 class TestSkippedAttachWarning(unittest.TestCase):
     def test_names_the_dir_and_the_manual_command(self):
         # --no-pr で添付を飛ばすこと自体は正しいが、黙って飛ばすと証跡ゼロの

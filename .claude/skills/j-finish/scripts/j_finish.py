@@ -73,18 +73,22 @@ def _skipped_attach_warning(evidence_dir):
 def _attach_failure_message(exc, pr_url, evidence_dir, script_dir, dry_run):
     """UAT 証跡の添付が失敗したときの die() メッセージを組み立てる。
 
-    real run では、この時点で push と PR 作成は完了しているが証跡は添付
-    されておらず、タスクのステータス変更と Discord 通知はまだ実行していない
-    (半端な「成功」に見える状態を作らないための意図的な停止)。
-    人が手で証跡を添付し、残りの手順だけを再実行できるよう復旧コマンドを示す。
+    real run では、この時点で push と PR 作成は完了していて、タスクの
+    ステータス変更と Discord 通知はまだ実行していない (半端な「成功」に
+    見える状態を作らないための意図的な停止)。人が残りを手で進められるよう
+    復旧コマンドを示す。
+
+    証跡がどこまで進んだかは 2 通りあり、案内は正反対になる。exc に
+    comment_url が入っているものは **証跡コメントは投稿済み** で、失敗した
+    のはその後の本文リンク追記だけ。添付は取り消せないので、ここで
+    「手動で証跡を添付しろ」と言うと二重にアップロードさせてしまう。
 
     --dry-run では push も PR 作成も実行されていない (run() がコマンドを
     印字するだけ) にもかかわらず、attach_evidence() 自体は gh のバージョン
     チェック・results.jsonl の読み取り・50 件上限・証跡パスの封じ込め検査を
-    dry_run 分岐より
-    先に行うため AttachError が実際に届きうる。real run と同じ文面を返すと
-    「push 済み・PR 作成済み」という嘘をつくことになるので、dry_run のとき
-    は何も実行されていない・状態は変わっていないと明言する。
+    dry_run 分岐より先に行うため AttachError が実際に届きうる。real run と
+    同じ文面を返すと「push 済み・PR 作成済み」という嘘になるので、dry_run
+    のときは何も実行されていない・状態は変わっていないと明言する。
     """
     if dry_run:
         return (
@@ -94,6 +98,21 @@ def _attach_failure_message(exc, pr_url, evidence_dir, script_dir, dry_run):
             "作成されていません。状態は何も変わっていません。"
         )
     uat_attach = os.path.join(script_dir, "uat_attach.py")
+    posted = getattr(exc, "comment_url", None)
+    if posted:
+        return (
+            f"UAT 証跡の添付に失敗: {exc}\n"
+            f"ブランチは push 済み、PR も作成済みです ({pr_url})。"
+            f"証跡コメントは投稿済みです ({posted}) — 添付は取り消せないので、"
+            "**もう一度添付しないでください**。残っているのは PR 本文の"
+            " `## UAT 証跡` 節にこのコメントへのリンクを足すことだけです。\n"
+            "タスクのステータスは変更しておらず、Discord にも通知していません。\n"
+            "復旧手順:\n"
+            f"  1) PR 本文の `## UAT 証跡` 節に `証跡コメント: {posted}` を"
+            " 手で足す\n"
+            "  2) その後 j_finish.py を --no-pr 付きで再実行し、"
+            "ステータス変更と Discord 通知を完了させてください。"
+        )
     return (
         f"UAT 証跡の添付に失敗: {exc}\n"
         f"ブランチは push 済み、PR も作成済みです ({pr_url})。"
