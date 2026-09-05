@@ -7,16 +7,23 @@ captured before it is referenced downstream:
 
   1. push the branch
   2. open the PR (body authored in Japanese by the caller; --pr-body-file)
-  3. move the Joifup Task -> "In review" (SURGICAL: only the status line;
+  3. attach UAT evidence to the PR as a comment (--uat-evidence-dir; screenshots
+     and videos, never committed to the repo)
+  4. move the Joifup Task -> "In review" (SURGICAL: only the status line;
      every other frontmatter key/relation/body byte is preserved)
-  4. notify Discord (Japanese, scoped mention, PR link)
+  5. notify Discord (Japanese, scoped mention, PR link)
 
 It never marks the task Done and never merges — the human's approval session
 owns status->Done + `chore(joifup): approve TASK-xxx` + merge.
 
 Network/side-effect steps (git/gh/curl) are gated by --dry-run, which prints
 the exact commands instead of running them. The local file mechanics (status
-edit) runs in both modes so it can be verified.
+edit) runs in both modes so it can be verified. Two read-only steps also run
+in both modes, because they change nothing and their answers are what makes
+the dry run worth reading: the UAT evidence pre-flight, and the evidence
+attach's own `gh --version` check, its read of results.jsonl, and its
+containment check on every evidence path (which stats the filesystem and can
+stop the run).
 """
 import argparse
 import datetime
@@ -31,9 +38,115 @@ try:
 except ImportError:
     sys.exit("j-finish: PyYAML is required (pip install pyyaml)")
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from uat_attach import AttachError, attach_evidence  # noqa: E402
+
+# gh pr create が stdout を返さなかった (dry-run / 空応答) ときの pr_url 初期値。
+# この値のまま attach_evidence() に渡すと `gh pr comment <PR_URL> ...` が実行され、
+# 本当の原因 (URL を取れなかったこと) ではなく無意味な placeholder 名でエラーになる。
+PLACEHOLDER_PR_URL = "<PR_URL>"
+
 
 def die(msg):
     sys.exit(f"j-finish: {msg}")
+
+
+def _pr_url_missing(pr_url):
+    """gh pr create から実際の PR URL を取得できていないかを判定する。"""
+    return not pr_url or pr_url == PLACEHOLDER_PR_URL
+
+
+def _skipped_attach_warning(evidence_dir):
+    """--no-pr と --uat-evidence-dir を併せて渡されたときの警告文。
+
+    --no-pr は「PR はもうある」の意味なので添付だけを飛ばす。ただし黙って
+    飛ばすと、証跡を付け忘れたまま status と Discord まで進む。止めずに
+    言うだけにするのは、添付失敗時の復旧手順 (手で uat_attach.py を叩いて
+    から --no-pr で再実行) がまさにこの組み合わせを通るため。
+    """
+    return ("j-finish: WARNING — --no-pr のため証跡の添付は行いません。"
+            f" {evidence_dir} を手で添付済みか確認してください:"
+            " python3 scripts/uat_attach.py --evidence-dir"
+            f" {evidence_dir} --pr <PR URL>")
+
+
+def _attach_failure_message(exc, pr_url, evidence_dir, script_dir, dry_run):
+    """UAT 証跡の添付が失敗したときの die() メッセージを組み立てる。
+
+    real run では、この時点で push と PR 作成は完了していて、タスクの
+    ステータス変更と Discord 通知はまだ実行していない (半端な「成功」に
+    見える状態を作らないための意図的な停止)。人が残りを手で進められるよう
+    復旧コマンドを示す。
+
+    証跡がどこまで進んだかは 3 通りあり、案内が変わる。添付は取り消せない
+    ので、コメントが既にある可能性がある限り「手動で証跡を添付しろ」とは
+    言わない (二重にアップロードさせてしまう)。
+
+      - comment_url あり: コメントは投稿済み。残りは本文リンクだけ。
+      - comment_maybe_posted のみ: gh が部分失敗したか URL を返さなかった。
+        コメントは在るかもしれないし無いかもしれない。人が PR を見て決める。
+      - どちらも無い: コメントは作られていない。素直に再実行できる。
+
+    --dry-run では push も PR 作成も実行されていない (run() がコマンドを
+    印字するだけ) にもかかわらず、attach_evidence() 自体は gh のバージョン
+    チェック・results.jsonl の読み取り・50 件上限・証跡パスの封じ込め検査を
+    dry_run 分岐より先に行うため AttachError が実際に届きうる。real run と
+    同じ文面を返すと「push 済み・PR 作成済み」という嘘になるので、dry_run
+    のときは何も実行されていない・状態は変わっていないと明言する。
+    """
+    if dry_run:
+        return (
+            f"UAT 証跡の添付に失敗 (--dry-run): {exc}\n"
+            f"証跡ディレクトリ: {evidence_dir}\n"
+            "--dry-run 実行のため、ブランチは push されておらず PR も"
+            "作成されていません。状態は何も変わっていません。"
+        )
+    uat_attach = os.path.join(script_dir, "uat_attach.py")
+    posted = getattr(exc, "comment_url", None)
+    maybe_posted = getattr(exc, "comment_maybe_posted", False)
+    if not posted and maybe_posted:
+        return (
+            f"UAT 証跡の添付に失敗: {exc}\n"
+            f"ブランチは push 済み、PR も作成済みです ({pr_url})。"
+            "証跡コメントが作られているかどうかは判りません — gh が部分失敗"
+            "したか、URL を返さなかったためです。添付は取り消せないので、"
+            "**確認せずに再実行しないでください**。\n"
+            "タスクのステータスは変更しておらず、Discord にも通知していません。\n"
+            "復旧手順:\n"
+            f"  1) {pr_url} を開き、証跡コメントの有無と添付の欠けを確認する\n"
+            "  2a) コメントが揃っていた場合: その URL を PR 本文の"
+            " `## UAT 証跡` 節に `証跡コメント: <url>` として手で足す\n"
+            "  2b) コメントが無い、または作り直す場合のみ:\n"
+            f"      python3 {uat_attach} --evidence-dir {evidence_dir}"
+            f" --pr {pr_url}\n"
+            "  3) その後 j_finish.py を --no-pr 付きで再実行し、"
+            "ステータス変更と Discord 通知を完了させてください。"
+        )
+    if posted:
+        return (
+            f"UAT 証跡の添付に失敗: {exc}\n"
+            f"ブランチは push 済み、PR も作成済みです ({pr_url})。"
+            f"証跡コメントは投稿済みです ({posted}) — 添付は取り消せないので、"
+            "**もう一度添付しないでください**。残っているのは PR 本文の"
+            " `## UAT 証跡` 節にこのコメントへのリンクを足すことだけです。\n"
+            "タスクのステータスは変更しておらず、Discord にも通知していません。\n"
+            "復旧手順:\n"
+            f"  1) PR 本文の `## UAT 証跡` 節に `証跡コメント: {posted}` を"
+            "手で足す\n"
+            "  2) その後 j_finish.py を --no-pr 付きで再実行し、"
+            "ステータス変更と Discord 通知を完了させてください。"
+        )
+    return (
+        f"UAT 証跡の添付に失敗: {exc}\n"
+        f"ブランチは push 済み、PR も作成済みです ({pr_url})。"
+        "証跡はまだ添付されていません。"
+        "タスクのステータスは変更しておらず、Discord にも通知していません。\n"
+        "復旧手順:\n"
+        f"  1) 手動で証跡を添付する:\n"
+        f"     python3 {uat_attach} --evidence-dir {evidence_dir} --pr {pr_url}\n"
+        "  2) その後 j_finish.py を --no-pr 付きで再実行し、"
+        "ステータス変更と Discord 通知を完了させてください。"
+    )
 
 
 def find_schema(db, start_dir):
@@ -97,29 +210,54 @@ def read_title(task_file):
     return os.path.splitext(os.path.basename(task_file))[0]
 
 
-def _warn_missing_uat_evidence(head_range):
-    """Warn (never block) if apps/web changed without committed .uat-evidence/.
-
-    Read-only: shells out to `git diff --name-only <head_range>`. Runs even
-    under --dry-run since it has no side effects. Never raises and never
-    calls die() — some apps/web diffs are non-UI (e.g. config-only), and if
-    git itself fails (e.g. origin/main not fetched locally) the check is
-    silently skipped rather than blocking the finish flow.
-    """
+def _changed_paths(head_range):
+    """push 範囲で変わったパス。git が失敗したら空 (チェックを黙って諦める)。"""
     try:
-        changed = subprocess.run(
+        return subprocess.run(
             ["git", "diff", "--name-only", head_range],
             capture_output=True, text=True, check=True,
         ).stdout.splitlines()
     except (subprocess.CalledProcessError, OSError):
-        return
+        return []
+
+
+def _warn_uat_evidence(changed, evidence_dir, exists=os.path.isfile):
+    """UAT 証跡まわりを警告する (never blocks)。返り値は出した警告の一覧。
+
+    joifup tasks/295 で証跡は commit せず PR に添付する形になった。旧実装は
+    「diff に .uat-evidence/ が無ければ警告」で、意味がちょうど反転していた。
+    見るべきものは 2 つに変わる:
+
+      1. UI を変えたのに `pnpm uat` を回した形跡 (results.jsonl) が手元に無い
+         — 証跡ゼロの PR が出る
+      2. .uat-evidence/ が commit されている — 新しい失敗様式。gitignore が
+         無い repo で起きる
+
+    ブロックしないのは旧実装と同じ: apps/web の diff が非 UI (config だけ)
+    のこともあるため。
+    """
+    warnings = []
     touches_ui = any(p.startswith("apps/web/") and not p.startswith("apps/web/e2e/")
-                      for p in changed)
-    has_evidence = any(p.startswith(".uat-evidence/") for p in changed)
-    if touches_ui and not has_evidence:
-        print("j-finish: WARNING — apps/web changed but no .uat-evidence/ "
-              "committed. Run `pnpm uat --task <id>` and commit the evidence "
-              "before opening the PR.", file=sys.stderr)
+                     for p in changed)
+    committed = [p for p in changed if p.startswith(".uat-evidence/")]
+    if committed:
+        warnings.append(
+            "j-finish: WARNING — .uat-evidence/ が commit されています "
+            f"（例: {committed[0]}）。証跡は commit せず PR に添付します。"
+            " .gitignore を確認してください")
+    if touches_ui:
+        if not evidence_dir:
+            warnings.append(
+                "j-finish: WARNING — apps/web が変わっていますが "
+                "--uat-evidence-dir が指定されていません。証跡が PR に付きません")
+        elif not exists(os.path.join(evidence_dir, "results.jsonl")):
+            warnings.append(
+                f"j-finish: WARNING — apps/web が変わっていますが {evidence_dir}"
+                "/results.jsonl がありません。`pnpm uat --task <id>` を回して"
+                " ください")
+    for w in warnings:
+        print(w, file=sys.stderr)
+    return warnings
 
 
 def main():
@@ -132,6 +270,9 @@ def main():
     ap.add_argument("--status", default="In review", help="pre-approval status")
     ap.add_argument("--no-pr", action="store_true")
     ap.add_argument("--no-discord", action="store_true")
+    ap.add_argument("--uat-evidence-dir",
+                    help="UAT 証跡 dir（例: .uat-evidence/005）。"
+                         "指定すると PR 作成後に証跡コメントを添付する")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -153,16 +294,17 @@ def main():
     head = args.head or run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
                             dry_run=False) or "HEAD"
 
-    # Pre-flight (read-only, advisory): warn if apps/web changed without
-    # committed UAT evidence. Runs even under --dry-run; never blocks, since
-    # not every apps/web diff is UI-facing.
-    _warn_missing_uat_evidence(f"origin/{args.base}...HEAD")
+    # Pre-flight (read-only, advisory): warn if apps/web changed without a
+    # local UAT evidence run, or if .uat-evidence/ was committed. Runs even
+    # under --dry-run; never blocks, since not every apps/web diff is UI-facing.
+    _warn_uat_evidence(_changed_paths(f"origin/{args.base}...HEAD"),
+                       args.uat_evidence_dir)
 
     # 1. push
     run(["git", "push", "-u", "origin", head], args.dry_run)
 
     # 2. PR
-    pr_url = "<PR_URL>"
+    pr_url = PLACEHOLDER_PR_URL
     if not args.no_pr:
         out = run(["gh", "pr", "create", "--base", args.base, "--head", head,
                    "--title", args.pr_title, "--body-file", args.pr_body_file],
@@ -170,11 +312,32 @@ def main():
         if not args.dry_run and out:
             pr_url = out.splitlines()[-1].strip()
 
-    # 3. surgical status edit (runs in dry-run too, so it is verifiable)
+    # 3. UAT 証跡コメント（画像・動画を PR に添付）
+    if args.uat_evidence_dir and args.no_pr:
+        print(_skipped_attach_warning(args.uat_evidence_dir), file=sys.stderr)
+    if args.uat_evidence_dir and not args.no_pr:
+        if not args.dry_run and _pr_url_missing(pr_url):
+            die("gh pr create から PR URL を取得できませんでした。"
+                f"証跡 ({args.uat_evidence_dir}) を添付できません")
+        task_id = os.path.basename(args.uat_evidence_dir.rstrip("/"))
+        try:
+            # required=True: --uat-evidence-dir を明示的に渡した以上、
+            # 証跡ゼロは「UI を変えない PR」ではなく指定ミスか uat の回し
+            # 忘れ。黙って通すと PASS 表示のまま In review + Discord まで進む。
+            comment_url = attach_evidence(pr_url, args.uat_evidence_dir, task_id,
+                                          args.dry_run, required=True)
+        except AttachError as exc:
+            die(_attach_failure_message(
+                exc, pr_url, args.uat_evidence_dir,
+                os.path.dirname(os.path.abspath(__file__)), args.dry_run))
+        if comment_url:
+            print(f"UAT 証跡: {comment_url}")
+
+    # 4. surgical status edit (runs in dry-run too, so it is verifiable)
     surgical_status(args.task_file, args.status)
     print(f"status -> {args.status}: {args.task_file}")
 
-    # 4. Discord — rich embed (matches auto-workflow/scripts/discord-notify.sh:
+    # 5. Discord — rich embed (matches auto-workflow/scripts/discord-notify.sh:
     #    title / description / color / fields[プロジェクト, ブランチ] / timestamp)
     if not args.no_discord:
         webhook = os.environ.get("DISCORD_WEBHOOK_URL", "")

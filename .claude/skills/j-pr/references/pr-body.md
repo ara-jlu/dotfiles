@@ -34,7 +34,7 @@
 - [x] [自動UAT/テストで裏付けた受け入れ基準を checklist で。旧 UAT task の walk-through をここに inline 展開]
 
 ## UAT 証跡
-[.uat-evidence/<TASK>/summary.md の PASS/FAIL 表を転記。screenshot は private repo のため PR body には埋め込まず、`.uat-evidence/<TASK>/` を Files changed タブで確認する旨を明記]
+[.uat-evidence/<TASK>/summary.md の `結果:` 行と PASS/FAIL 表を転記。**画像は本文に入れない**（`## レビュー観点` 以下が押し下げられ、diff を見る前に読むべきものが読めなくなる）。画像・動画は `gh pr comment --attach` の証跡コメント側にあり、その URL が `証跡コメント: <url>` としてこの節の末尾に自動追記される]
 
 ## レビュー観点
 - [diff の焦点。特に auth / 入力 / 秘密 / API / 機微データに触れる箇所は明記]
@@ -52,7 +52,8 @@
 - `## レビュー観点` は diff の実面から起こす（テンプレ文でなく変更に即して）。
 - 該当セクションが空なら省いてよい（`## テスト` を除く。テストは必ず状態を書く）。
 - フッタ `🤖 Generated with [Claude Code](https://claude.com/claude-code)` は必須。
-- **UI 変更を含む PR は `## UAT 証跡` 必須**（`pnpm uat --task <id>` を実行し `.uat-evidence/<id>/summary.md` を転記）。UI を含まない変更では省略可。
+- **UI 変更を含む PR は `## UAT 証跡` 必須**（`pnpm uat --task <id>` を実行し `.uat-evidence/<id>/summary.md` の判定表を転記）。UI を含まない変更では省略可。
+- **証跡は commit しない**（joifup tasks/295 以降。`.uat-evidence/` は gitignore 対象）。画像・動画は PR に添付する。ad-hoc 経路（`j-pr`）では PR 作成後に自分で叩く: `python3 ~/.claude/skills/j-finish/scripts/uat_attach.py --evidence-dir .uat-evidence/<id> --pr <PR URL>`（`gh >= 2.99.0` が必要）。`j-finish` 経路では `--uat-evidence-dir` が同じことを行う。
 - `## 受け入れ基準` は旧 UAT task の checklist を PR に inline 展開したもの（UAT task はもう file しない）。
 - 受け入れ基準は自動UAT/テストで裏付いた項目を `- [x]` にする（未チェックのままは「未検証」と誤読され、`## UAT 証跡` の PASS と矛盾する）。
 
