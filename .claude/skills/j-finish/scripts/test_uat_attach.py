@@ -3,6 +3,7 @@
 
   python3 .claude/skills/j-finish/scripts/test_uat_attach.py
 """
+import glob
 import os
 import shutil
 import sys
@@ -182,12 +183,72 @@ class TestValidateShotsOnDisk(unittest.TestCase):
             ua.validate_shots(self.evidence, [{"name": "x", "file": "shot-01.png"}])
 
     def test_rejects_a_traversal_through_a_symlinked_parent(self):
-        # 親が symlink のケースは islink(最終要素) では捕まらない。
-        # realpath の封じ込めが効いていることを実物で確かめる。
+        # 親が symlink のケースは islink(最終要素) では捕まらないが、
+        # そもそも `/` を含む時点で basename 規則が先に落とす。
         os.symlink(self.tmp, os.path.join(self.evidence, "up"))
         with self.assertRaises(ua.AttachError):
             ua.validate_shots(self.evidence,
                               [{"name": "x", "file": "up/secret.txt"}])
+
+    def test_rejects_a_lone_surrogate_in_file_or_name(self):
+        # json.loads は通すが utf-8 に encode できない。素通しすると
+        # dry-run の print と temp への書き出しで別々に例外が出る。
+        with self.assertRaises(ua.AttachError):
+            ua.validate_shots(self.evidence, [{"name": "x", "file": "\ud800.png"}])
+        with self.assertRaises(ua.AttachError):
+            ua.validate_shots(self.evidence,
+                              [{"name": "\ud800bad", "file": "shot-01.png"}])
+
+    def test_rejects_a_hash_in_the_alt_text(self):
+        with self.assertRaises(ua.AttachError):
+            ua.validate_shots(self.evidence,
+                              [{"name": "a#b", "file": "shot-01.png"}])
+
+
+class TestWriteTemp(unittest.TestCase):
+    """書けなかった temp を残さない・素の例外を外に出さない。"""
+
+    def _md_files(self):
+        return set(glob.glob(os.path.join(tempfile.gettempdir(), "*.md")))
+
+    def test_writes_and_returns_a_path(self):
+        path = ua._write_temp("hello")
+        self.addCleanup(os.unlink, path)
+        with open(path, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "hello")
+
+    def test_an_unencodable_body_raises_attach_error_and_leaves_no_file(self):
+        before = self._md_files()
+        with self.assertRaises(ua.AttachError):
+            ua._write_temp("\ud800bad")
+        self.assertEqual(self._md_files() - before, set())
+
+    def test_a_failure_at_flush_also_raises_attach_error_and_leaves_no_file(self):
+        # TextIOWrapper の write はバッファに積むだけで、実際の write(2) は
+        # close の flush で走る。ENOSPC はこちら側にしか出ない。
+        before = self._md_files()
+        real_open = tempfile.NamedTemporaryFile
+
+        class BrokenClose:
+            def __init__(self, fh):
+                self._fh = fh
+                self.name = fh.name
+
+            def write(self, text):
+                return self._fh.write(text)
+
+            def close(self):
+                self._fh.close()
+                raise OSError(28, "No space left on device")
+
+        def broken(*a, **kw):
+            return BrokenClose(real_open(*a, **kw))
+
+        tempfile.NamedTemporaryFile = broken
+        self.addCleanup(setattr, tempfile, "NamedTemporaryFile", real_open)
+        with self.assertRaises(ua.AttachError):
+            ua._write_temp("hello")
+        self.assertEqual(self._md_files() - before, set())
 
 
 class TestRun(unittest.TestCase):

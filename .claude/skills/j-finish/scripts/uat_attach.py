@@ -78,6 +78,15 @@ def is_video(file):
     return str(file or "").lower().endswith(VIDEO_EXTS)
 
 
+def _encodable(text):
+    """utf-8 に encode できるか。単独サロゲートを入口で弾くために使う。"""
+    try:
+        str(text).encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 def _escape_alt(name):
     """markdown の alt text 内で `[` `]` を殺す (リンク構文が壊れるため)。"""
     return str(name or "").replace("[", "\\[").replace("]", "\\]")
@@ -153,6 +162,20 @@ def validate_shots(evidence_dir, shots, realpath=os.path.realpath,
             raise AttachError(
                 f"証跡の file が basename ではありません ({file!r})。"
                 " 区切り文字・`#`・NUL を含む名前は添付しません")
+        # 単独サロゲートは json.loads を通るが utf-8 に encode できない。
+        # 素通しすると dry-run の print と temp への書き出しがそれぞれ別の
+        # 場所で UnicodeEncodeError を投げる。値の入口で 1 度だけ弾く。
+        name = str(s.get("name") or "")
+        for label, value in (("file", file), ("name", name)):
+            if not _encodable(value):
+                raise AttachError(
+                    f"証跡行の {label} を utf-8 にできません ({value!r})")
+        # `name` は alt text として `<path>#<name>` の右側に入る。`#` を
+        # 含むと gh がどちらの `#` で切るかに依存するので、こちらも拒否する。
+        if "#" in name:
+            raise AttachError(
+                f"証跡の name に `#` は使えません ({name!r})。"
+                " gh の `<file>#<alt text>` 区切りと衝突します")
         path = f"{evidence_dir.rstrip('/')}/{file}"
         if islink(path):
             raise AttachError(
@@ -244,11 +267,21 @@ def _write_temp(text):
     path = fh.name
     try:
         fh.write(text)
-    except (ValueError, UnicodeError, OSError) as exc:
+        # close() は try の中に置く。TextIOWrapper の write はバッファに
+        # 積むだけで、実際の write(2) は flush = close のときに走る。ENOSPC
+        # のような一番ありそうな失敗はここでしか出ない。
         fh.close()
-        os.unlink(path)
+    except (ValueError, OSError) as exc:
+        try:
+            fh.close()
+        except OSError:
+            pass
+        try:
+            os.unlink(path)
+        except OSError:
+            # 消せなくても、元の失敗のほうを伝えるのが先。
+            pass
         raise AttachError(f"証跡コメント本文を書き出せません: {exc}") from exc
-    fh.close()
     return path
 
 
@@ -339,8 +372,13 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
         print("uat-attach: PR 本文に `## UAT 証跡` 節が無いためリンクを追記しません",
               file=sys.stderr)
     else:
-        edit_file = _write_temp(linked)
+        # temp への書き出しもこの try の中に入れる。ここから先の失敗は
+        # すべて「コメントは投稿済み」の世界の話であり、外に出すと
+        # 「証跡はまだ添付されていません」という嘘の復旧案内が出て、人が
+        # もう一度アップロードしてしまう (添付は取り消せない)。
+        edit_file = None
         try:
+            edit_file = _write_temp(linked)
             run(["gh", "pr", "edit", pr, "--body-file", edit_file])
         except AttachError as exc:
             # コメント自体は投稿済み。証跡は PR に既にあるので、ここで握り
@@ -350,9 +388,11 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
             # にする。
             raise AttachError(
                 f"証跡コメントの投稿には成功しました ({url}) が、PR 本文への"
-                f"リンク追記 (gh pr edit) に失敗しました: {exc}") from exc
+                f"リンク追記に失敗しました: {exc}。証跡は既に PR にあるので"
+                " 再アップロードは不要です") from exc
         finally:
-            os.unlink(edit_file)
+            if edit_file:
+                os.unlink(edit_file)
     return url
 
 

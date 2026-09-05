@@ -92,5 +92,15 @@ class TestAttachFailureMessage(unittest.TestCase):
         self.assertIn("作成されていません", msg)
 
 
+class TestSkippedAttachWarning(unittest.TestCase):
+    def test_names_the_dir_and_the_manual_command(self):
+        # --no-pr で添付を飛ばすこと自体は正しいが、黙って飛ばすと証跡ゼロの
+        # まま status と Discord まで進む。
+        msg = jf._skipped_attach_warning(".uat-evidence/005")
+        self.assertIn("--no-pr", msg)
+        self.assertIn(".uat-evidence/005", msg)
+        self.assertIn("uat_attach.py", msg)
+
+
 if __name__ == "__main__":
     unittest.main()
