@@ -167,12 +167,18 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
             f"gh {floor} 以上が必要です (--attach の初出)。検出: {version}。"
             " `brew upgrade gh` などで更新してください")
 
+    results_path = os.path.join(evidence_dir, "results.jsonl")
     try:
-        text = read(os.path.join(evidence_dir, "results.jsonl"))
-    except OSError:
+        text = read(results_path)
+    except FileNotFoundError:
         print(f"uat-attach: {evidence_dir}/results.jsonl が無いので添付をスキップ",
               file=sys.stderr)
         return None
+    except OSError as exc:
+        # ファイルが無い (正常なスキップ) 以外の読み取りエラーは握り潰さない。
+        # PermissionError や IsADirectoryError まで無いことにすると、
+        # 証跡が実際にはあるのに「無い扱い」で PASS を報告してしまう。
+        raise AttachError(f"{results_path} の読み取りに失敗: {exc}") from exc
 
     rows, skipped = parse_results(text)
     if skipped:
@@ -216,6 +222,15 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
             edit_file = fh.name
         try:
             run(["gh", "pr", "edit", pr, "--body-file", edit_file])
+        except AttachError as exc:
+            # コメント自体は投稿済み。証跡は PR に既にあるので、ここで握り
+            # 潰して None を返すと「添付できた」のか「全滅した」のか呼び
+            # 出し側が区別できなくなる。失敗として上げつつ、投稿済みの
+            # コメント URL をメッセージに含め、人が手でリンクを足せるよう
+            # にする。
+            raise AttachError(
+                f"証跡コメントの投稿には成功しました ({url}) が、PR 本文への"
+                f"リンク追記 (gh pr edit) に失敗しました: {exc}") from exc
         finally:
             os.unlink(edit_file)
     return url
