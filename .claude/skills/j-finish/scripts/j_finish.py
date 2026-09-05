@@ -21,7 +21,9 @@ the exact commands instead of running them. The local file mechanics (status
 edit) runs in both modes so it can be verified. Two read-only steps also run
 in both modes, because they change nothing and their answers are what makes
 the dry run worth reading: the UAT evidence pre-flight, and the evidence
-attach's own `gh --version` check plus its read of results.jsonl.
+attach's own `gh --version` check, its read of results.jsonl, and its
+containment check on every evidence path (which stats the filesystem and can
+stop the run).
 """
 import argparse
 import datetime
@@ -64,7 +66,8 @@ def _attach_failure_message(exc, pr_url, evidence_dir, script_dir, dry_run):
 
     --dry-run では push も PR 作成も実行されていない (run() がコマンドを
     印字するだけ) にもかかわらず、attach_evidence() 自体は gh のバージョン
-    チェック・results.jsonl の読み取り・50 件上限チェックを dry_run 分岐より
+    チェック・results.jsonl の読み取り・50 件上限・証跡パスの封じ込め検査を
+    dry_run 分岐より
     先に行うため AttachError が実際に届きうる。real run と同じ文面を返すと
     「push 済み・PR 作成済み」という嘘をつくことになるので、dry_run のとき
     は何も実行されていない・状態は変わっていないと明言する。
@@ -254,6 +257,15 @@ def main():
             pr_url = out.splitlines()[-1].strip()
 
     # 3. UAT 証跡コメント（画像・動画を PR に添付）
+    if args.uat_evidence_dir and args.no_pr:
+        # --no-pr は「PR はもうある」の意味なので、添付だけを飛ばす。ただし
+        # 黙って飛ばすと、証跡を付け忘れたまま status と Discord まで進む。
+        # 復旧手順 (手で uat_attach.py を叩いてから --no-pr で再実行) が
+        # まさにこの組み合わせを通るので、止めずに言うだけにする。
+        print("j-finish: WARNING — --no-pr のため証跡の添付は行いません。"
+              f" {args.uat_evidence_dir} を手で添付済みか確認してください:"
+              " python3 scripts/uat_attach.py --evidence-dir"
+              f" {args.uat_evidence_dir} --pr <PR URL>", file=sys.stderr)
     if args.uat_evidence_dir and not args.no_pr:
         if not args.dry_run and _pr_url_missing(pr_url):
             die("gh pr create から PR URL を取得できませんでした。"

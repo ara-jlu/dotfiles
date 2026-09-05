@@ -29,6 +29,8 @@ import tempfile
 MIN_GH_VERSION = (2, 99, 0)
 MAX_ATTACH = 50
 VIDEO_EXTS = (".webm", ".mp4")
+# 証跡ファイル名に許さない文字。詳細は validate_shots() の中のコメント。
+_UNSAFE_FILE = re.compile(r"[\x00#/\\]")
 
 
 def parse_gh_version(text):
@@ -138,6 +140,19 @@ def validate_shots(evidence_dir, shots, realpath=os.path.realpath,
         if not file or not str(file).strip():
             raise AttachError(
                 f"証跡行に file がありません: {s.get('name', '(名前なし)')}")
+        file = str(file)
+        # `file` は生成側 (joifup の slug()) が作る ASCII の basename しか
+        # 正しくない。素の basename だけを通すことで、絶対パス・`..`・
+        # サブディレクトリ・NUL をまとめて閉じる。
+        #   - `#` は gh の `<file>#<alt>` 区切り。含まれていると gh が
+        #     解釈するパスは検査した文字列の *前半* になり、検査した物と
+        #     渡した物がずれる。
+        #   - NUL は subprocess が ValueError で落ちる。OSError ではない
+        #     ので _run の except を素通りし、push/PR 済みの復旧案内が出ない。
+        if _UNSAFE_FILE.search(file) or file in (".", ".."):
+            raise AttachError(
+                f"証跡の file が basename ではありません ({file!r})。"
+                " 区切り文字・`#`・NUL を含む名前は添付しません")
         path = f"{evidence_dir.rstrip('/')}/{file}"
         if islink(path):
             raise AttachError(
@@ -194,13 +209,14 @@ def _run(cmd):
     終了コードを握り潰すと証跡が欠けたまま PASS に見える (設計のエラー
     ハンドリング節)。stderr をそのまま載せて止める。
 
-    gh が入っていない場合の OSError も AttachError にする。素の OSError の
-    まま抜けると、呼び出し側 (j_finish) の except AttachError を素通りして
-    traceback で落ち、push と PR 作成が済んだ状態の復旧案内が出ない。
+    起動そのものの失敗も AttachError にする — gh が入っていない (OSError) と、
+    引数に NUL が混じっている (ValueError) の 2 つ。素のまま抜けると呼び出し側
+    (j_finish) の except AttachError を素通りして traceback で落ち、push と
+    PR 作成が済んだ状態の復旧案内が出ない。
     """
     try:
         res = subprocess.run(cmd, capture_output=True, text=True)
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         raise AttachError(f"{cmd[0]} を実行できません: {exc}") from exc
     if res.returncode != 0:
         raise AttachError(
@@ -211,6 +227,29 @@ def _run(cmd):
 def _read(path):
     with open(path, encoding="utf-8") as fh:
         return fh.read()
+
+
+def _write_temp(text):
+    """本文を temp file に書き、そのパスを返す。書けなければ消してから上げる。
+
+    `with tempfile.NamedTemporaryFile(delete=False)` の中で書くと、write が
+    落ちたときブロックを抜けた先の try/finally に届かず temp が残る。加えて
+    UnicodeEncodeError (results.jsonl に単独サロゲートがあると起きる) は
+    ValueError であって AttachError ではないので、そのまま抜けると呼び出し側
+    (j_finish) の except AttachError を素通りし、push/PR 済みの復旧案内が
+    出ないまま traceback で落ちる。両方ここで閉じる。
+    """
+    fh = tempfile.NamedTemporaryFile("w", suffix=".md", delete=False,
+                                     encoding="utf-8")
+    path = fh.name
+    try:
+        fh.write(text)
+    except (ValueError, UnicodeError, OSError) as exc:
+        fh.close()
+        os.unlink(path)
+        raise AttachError(f"証跡コメント本文を書き出せません: {exc}") from exc
+    fh.close()
+    return path
 
 
 def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=None,
@@ -281,12 +320,7 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
 
     pr_body = run(["gh", "pr", "view", pr, "--json", "body", "--jq", ".body"])
 
-    # 先に fh.name を束縛してから書く。delete=False なので、write が
-    # 落ちたときに名前が未束縛だと finally の unlink に辿り着けず temp が残る。
-    with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False,
-                                     encoding="utf-8") as fh:
-        body_file = fh.name
-        fh.write(body)
+    body_file = _write_temp(body)
     try:
         url = run(["gh", "pr", "comment", pr, "--body-file", body_file] + args)
     finally:
@@ -305,10 +339,7 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
         print("uat-attach: PR 本文に `## UAT 証跡` 節が無いためリンクを追記しません",
               file=sys.stderr)
     else:
-        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False,
-                                         encoding="utf-8") as fh:
-            edit_file = fh.name
-            fh.write(linked)
+        edit_file = _write_temp(linked)
         try:
             run(["gh", "pr", "edit", pr, "--body-file", edit_file])
         except AttachError as exc:
@@ -338,7 +369,10 @@ def main():
     args = ap.parse_args()
     task = args.task or os.path.basename(args.evidence_dir.rstrip("/"))
     try:
-        url = attach_evidence(args.pr, args.evidence_dir, task, args.dry_run)
+        # CLI は --evidence-dir が必須なので、叩いた時点で「証跡がある」と
+        # 主張している。0 件で exit 0 すると、添付ゼロのまま成功に見える。
+        url = attach_evidence(args.pr, args.evidence_dir, task, args.dry_run,
+                              required=True)
     except AttachError as exc:
         sys.exit(f"uat-attach: {exc}")
     if url:
