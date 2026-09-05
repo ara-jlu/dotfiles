@@ -184,6 +184,28 @@ class TestAttachEvidence(unittest.TestCase):
             ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
                                runner=runner, reader=lambda p: self.RESULTS)
 
+    def test_raises_when_results_jsonl_read_fails_for_a_reason_other_than_missing(self):
+        runner = FakeRunner(["gh version 2.100.0 (2026-09-03)"])
+
+        def denied(path):
+            raise PermissionError(path)
+
+        with self.assertRaises(ua.AttachError):
+            ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
+                               runner=runner, reader=denied)
+
+    def test_carries_the_comment_url_when_gh_pr_edit_fails(self):
+        runner = FakeRunner([
+            "gh version 2.100.0 (2026-09-03)",
+            "## UAT 証跡\n\n| step |\n",                 # gh pr view --json body
+            "https://github.com/o/r/pull/1#issuecomment-9",  # gh pr comment
+            ua.AttachError("gh exited 1: validation failed"),  # gh pr edit
+        ])
+        with self.assertRaises(ua.AttachError) as cm:
+            ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
+                               runner=runner, reader=lambda p: self.RESULTS)
+        self.assertIn("https://github.com/o/r/pull/1#issuecomment-9", str(cm.exception))
+
     def test_dry_run_touches_nothing_after_the_version_check(self):
         runner = FakeRunner(["gh version 2.100.0 (2026-09-03)"])
         url = ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
