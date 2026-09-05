@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import uat_attach as ua
 
+
 class TestParseGhVersion(unittest.TestCase):
     def test_parses_the_real_gh_output(self):
         text = "gh version 2.100.0 (2026-09-03)\nhttps://github.com/cli/cli/releases/tag/v2.100.0"
@@ -28,6 +29,7 @@ class TestParseGhVersion(unittest.TestCase):
         # 2.100.0 > 2.99.0 — 文字列比較なら逆転する組み合わせ
         self.assertGreaterEqual(ua.parse_gh_version("gh version 2.100.0 (2026-09-03)"),
                                 ua.MIN_GH_VERSION)
+
 
 class TestParseResults(unittest.TestCase):
     def test_keeps_valid_rows_and_counts_broken_ones(self):
@@ -49,11 +51,13 @@ class TestParseResults(unittest.TestCase):
         ]
         self.assertEqual(ua.shot_rows(rows), [rows[1]])
 
+
 class TestIsVideo(unittest.TestCase):
     def test_classifies_by_extension(self):
         self.assertTrue(ua.is_video("clip-01-drag.webm"))
         self.assertTrue(ua.is_video("clip-01-drag.MP4"))
         self.assertFalse(ua.is_video("shot-01-open.png"))
+
 
 class TestRenderComment(unittest.TestCase):
     def setUp(self):
@@ -75,6 +79,7 @@ class TestRenderComment(unittest.TestCase):
         body = ua.render_comment("005", [{"name": "[重要] 表示", "file": "a.png"}])
         self.assertIn("![\\[重要\\] 表示](./a.png)", body)
 
+
 class TestAttachArgs(unittest.TestCase):
     def test_pairs_each_path_with_its_name(self):
         args = ua.attach_args(".uat-evidence/005",
@@ -88,6 +93,7 @@ class TestAttachArgs(unittest.TestCase):
 
     def test_cap_is_50(self):
         self.assertEqual(ua.MAX_ATTACH, 50)
+
 
 class TestBodyWithEvidenceLink(unittest.TestCase):
     def test_appends_inside_the_uat_section(self):
@@ -104,6 +110,62 @@ class TestBodyWithEvidenceLink(unittest.TestCase):
     def test_returns_none_when_there_is_no_uat_section(self):
         self.assertIsNone(ua.body_with_evidence_link("## 概要\n\nx\n", "URL"))
 
+    def test_replaces_an_existing_link_instead_of_stacking_a_second_one(self):
+        # gh pr edit が落ちたあとの復旧手順は再実行なので、追記だと 2 本並ぶ。
+        once = ua.body_with_evidence_link("## UAT 証跡\n\n| step |\n", "URL1")
+        twice = ua.body_with_evidence_link(once, "URL2")
+        self.assertEqual(twice.count("証跡コメント:"), 1)
+        self.assertIn("証跡コメント: URL2", twice)
+        self.assertNotIn("URL1", twice)
+
+
+class TestValidateShots(unittest.TestCase):
+    """アップロード前の最後の関門。添付は取り消せないので黙って通さない。"""
+
+    def _validate(self, shots, links=()):
+        return ua.validate_shots(
+            ".uat-evidence/005", shots,
+            realpath=lambda p: os.path.normpath(os.path.join("/repo", p)),
+            islink=lambda p: p in links)
+
+    def test_accepts_a_plain_basename(self):
+        self.assertIsNone(self._validate([{"name": "x", "file": "shot-01.png"}]))
+
+    def test_rejects_a_path_escaping_the_evidence_dir(self):
+        with self.assertRaises(ua.AttachError) as cm:
+            self._validate([{"name": "x", "file": "../../.ssh/id_rsa"}])
+        self.assertIn("外", str(cm.exception))
+
+    def test_rejects_a_symlink(self):
+        with self.assertRaises(ua.AttachError) as cm:
+            self._validate([{"name": "x", "file": "shot-01.png"}],
+                           links=(".uat-evidence/005/shot-01.png",))
+        self.assertIn("symlink", str(cm.exception))
+
+    def test_rejects_a_row_without_a_file(self):
+        with self.assertRaises(ua.AttachError):
+            self._validate([{"name": "x"}])
+        with self.assertRaises(ua.AttachError):
+            self._validate([{"name": "x", "file": "  "}])
+
+
+class TestRun(unittest.TestCase):
+    """`gh の失敗を握り潰さない` という契約そのもののテスト。"""
+
+    def test_non_zero_exit_raises_with_the_stderr(self):
+        with self.assertRaises(ua.AttachError) as cm:
+            ua._run(["sh", "-c", "echo boom >&2; exit 3"])
+        self.assertIn("exit 3", str(cm.exception))
+        self.assertIn("boom", str(cm.exception))
+
+    def test_a_missing_binary_is_an_attach_error_not_a_raw_oserror(self):
+        # 素の OSError は j_finish の except AttachError を素通りして
+        # traceback で落ち、push/PR 済みの復旧案内が出ない。
+        with self.assertRaises(ua.AttachError) as cm:
+            ua._run(["definitely-not-a-real-binary-xyz", "--version"])
+        self.assertIn("definitely-not-a-real-binary-xyz", str(cm.exception))
+
+
 class FakeRunner:
     """`gh` の代わり。呼ばれたコマンド列を記録し、決めた応答を返す。"""
 
@@ -117,6 +179,7 @@ class FakeRunner:
         if isinstance(out, Exception):
             raise out
         return out
+
 
 class TestAttachEvidence(unittest.TestCase):
     RESULTS = (
@@ -213,6 +276,47 @@ class TestAttachEvidence(unittest.TestCase):
                                  reader=lambda p: self.RESULTS)
         self.assertIsNone(url)
         self.assertEqual(len(runner.calls), 1)
+
+    def test_stops_when_gh_pr_comment_returns_no_url(self):
+        # exit 0 なのに URL が空。ここで進むと本文に死んだラベルを書き、
+        # 呼び出し側には falsy が返って「証跡なし」と区別できなくなる。
+        runner = FakeRunner([
+            "gh version 2.100.0 (2026-09-03)",
+            "## UAT 証跡\n\n| step |\n",
+            "",                                          # gh pr comment
+        ])
+        with self.assertRaises(ua.AttachError) as cm:
+            ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
+                               runner=runner, reader=lambda p: self.RESULTS)
+        self.assertIn("URL", str(cm.exception))
+
+    def test_stops_on_a_shot_pointing_outside_the_evidence_dir(self):
+        runner = FakeRunner(["gh version 2.100.0 (2026-09-03)"])
+        rows = ('{"n":1,"name":"x","file":"../../../.ssh/id_rsa",'
+                '"kind":"shot"}\n')
+        with self.assertRaises(ua.AttachError):
+            ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
+                               runner=runner, reader=lambda p: rows)
+        self.assertEqual(len(runner.calls), 1)  # gh を一度も叩かない
+
+    def test_required_raises_when_results_jsonl_is_missing(self):
+        runner = FakeRunner(["gh version 2.100.0 (2026-09-03)"])
+
+        def missing(path):
+            raise FileNotFoundError(path)
+
+        with self.assertRaises(ua.AttachError):
+            ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
+                               runner=runner, reader=missing, required=True)
+
+    def test_required_raises_when_there_are_no_shots(self):
+        runner = FakeRunner(["gh version 2.100.0 (2026-09-03)"])
+        with self.assertRaises(ua.AttachError):
+            ua.attach_evidence(
+                "https://pr/1", ".uat-evidence/005", "005", runner=runner,
+                reader=lambda p: '{"n":1,"name":"x","status":"PASS"}\n',
+                required=True)
+
 
 if __name__ == "__main__":
     unittest.main()
