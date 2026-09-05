@@ -204,6 +204,12 @@ class TestValidateShotsOnDisk(unittest.TestCase):
             ua.validate_shots(self.evidence,
                               [{"name": "a#b", "file": "shot-01.png"}])
 
+    def test_rejects_a_hash_in_the_evidence_dir_itself(self):
+        # dir も `<dir>/<file>#<alt>` の一部として gh に渡る。
+        with self.assertRaises(ua.AttachError):
+            ua.validate_shots(self.evidence + "#x",
+                              [{"name": "x", "file": "shot-01.png"}])
+
 
 class TestWriteTemp(unittest.TestCase):
     """書けなかった temp を残さない・素の例外を外に出さない。"""
@@ -222,6 +228,19 @@ class TestWriteTemp(unittest.TestCase):
         with self.assertRaises(ua.AttachError):
             ua._write_temp("\ud800bad")
         self.assertEqual(self._md_files() - before, set())
+
+    def test_a_failure_creating_the_temp_file_also_raises_attach_error(self):
+        # TMPDIR が read-only なら生成の時点で落ちる。素の OSError のまま
+        # 抜けると j_finish の except AttachError を素通りする。
+        real_open = tempfile.NamedTemporaryFile
+
+        def denied(*a, **kw):
+            raise PermissionError(13, "Permission denied")
+
+        tempfile.NamedTemporaryFile = denied
+        self.addCleanup(setattr, tempfile, "NamedTemporaryFile", real_open)
+        with self.assertRaises(ua.AttachError):
+            ua._write_temp("hello")
 
     def test_a_failure_at_flush_also_raises_attach_error_and_leaves_no_file(self):
         # TextIOWrapper の write はバッファに積むだけで、実際の write(2) は
