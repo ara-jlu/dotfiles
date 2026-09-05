@@ -95,8 +95,9 @@ class TestAttachFailureMessage(unittest.TestCase):
     def test_a_posted_comment_is_not_told_to_upload_again(self):
         # 添付は取り消せない。コメント投稿後の失敗で「手動で証跡を添付する」
         # と案内すると、人が二重にアップロードしてしまう。
-        exc = RuntimeError("gh pr edit failed")
-        exc.comment_url = "https://github.com/o/r/pull/1#issuecomment-9"
+        exc = jf.AttachError(
+            "gh pr edit failed",
+            comment_url="https://github.com/o/r/pull/1#issuecomment-9")
         msg = jf._attach_failure_message(
             exc, "https://github.com/o/r/pull/1", ".uat-evidence/005",
             "/repo/.claude/skills/j-finish/scripts", dry_run=False)
@@ -104,6 +105,17 @@ class TestAttachFailureMessage(unittest.TestCase):
         self.assertNotIn("証跡はまだ添付されていません", msg)
         self.assertNotIn("--evidence-dir", msg)
         self.assertIn("--no-pr", msg)
+
+    def test_a_maybe_posted_comment_is_told_to_check_before_re_running(self):
+        # gh は部分失敗のとき、成功したぶんでコメントを作ってから落ちる。
+        # 「まだ添付されていません」と言い切ると二重アップロードを招く。
+        exc = jf.AttachError("gh pr comment が exit 1 で失敗",
+                             comment_maybe_posted=True)
+        msg = jf._attach_failure_message(
+            exc, "https://github.com/o/r/pull/1", ".uat-evidence/005",
+            "/repo/.claude/skills/j-finish/scripts", dry_run=False)
+        self.assertNotIn("証跡はまだ添付されていません", msg)
+        self.assertIn("確認せずに再実行しないでください", msg)
 
 
 class TestSkippedAttachWarning(unittest.TestCase):
