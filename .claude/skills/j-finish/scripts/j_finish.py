@@ -39,7 +39,7 @@ except ImportError:
     sys.exit("j-finish: PyYAML is required (pip install pyyaml)")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from uat_attach import AttachError, attach_evidence  # noqa: E402,F401
+from uat_attach import AttachError, attach_evidence  # noqa: E402
 
 # gh pr create が stdout を返さなかった (dry-run / 空応答) ときの pr_url 初期値。
 # この値のまま attach_evidence() に渡すと `gh pr comment <PR_URL> ...` が実行され、
@@ -108,14 +108,16 @@ def _attach_failure_message(exc, pr_url, evidence_dir, script_dir, dry_run):
         return (
             f"UAT 証跡の添付に失敗: {exc}\n"
             f"ブランチは push 済み、PR も作成済みです ({pr_url})。"
-            "証跡コメントが作られているかどうかは判りません — gh は部分失敗の"
-            "とき、成功したぶんでコメントを作ってから落ちます。添付は"
-            "取り消せないので、**確認せずに再実行しないでください**。\n"
+            "証跡コメントが作られているかどうかは判りません — gh が部分失敗"
+            "したか、URL を返さなかったためです。添付は取り消せないので、"
+            "**確認せずに再実行しないでください**。\n"
             "タスクのステータスは変更しておらず、Discord にも通知していません。\n"
             "復旧手順:\n"
             f"  1) {pr_url} を開き、証跡コメントの有無と添付の欠けを確認する\n"
-            "  2) コメントが無い、または作り直す場合のみ:\n"
-            f"     python3 {uat_attach} --evidence-dir {evidence_dir}"
+            "  2a) コメントが揃っていた場合: その URL を PR 本文の"
+            " `## UAT 証跡` 節に `証跡コメント: <url>` として手で足す\n"
+            "  2b) コメントが無い、または作り直す場合のみ:\n"
+            f"      python3 {uat_attach} --evidence-dir {evidence_dir}"
             f" --pr {pr_url}\n"
             "  3) その後 j_finish.py を --no-pr 付きで再実行し、"
             "ステータス変更と Discord 通知を完了させてください。"
