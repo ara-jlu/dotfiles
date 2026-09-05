@@ -34,7 +34,7 @@
 - [x] [自動UAT/テストで裏付けた受け入れ基準を checklist で。旧 UAT task の walk-through をここに inline 展開]
 
 ## UAT 証跡
-[.uat-evidence/<TASK>/summary.md の `結果:` 行と PASS/FAIL 表を転記。**画像は本文に入れない**（`## レビュー観点` 以下が押し下げられ、diff を見る前に読むべきものが読めなくなる）。画素は `gh pr comment --attach` の証跡コメント側にあり、その URL が `証跡コメント: <url>` としてこの節の末尾に自動追記される]
+[.uat-evidence/<TASK>/summary.md の `結果:` 行と PASS/FAIL 表を転記。**画像は本文に入れない**（`## レビュー観点` 以下が押し下げられ、diff を見る前に読むべきものが読めなくなる）。画像・動画は `gh pr comment --attach` の証跡コメント側にあり、その URL が `証跡コメント: <url>` としてこの節の末尾に自動追記される]
 
 ## レビュー観点
 - [diff の焦点。特に auth / 入力 / 秘密 / API / 機微データに触れる箇所は明記]

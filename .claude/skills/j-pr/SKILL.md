@@ -26,7 +26,8 @@ Opens a PR in the **house style** for ad-hoc work — the same Japanese PR body 
 2. **Push:** `git push -u origin <branch>`.
 3. **Write the PR body** to a temp `.md` per `references/pr-body.md` (read it). Ground every section in the diff. If a Joifup Task/plan relates to this work, cite its id/path in `## 関連`; otherwise omit those lines.
 4. **Create the PR:** `gh pr create --base <base> --head <branch> --title "<type>: <日本語要約>" --body-file <tmp>.md` (add `--draft` if requested).
-5. **Report** the PR URL.
+5. **Attach UAT evidence, if the PR includes UI changes:** `python3 ~/.claude/skills/j-finish/scripts/uat_attach.py --evidence-dir .uat-evidence/<id> --pr <PR URL>` — posts the evidence comment and links it from the body's `## UAT 証跡` section (see `references/pr-body.md`). Requires `gh >= 2.99.0`. A change with no UI can skip this step.
+6. **Report** the PR URL.
 
 ## Common Mistakes
 
