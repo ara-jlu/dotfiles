@@ -104,5 +104,93 @@ class TestBodyWithEvidenceLink(unittest.TestCase):
     def test_returns_none_when_there_is_no_uat_section(self):
         self.assertIsNone(ua.body_with_evidence_link("## 概要\n\nx\n", "URL"))
 
+class FakeRunner:
+    """`gh` の代わり。呼ばれたコマンド列を記録し、決めた応答を返す。"""
+
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.calls = []
+
+    def __call__(self, cmd):
+        self.calls.append(cmd)
+        out = self.responses.pop(0)
+        if isinstance(out, Exception):
+            raise out
+        return out
+
+class TestAttachEvidence(unittest.TestCase):
+    RESULTS = (
+        '{"n":1,"name":"開く","status":"PASS"}\n'
+        '{"n":1,"name":"初期表示","file":"shot-01-shot.png","kind":"shot"}\n'
+    )
+
+    def test_stops_when_gh_is_too_old(self):
+        runner = FakeRunner(["gh version 2.98.0 (2026-08-01)"])
+        with self.assertRaises(ua.AttachError) as cm:
+            ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
+                               runner=runner, reader=lambda p: self.RESULTS)
+        self.assertIn("2.99.0", str(cm.exception))
+        self.assertEqual(len(runner.calls), 1)  # gh --version だけで止まる
+
+    def test_does_nothing_when_there_is_no_evidence(self):
+        runner = FakeRunner(["gh version 2.100.0 (2026-09-03)"])
+        out = ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
+                                 runner=runner,
+                                 reader=lambda p: '{"n":1,"name":"x","status":"PASS"}\n')
+        self.assertIsNone(out)
+        self.assertEqual(len(runner.calls), 1)
+
+    def test_returns_none_when_results_jsonl_is_missing(self):
+        runner = FakeRunner(["gh version 2.100.0 (2026-09-03)"])
+
+        def missing(path):
+            raise FileNotFoundError(path)
+
+        self.assertIsNone(ua.attach_evidence("https://pr/1", ".uat-evidence/005",
+                                             "005", runner=runner, reader=missing))
+
+    def test_stops_over_the_50_file_cap(self):
+        rows = "".join(
+            '{"n":%d,"name":"s%d","file":"shot-%02d.png","kind":"shot"}\n' % (i, i, i)
+            for i in range(1, 52))
+        runner = FakeRunner(["gh version 2.100.0 (2026-09-03)"])
+        with self.assertRaises(ua.AttachError) as cm:
+            ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
+                               runner=runner, reader=lambda p: rows)
+        self.assertIn("51", str(cm.exception))
+
+    def test_posts_the_comment_and_links_it_from_the_body(self):
+        runner = FakeRunner([
+            "gh version 2.100.0 (2026-09-03)",
+            "## UAT 証跡\n\n| step |\n",                 # gh pr view --json body
+            "https://github.com/o/r/pull/1#issuecomment-9",  # gh pr comment
+            "",                                              # gh pr edit
+        ])
+        url = ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
+                                 runner=runner, reader=lambda p: self.RESULTS)
+        self.assertEqual(url, "https://github.com/o/r/pull/1#issuecomment-9")
+        comment = runner.calls[2]
+        self.assertIn("--attach", comment)
+        self.assertIn(".uat-evidence/005/shot-01-shot.png#初期表示", comment)
+        self.assertEqual(runner.calls[3][:3], ["gh", "pr", "edit"])
+
+    def test_does_not_swallow_a_failing_gh(self):
+        runner = FakeRunner([
+            "gh version 2.100.0 (2026-09-03)",
+            "## UAT 証跡\n",
+            ua.AttachError("gh exited 1: upload failed for shot-01-shot.png"),
+        ])
+        with self.assertRaises(ua.AttachError):
+            ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
+                               runner=runner, reader=lambda p: self.RESULTS)
+
+    def test_dry_run_touches_nothing_after_the_version_check(self):
+        runner = FakeRunner(["gh version 2.100.0 (2026-09-03)"])
+        url = ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
+                                 dry_run=True, runner=runner,
+                                 reader=lambda p: self.RESULTS)
+        self.assertIsNone(url)
+        self.assertEqual(len(runner.calls), 1)
+
 if __name__ == "__main__":
     unittest.main()
