@@ -56,6 +56,20 @@ def _pr_url_missing(pr_url):
     return not pr_url or pr_url == PLACEHOLDER_PR_URL
 
 
+def _skipped_attach_warning(evidence_dir):
+    """--no-pr と --uat-evidence-dir を併せて渡されたときの警告文。
+
+    --no-pr は「PR はもうある」の意味なので添付だけを飛ばす。ただし黙って
+    飛ばすと、証跡を付け忘れたまま status と Discord まで進む。止めずに
+    言うだけにするのは、添付失敗時の復旧手順 (手で uat_attach.py を叩いて
+    から --no-pr で再実行) がまさにこの組み合わせを通るため。
+    """
+    return ("j-finish: WARNING — --no-pr のため証跡の添付は行いません。"
+            f" {evidence_dir} を手で添付済みか確認してください:"
+            " python3 scripts/uat_attach.py --evidence-dir"
+            f" {evidence_dir} --pr <PR URL>")
+
+
 def _attach_failure_message(exc, pr_url, evidence_dir, script_dir, dry_run):
     """UAT 証跡の添付が失敗したときの die() メッセージを組み立てる。
 
@@ -258,14 +272,7 @@ def main():
 
     # 3. UAT 証跡コメント（画像・動画を PR に添付）
     if args.uat_evidence_dir and args.no_pr:
-        # --no-pr は「PR はもうある」の意味なので、添付だけを飛ばす。ただし
-        # 黙って飛ばすと、証跡を付け忘れたまま status と Discord まで進む。
-        # 復旧手順 (手で uat_attach.py を叩いてから --no-pr で再実行) が
-        # まさにこの組み合わせを通るので、止めずに言うだけにする。
-        print("j-finish: WARNING — --no-pr のため証跡の添付は行いません。"
-              f" {args.uat_evidence_dir} を手で添付済みか確認してください:"
-              " python3 scripts/uat_attach.py --evidence-dir"
-              f" {args.uat_evidence_dir} --pr <PR URL>", file=sys.stderr)
+        print(_skipped_attach_warning(args.uat_evidence_dir), file=sys.stderr)
     if args.uat_evidence_dir and not args.no_pr:
         if not args.dry_run and _pr_url_missing(pr_url):
             die("gh pr create から PR URL を取得できませんでした。"
