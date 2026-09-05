@@ -51,14 +51,28 @@ def _pr_url_missing(pr_url):
     return not pr_url or pr_url == PLACEHOLDER_PR_URL
 
 
-def _attach_failure_message(exc, pr_url, evidence_dir, script_dir):
+def _attach_failure_message(exc, pr_url, evidence_dir, script_dir, dry_run):
     """UAT 証跡の添付が失敗したときの die() メッセージを組み立てる。
 
-    この時点で push と PR 作成は完了しているが証跡は添付されておらず、
-    タスクのステータス変更と Discord 通知はまだ実行していない
+    real run では、この時点で push と PR 作成は完了しているが証跡は添付
+    されておらず、タスクのステータス変更と Discord 通知はまだ実行していない
     (半端な「成功」に見える状態を作らないための意図的な停止)。
     人が手で証跡を添付し、残りの手順だけを再実行できるよう復旧コマンドを示す。
+
+    --dry-run では push も PR 作成も実行されていない (run() がコマンドを
+    印字するだけ) にもかかわらず、attach_evidence() 自体は gh のバージョン
+    チェック・results.jsonl の読み取り・50 件上限チェックを dry_run 分岐より
+    先に行うため AttachError が実際に届きうる。real run と同じ文面を返すと
+    「push 済み・PR 作成済み」という嘘をつくことになるので、dry_run のとき
+    は何も実行されていない・状態は変わっていないと明言する。
     """
+    if dry_run:
+        return (
+            f"UAT 証跡の添付に失敗 (--dry-run): {exc}\n"
+            f"証跡ディレクトリ: {evidence_dir}\n"
+            "--dry-run 実行のため、ブランチは push されておらず PR も"
+            "作成されていません。状態は何も変わっていません。"
+        )
     uat_attach = os.path.join(script_dir, "uat_attach.py")
     return (
         f"UAT 証跡の添付に失敗: {exc}\n"
@@ -247,7 +261,7 @@ def main():
         except AttachError as exc:
             die(_attach_failure_message(
                 exc, pr_url, args.uat_evidence_dir,
-                os.path.dirname(os.path.abspath(__file__))))
+                os.path.dirname(os.path.abspath(__file__)), args.dry_run))
         if comment_url:
             print(f"UAT 証跡: {comment_url}")
 
