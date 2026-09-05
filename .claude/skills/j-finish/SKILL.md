@@ -22,7 +22,7 @@ Output adapter between the superpowers spine and the outside world. It performs 
 
 1. **Pre-flight** (read-only): `git status --porcelain` (clean?), `git log origin/main..HEAD`, `git diff --stat origin/main...HEAD`. Stop and report if the tree is dirty.
 2. **Write the Japanese PR body** to a file per the shared recipe in the `j-pr` skill's `references/pr-body.md` (same convention both paths use).
-3. **Run the script** (does push → PR → status→In review → Discord, in that order):
+3. **Run the script** (does push → PR 作成 → 証跡コメント → status→In review → Discord, in that order):
 
 ```bash
 python3 scripts/j_finish.py --task-file <tasks/NNN-*.md> \
