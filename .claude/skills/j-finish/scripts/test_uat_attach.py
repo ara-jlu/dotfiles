@@ -454,6 +454,21 @@ class TestAttachEvidence(unittest.TestCase):
             ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
                                runner=runner, reader=lambda p: self.RESULTS)
         self.assertIn("URL", str(cm.exception))
+        # コメントが在るかもしれない側。ここを落とすと復旧案内が
+        # 「まだ添付されていません」に戻り、二重アップロードを指示する。
+        self.assertTrue(cm.exception.comment_maybe_posted)
+
+    def test_a_failure_before_the_comment_is_not_flagged_as_maybe_posted(self):
+        # 逆側も固定する。無条件に True にすると、素直に再実行できる失敗まで
+        # 「確認してから」と言われて止まる。
+        runner = FakeRunner([
+            "gh version 2.100.0 (2026-09-03)",
+            ua.AttachError("gh pr view が exit 1 で失敗"),
+        ])
+        with self.assertRaises(ua.AttachError) as cm:
+            ua.attach_evidence("https://pr/1", ".uat-evidence/005", "005",
+                               runner=runner, reader=lambda p: self.RESULTS)
+        self.assertFalse(cm.exception.comment_maybe_posted)
 
     def test_stops_on_a_shot_pointing_outside_the_evidence_dir(self):
         runner = FakeRunner(["gh version 2.100.0 (2026-09-03)"])
