@@ -2,7 +2,7 @@
 ID: TASK-667
 Project: devops
 created_at: '2026-09-08'
-status: Not started
+status: Done
 title: AIハーネスの原則・思想を調査して記録する
 updated_at: '2026-09-08'
 ---
