@@ -15,6 +15,8 @@ Tasks:
 - 003-j-recap-skill
 - 001-ai-harness
 - 005-align-skills-with-pr-attached-uat-evidence
+- 006-harness-principles-research
+- 007-stop-duplicating-rationale
 
 ---
 # DevOps
