@@ -1,36 +1,36 @@
 ---
 name: j-pr
-description: Use when opening a pull request for ad-hoc development done outside j-devflow — you want the same house-style Japanese PR body without the full finish (no Joifup status change, approval task, or Discord).
+description: j-devflow の外で行った ad-hoc な開発の PR を開くときに使う — house-style の日本語 PR 本文だけを整え、フル終了処理（Joifup のステータス変更・承認タスク・Discord 通知）は行わない。
 user-invocable: true
-argument-hint: "[base-branch (default: main)]"
+argument-hint: "[base-branch（既定: main）]"
 ---
 
 # j-pr
 
-## Overview
+## 概要
 
-Opens a PR in the **house style** for ad-hoc work — the same Japanese PR body as the full flow, but nothing else. Use this when you developed without `j-devflow` and just need a consistent PR.
+ad-hoc な作業に対して **house style** の PR を開く — フルフローと同じ日本語 PR 本文だけを整え、他には何もしない。`j-devflow` を使わずに開発し、一貫した PR だけが必要なときに使う。
 
-- **PR body** follows the shared recipe in `references/pr-body.md` — the single source of truth that `j-finish` also uses, so both paths stay identical.
-- **Commits** are already governed by CLAUDE.md § Git (English, Semantic/Conventional, Atomic) — j-pr does not touch them.
-- **No Joifup side-effects.** Status transition, approval task, and Discord belong to `j-finish` (the post-implementation finish). If this work has a Joifup Task and you want the full finish, use `j-finish` instead.
+- **PR 本文** は `references/pr-body.md` の共通レシピに従う — `j-finish` も使う唯一の正典であり、両経路の本文を一致させる。
+- **コミット** は CLAUDE.md の Git 節が既に規定している（英語・Semantic/Conventional・Atomic）— j-pr はコミットに触れない。
+- **Joifup への副作用はない。** ステータス遷移・承認タスク・Discord 通知は `j-finish`（実装完了後の終了処理）の役割。この作業に Joifup Task があり、フル終了処理を行いたい場合は `j-finish` を使う。
 
-## When to Use
+## 使う場面
 
-- Ad-hoc branch → PR, outside the j-devflow spine.
-- NOT for merging, and NOT when you want the status/approval/notify finish (that is `j-finish`).
+- ad-hoc なブランチ → PR。j-devflow の背骨の外側で使う。
+- マージには使わない。ステータス・承認・通知までの終了処理（それは `j-finish`）にも使わない。
 
-## Flow
+## 流れ
 
-1. **Pre-flight** (read-only): `git status --porcelain` (clean? stop and report if dirty), `git log <base>..HEAD --oneline`, `git diff --stat <base>...HEAD`. `<base>` = `$ARGUMENTS` or `main`.
-2. **Push:** `git push -u origin <branch>`.
-3. **Write the PR body** to a temp `.md` per `references/pr-body.md` (read it). Ground every section in the diff. If a Joifup Task/plan relates to this work, cite its id/path in `## 関連`; otherwise omit those lines.
-4. **Create the PR:** `gh pr create --base <base> --head <branch> --title "<type>: <日本語要約>" --body-file <tmp>.md` (add `--draft` if requested).
-5. **Attach UAT evidence, if the PR includes UI changes:** `python3 ~/.claude/skills/j-finish/scripts/uat_attach.py --evidence-dir .uat-evidence/<id> --pr <PR URL>` — posts the evidence comment and links it from the body's `## UAT 証跡` section (see `references/pr-body.md`). Requires `gh >= 2.99.0`. A change with no UI can skip this step.
-6. **Report** the PR URL.
+1. **Pre-flight**（読み取りのみ）: `git status --porcelain`（クリーンか？dirty なら停止して報告する）、`git log <base>..HEAD --oneline`、`git diff --stat <base>...HEAD`。`<base>` = `$ARGUMENTS` または `main`。
+2. **Push:** `git push -u origin <branch>`。
+3. **PR 本文を書く** — `references/pr-body.md`（読むこと）に従い、一時 `.md` ファイルに書く。各節は diff に根拠づける。この作業に関連する Joifup Task/plan があれば `## 関連` にその id/path を記載し、なければその行を省く。
+4. **PR を作成する:** `gh pr create --base <base> --head <branch> --title "<type>: <日本語要約>" --body-file <tmp>.md`（依頼されていれば `--draft` を付ける）。
+5. **PR に UI 変更が含まれる場合は UAT 証跡を添付する:** `python3 ~/.claude/skills/j-finish/scripts/uat_attach.py --evidence-dir .uat-evidence/<id> --pr <PR URL>` — 証跡コメントを投稿し、本文の `## UAT 証跡` 節（`references/pr-body.md` 参照）からリンクする。`gh >= 2.99.0` が必要。UI を含まない変更ではこの手順を省ける。
+6. PR の URL を**報告する**。
 
-## Common Mistakes
+## よくある失敗
 
-- Reaching for the old `/pr` skill — it links Notion, not Joifup. Use this recipe.
-- Writing the PR body in English, or the commits in Japanese — PR body is Japanese, commits are English (independent).
-- Doing status/approval/Discord here — that is `j-finish`.
+- 旧 `/pr` スキルに手を伸ばす — それは Notion にリンクし、Joifup ではない。このレシピを使う。
+- PR 本文を英語で書く、あるいはコミットを日本語で書く — PR 本文は日本語、コミットは英語（両者は独立している）。
+- ここでステータス・承認・Discord を行う — それは `j-finish` の役割。
