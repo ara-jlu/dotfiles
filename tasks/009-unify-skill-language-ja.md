@@ -2,7 +2,7 @@
 ID: TASK-684
 Project: devops
 created_at: '2026-09-11'
-status: In review
+status: Done
 title: 自作スキルの記述言語を日本語に統一する
 updated_at: '2026-09-11'
 ---
