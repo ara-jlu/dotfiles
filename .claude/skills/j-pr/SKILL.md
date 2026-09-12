@@ -1,6 +1,6 @@
 ---
 name: j-pr
-description: j-devflow の外で行った ad-hoc な開発の PR を開くときに使う — フルフローと同じ house-style の日本語 PR 本文だけを整え、フル終了処理（Joifup のステータス変更・承認タスク・Discord）は行わない。「PR だけ出したい」「house-style の PR 本文で開いて」「j-finish なしで PR を作って」に該当する場合に使う。
+description: j-devflow の外で行った ad-hoc な開発の PR を開くときに使う — フルフローと同じ house-style の日本語 PR 本文だけを整え、フル終了処理（Joifup のステータス変更・承認タスク・Discord）は行わない。「PR だけ出したい」「house-style の PR 本文で開いて」「j-finish なしで PR を作って」に該当する場合。
 user-invocable: true
 argument-hint: "[base-branch（既定: main）]"
 ---
@@ -22,7 +22,7 @@ ad-hoc な作業に対して **house-style** の PR を開く — フルフロ�
 
 ## 流れ
 
-1. **Pre-flight**（読み取りのみ）: `git status --porcelain`（clean か？ dirty なら停止して報告する）、`git log <base>..HEAD --oneline`、`git diff --stat <base>...HEAD`。`<base>` = `$ARGUMENTS` または `main`。
+1. **Pre-flight**（読み取りのみ）: `git status --porcelain`（clean か？dirty なら停止して報告する）、`git log <base>..HEAD --oneline`、`git diff --stat <base>...HEAD`。`<base>` = `$ARGUMENTS` または `main`。
 2. **Push:** `git push -u origin <branch>`。
 3. **PR 本文を書く** — `references/pr-body.md`（読むこと）に従い、一時 `.md` ファイルに出力する。各節を diff に根拠づける。この作業に関連する Joifup Task/plan があれば `## 関連` にその id/path を記載し、なければその行を省く。
 4. **PR を作成する:** `gh pr create --base <base> --head <branch> --title "<type>: <日本語要約>" --body-file <tmp>.md`（依頼されていれば `--draft` を付ける）。
