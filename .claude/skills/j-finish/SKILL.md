@@ -16,7 +16,7 @@ superpowers の背骨と外部世界の間の出力アダプタ。**承認前の
 ## 使う場面
 
 - 実装とレビューが完了し、ブランチを人間に渡せる状態になったとき。
-- マージ・Done への変更・ノート生成には使わない（それは `md2joifup` の役割）。
+- マージ・Done への変更には使わない。ノート生成にも使わない（それは `md2joifup` の役割）。
 
 ## 手順
 
@@ -34,7 +34,7 @@ python3 scripts/j_finish.py --task-file <tasks/NNN-*.md> \
 `--no-pr` / `--no-discord` で各部分を無効にできる。`--dry-run` はローカルのファイル編集は実行しつつ、実行するはずの git/gh/curl を出力する。
 
 4. **UAT 証跡を PR に載せる。** 承認者はコードを読まず、証跡を見て承認する。UI 変更を含む場合は `pnpm uat --task <id>` を回し、**`--uat-evidence-dir .uat-evidence/<id>` を渡す**。**証跡は commit しない** — 画像・動画は `gh pr comment --attach` で PR に添付され（joifup tasks/295 以降。`.uat-evidence/` は gitignore 済み）、PR 本文の `## UAT 証跡` には `summary.md` の PASS/FAIL 表（テキスト）と証跡コメントへのリンクだけが載る。受け入れ基準は `## 受け入れ基準` に inline 展開する。**UAT ユーザーアクション task は新規 file しない**（旧 light/heavy 分岐・md2joifup --db tasks による UAT task 発行は廃止）。UI を含まない変更では UAT を省略してよい。
-5. PR の URL を**報告**して引き渡す。UAT を実行した後、承認待ちであることをユーザーに伝える。
+5. PR の URL を**報告**して引き渡す。ユーザー自身が UAT を実行したうえで承認する段であることを伝える。
 
 ## スクリプトが保証すること
 
