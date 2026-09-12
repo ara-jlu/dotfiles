@@ -2,7 +2,7 @@
 name: j-task
 description: タスクやアイデアを Joifup に backlog として起票する、あるいは開発の入口として記録するときに使う。「あとで詳細を詰めるので今は記録だけしたい」「j-devflow を始める前の起票」に該当する場合。
 user-invocable: true
-argument-hint: "[タスク/アイデアの文（省略可）]"
+argument-hint: "[タスク/アイデアの文（任意）]"
 ---
 
 # j-task
