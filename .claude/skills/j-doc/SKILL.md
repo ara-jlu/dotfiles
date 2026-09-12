@@ -1,52 +1,52 @@
 ---
 name: j-doc
-description: Use when synthesizing existing logs/memos/notes into a coherent, third-party-readable document into Joifup — "まとめて" / "ドキュメント化して" style requests.
+description: 散在する log/memo/research を整理・統合し、第三者が読める1つの document として Joifup に記録するときに使う。「まとめて」「ドキュメント化して」に該当する場合。
 user-invocable: true
-argument-hint: "[note-ids... and/or task-id (optional)]"
+argument-hint: "[note-id...／task-id（任意）]"
 ---
 
 # j-doc
 
-## Overview
+## 概要
 
-Synthesizes scattered notes (logs/memos/research) into a structured **document** (tag `document`) in the repo's Joifup `notes/document/`. Not a copy-paste: it reorganizes source material logically for a reader who wasn't there. Standalone.
+散在するノート（log/memo/research）を統合し、構造化された **document**（タグ `document`）としてリポジトリ内 Joifup の `notes/document/` に記録する。コピペではない：そこに居なかった読者のために、元の材料をロジックで再構成する。単体で完結する。
 
-Persistence/frontmatter are delegated to `md2joifup`; this skill owns the **synthesis** and the **task link**.
+永続化・frontmatter は `md2joifup` に委譲する。このスキルが持つのは**統合**と**タスクへの紐付け**である。
 
-## Flow
+## 流れ
 
-1. **Gather sources:** note ids/paths in `$ARGUMENTS`, or the relevant `notes/**` entries for the topic. Read each; note its tag, chronology, and overlaps/contradictions.
-2. **Resolve the Task** (a document usually belongs to current work):
-   - Task id in `$ARGUMENTS` → `--task <id>`.
-   - Else branch `TASK-<n>` (`git rev-parse --abbrev-ref HEAD`) → `--task <n>`.
-   - Else, if it is a genuinely new topic → `--new-task "<title>" --new-task-slug <english-slug>`; otherwise omit (projects fallback).
-3. **Write the document** (see spec) to a temp `.md` (H1 = title).
-4. **Persist:** `python3 ~/.claude/skills/md2joifup/scripts/md2joifup.py <tmp>.md --type document <task-flag> --slug <english-slug>`.
-5. **Report** the `notes/document/…md` path and how many sources were merged.
+1. **ソースを集める：** `$ARGUMENTS` のノート id/path、あるいは該当トピックの `notes/**` エントリ。各ノートを読み、タグ・時系列・重複や矛盾を控える。
+2. **Task を解決する**（document は通常、進行中の作業に属する）：
+   - `$ARGUMENTS` に Task id があれば → `--task <id>`。
+   - なければブランチ `TASK-<n>`（`git rev-parse --abbrev-ref HEAD`）→ `--task <n>`。
+   - それも無く、かつ本当に新規のトピックなら → `--new-task "<title>" --new-task-slug <english-slug>`、そうでなければ省く（projects へフォールバック）。
+3. **document を書く**（規定を参照）。一時 `.md` に出力する（H1 = title）。
+4. **永続化する：** `python3 ~/.claude/skills/md2joifup/scripts/md2joifup.py <tmp>.md --type document <task-flag> --slug <english-slug>`。
+5. `notes/document/…md` のパスと、統合したソースの数を**報告する**。
 
-## Document content spec
+## ドキュメントの内容規定
 
-H1 title. Then:
+H1 title。続けて：
 
-- `### 概要` — a summary of the whole document.
-- Topic-based sections (not the sources' chronology) — reorganize logically.
-- Deduplicate; on contradiction prefer the newest information.
-- Aim for third-party completeness.
-- `### 参照元` — list the source notes. For live cross-refs, a Joifup `ref` fence may be used:
+- `### 概要` — ドキュメント全体の要約。
+- トピック単位の節（ソースの時系列ではない）— ロジックで再構成する。
+- 重複を除く。矛盾があれば最新の情報を優先する。
+- 第三者にとっての完結性を目指す。
+- `### 参照元` — ソースノートを列挙する。ライブな相互参照には Joifup の `ref` フェンスを使ってよい：
   ````
   ```joifup
   type: ref
   id: <note-id>
   ```
   ````
-- Standard GFM only (tables, code fences). No Notion-specific syntax.
+- 標準 GFM のみ（テーブル・コードフェンス）。Notion 固有の記法は使わない。
 
-## ECC knowledge
+## ECC の活用
 
-When the document concerns **code or architecture**, ground it in the real codebase before writing — dispatch `agentType: ecc:code-explorer` (trace the actual execution paths/structure) or `ecc:architect` (design rationale) so the document reflects the code as it is, not memory. For pure decision/process docs, skip.
+document が**コードやアーキテクチャ**に関わる場合、書く前に実際のコードベースに根拠を置く — `agentType: ecc:code-explorer`（実際の実行パス・構造を追う）または `ecc:architect`（設計の根拠）を dispatch し、記憶ではなく現状のコードを反映させる。純粋な意思決定・プロセス文書ではこの手順を省く。
 
-## Common Mistakes
+## よくある失敗
 
-- Pasting sources verbatim instead of reorganizing by topic.
-- Losing the source links — always keep `参照元`.
-- Hand-writing frontmatter — `md2joifup` owns it.
+- ソースをそのまま貼るだけで、トピック単位に再構成していない。
+- 参照元へのリンクを失う — `参照元` は必ず保持する。
+- frontmatter を手で書く — それは `md2joifup` の役割。
