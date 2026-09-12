@@ -1,50 +1,50 @@
 ---
 name: j-log
-description: Use when recording what was actually done in this session as a detailed, time-ordered work log into Joifup — at a session end or a natural stopping point on a task.
+description: セッションで実際に行った作業を、詳細で時系列の作業ログとして Joifup に記録するときに使う。「作業ログを残して」「今の作業を記録しておいて」に該当する場合。
 user-invocable: true
-argument-hint: "[task-id (optional)]"
+argument-hint: "[task-id（任意）]"
 ---
 
 # j-log
 
-## Overview
+## 概要
 
-Records the session's work as a **detailed, reproducible log** (tag `log`) into the repo's Joifup `notes/log/`. This is a *record*, not a summary — do not compress information away. Standalone: callable any time, inside or outside the dev flow.
+セッションの作業を**詳細で再現可能なログ**（タグ `log`）としてリポジトリ内 Joifup の `notes/log/` に記録する。これは*記録*であって要約ではない — 情報を圧縮して失ってはならない。単体で完結する：開発フローの内外を問わず、いつでも呼び出せる。
 
-Persistence and frontmatter are delegated to `md2joifup`; this skill's job is the **content** and the **task it attaches to**.
+永続化・frontmatter は `md2joifup` に委譲する。このスキルが持つのは**内容**と**紐付けるタスク**である。
 
-## Flow
+## 流れ
 
-1. **Resolve the Task** (this log almost always documents current work):
-   - If `$ARGUMENTS` names a Task id → link it (`--task <id>`).
-   - Else `git rev-parse --abbrev-ref HEAD`; if the branch has `TASK-<n>` → `--task <n>`.
-   - Else omit — `md2joifup` falls back to the sole `projects/` Project.
-2. **Generate the log** (see spec) to a temp `.md` file whose H1 is the title.
-3. **Persist:** `python3 ~/.claude/skills/md2joifup/scripts/md2joifup.py <tmp>.md --type log --task <id> --slug <english-slug>` (drop `--task` if unresolved). Prefer an English `--slug`; the H1 title stays Japanese.
-4. **Report** the resulting `notes/log/…md` path.
+1. **Task を解決する**（このログはほぼ常に現在の作業を記録する）：
+   - `$ARGUMENTS` に Task id があれば → 紐付ける（`--task <id>`）。
+   - なければ `git rev-parse --abbrev-ref HEAD`、ブランチに `TASK-<n>` があれば → `--task <n>`。
+   - それも無ければ省く — `md2joifup` は単一の `projects/` Project にフォールバックする。
+2. **ログを生成する**（規定を参照）— H1 が title の一時 `.md` ファイルに出力する。
+3. **永続化する：** `python3 ~/.claude/skills/md2joifup/scripts/md2joifup.py <tmp>.md --type log --task <id> --slug <english-slug>`（未解決なら `--task` を省く）。英語の `--slug` を優先する。H1 title は日本語のままにする。
+4. 結果の `notes/log/…md` のパスを**報告する**。
 
-## Log content spec
+## ログの内容規定
 
-Title H1: `<task/topic> 作業ログ [YYYY-MM-DD]`. Then:
+Title H1: `<task/topic> 作業ログ [YYYY-MM-DD]`。続けて：
 
-- `## 概要` — purpose, outcome, date (this section only may be brief).
-- `---`, then time-ordered steps as `### 1.`, `### 2.` … Structure flexibly; no fixed template.
-- **Record, do not summarize.** Include:
-  - commands run and their output (including errors)
-  - files read / places investigated and what was learned
-  - approaches tried (successes *and* failures) and results
-  - files changed with concrete diffs/explanations
-  - **decision rationale** — why this path, why alternatives were rejected
-  - problems hit, gotchas, and how they were resolved
-  - concrete values: settings, params, versions
-- Use standard GFM: tables for settings/comparisons, code fences for commands/config, blockquotes for warnings. No Notion-specific syntax.
+- `## 概要` — 目的・結果・日付（この節のみ簡潔でよい）。
+- `---`、続けて時系列の手順を `### 1.`、`### 2.` … として書く。構成は柔軟に、固定のテンプレートは無い。
+- **要約せず記録する。** 含めるもの：
+  - 実行したコマンドとその出力（エラーを含む）
+  - 読んだファイル・調べた場所と、そこで分かったこと
+  - 試したアプローチ（成功と失敗の両方）とその結果
+  - 変更したファイルと具体的な diff・説明
+  - **判断の根拠** — なぜこの方針か、なぜ他の選択肢を退けたか
+  - 遭遇した問題・落とし穴と、その解決方法
+  - 具体的な値：設定・パラメータ・バージョン
+- 標準 GFM を使う：設定・比較にはテーブル、コマンド・設定にはコードフェンス、警告には blockquote。Notion 固有の記法は使わない。
 
-## ECC knowledge
+## ECC の活用
 
-Write the decision rationale and gotchas at a grain that ECC **instincts** (continuous-learning) can learn from — an explicit "why" per non-obvious choice. The log complements the instincts the hooks capture automatically; make the reasoning legible, not just the actions.
+判断の根拠と落とし穴は、ECC の **instincts**（continuous-learning）が学習できる粒度で書く — 自明でない選択には明示的な「なぜ」を添える。ログはフックが自動で捉える instincts を補完する — 行動だけでなく、推論も読み取れる形にする。
 
-## Common Mistakes
+## よくある失敗
 
-- Summarizing instead of recording — information must be reconstructable later.
-- Notion rich-format syntax — Joifup notes are standard markdown (+ optional `joifup` fences).
-- Hand-writing frontmatter — let `md2joifup` own it.
+- 記録の代わりに要約する — 情報は後から再構成できなければならない。
+- Notion のリッチ記法 — Joifup ノートは標準 markdown（＋任意で `joifup` フェンス）。
+- frontmatter を手で書く — それは `md2joifup` の役割。
