@@ -1,50 +1,50 @@
 ---
 name: j-task
-description: Use when capturing a task or idea into Joifup as a backlog item or as the entry point to development — quickly recording work to detail later, or before starting j-devflow.
+description: タスクやアイデアを Joifup に backlog として起票する、あるいは開発の入口として記録するときに使う。「あとで詳細を詰めるので今は記録だけしたい」「j-devflow を始める前の起票」に該当する場合。
 user-invocable: true
-argument-hint: "[task/idea text (optional)]"
+argument-hint: "[タスク/アイデアの文（省略可）]"
 ---
 
 # j-task
 
 ## Overview
 
-Captures a Joifup **Task** (status `Not started`) into `tasks/`. Standalone and lightweight: for stashing a found issue as backlog, or as the entry to `j-devflow`. Detailed requirements are deferred to each task's brainstorming — this only records title + an overview body. Persistence is delegated to `md2joifup --db tasks`.
+Joifup の **Task**（`Not started`）を `tasks/` に記録する。単体で完結する軽量な操作で、見つけた課題を backlog として一時置きする場合や、`j-devflow` の入口として使う。詳細な要件は各タスクの brainstorming に委ね、ここでは title と概要のみを記録する。永続化は `md2joifup --db tasks` に委譲する。
 
 ## When to Use
 
-- A found issue/idea should become a backlog task, or you are about to start work and need the task record.
-- NOT for branching/design/implementation (that is `j-devflow`), and NOT for selecting an existing task (pass its id to `j-devflow`).
+- 見つけた課題やアイデアを backlog タスクにするとき、あるいは作業を始める前にタスク記録が必要なとき。
+- ブランチ作成・設計・実装（それは `j-devflow`）には使わない。既存タスクの選択（id を `j-devflow` に渡す）にも使わない。
 
 ## Flow
 
-1. **Assess granularity.** A task = one "requirements-refinement unit" (one j-devflow cycle: brainstorming→plan→implement).
-   - Fits one unit → **single task** (create immediately).
-   - Too large / multiple independent pieces → **coarse-decompose**: propose a parent (umbrella) + child titles, get quick confirmation, then create.
-2. **Generate content:** a Japanese `title` and a body per **Body** below. Derive an English `--slug`.
-3. **Resolve Project:** pass `--project` if known; else `md2joifup` falls back to the sole `projects/` entry.
-4. **Create:**
-   - Single: `python3 ~/.claude/skills/md2joifup/scripts/md2joifup.py <tmp>.md --db tasks --status "Not started" --slug <en-slug>`.
-   - Decomposed: create the parent first, capture its filename id, then each child with `--parent <parent-id>` (write `parent` on children only; the daemon is expected to sync `children` — Joifup Plan 079).
-5. **Report** the created task path(s). No branch, no implementation.
+1. **粒度を見極める。** タスク = 1つの「要件精緻化ユニット」（j-devflow の1サイクル：brainstorming→plan→implement）。
+   - 1ユニットに収まる → **単一タスク**（即時作成）。
+   - 大きすぎる、または独立した複数の要素がある → **粗く分解する**：親（umbrella）と子タイトルを提案し、素早く確認を得てから作成する。
+2. **内容を生成する：** 日本語の `title` と、下記の**本文**に従った本文。`--slug` は英語で導出する。
+3. **Project を解決する：** 分かっていれば `--project` を渡す。無ければ `md2joifup` が `projects/` の単一エントリにフォールバックする。
+4. **作成する：**
+   - 単体：`python3 ~/.claude/skills/md2joifup/scripts/md2joifup.py <tmp>.md --db tasks --status "Not started" --slug <en-slug>`。
+   - 分解：先に親を作成して filename id を控え、各子タスクを `--parent <parent-id>` 付きで作成する（`parent` は子側にのみ書く。`children` の同期は daemon が行う想定 — Joifup Plan 079）。
+5. **報告する** 作成したタスクのパス。ブランチも実装も行わない。
 
 ## Body
 
-Overview-level only. Detailed requirements belong to the task's brainstorming.
+概要レベルのみ。詳細な要件はタスクの brainstorming に属する。
 
-- **Sections:** `# <title>` (H1 — `md2joifup` takes the task title from it; without it the run dies) + `## 概要` (required) + `## 背景` (only when "why now" is not self-evident). No other `##` sections.
-- **Size guideline:** 概要 3-5 lines, 背景 3 lines or fewer, whole file around 1,500 B. A guideline, not a cap — but when in doubt, cut.
-- **Never write:** analysis, research findings, quotes, trade-off comparisons, implementation approach, acceptance criteria. All of it belongs to brainstorming and the plan.
-- **Do not match an existing task's granularity.** A referenced task written in detail is not the standard — **this rule wins.**
+- **節構成：** `# <title>`（H1 — `md2joifup` がここからタスクタイトルを取得する。無いと実行が落ちる）＋ `## 概要`（必須）＋ `## 背景`（「なぜ今か」が自明でないときのみ）。他の `##` 節は置かない。
+- **サイズの目安：** 概要は3〜5行、背景は3行以内、ファイル全体でおよそ1,500B。目安であって上限ではない — 迷ったら削る。
+- **絶対に書かないもの：** 分析、調査結果、引用、トレードオフの比較、実装方針、受け入れ基準。これらはすべて brainstorming と plan に属する。
+- **既存タスクの粒度に合わせない。** 詳細に書かれた参照先タスクは基準ではない — **このルールが勝つ。**
 
 ## Identifier
 
-The task's **filename id** (`NNN-slug`) is the single operational identifier — relations, branch, and `--task`/`--parent` all use it. The daemon's `ID: TASK-N` is a **separate** internal auto-increment that does **NOT** match the filename number (they diverge — e.g. file `085-…` vs `ID: TASK-48`); never use `ID` for relations, the branch, or `--task`. Branch (later, in j-devflow) = `feature/<filename-id>`.
+タスクの**filename id**（`NNN-slug`）が唯一の運用上の識別子であり、リレーション・ブランチ・`--task`/`--parent` はすべてこれを使う。daemon の `ID: TASK-N` は**別物**の内部連番で、filename の番号とは**一致しない**（食い違う — 例：file `085-…` vs `ID: TASK-48`）。リレーション・ブランチ・`--task` に `ID` を使ってはならない。ブランチ（後で j-devflow 内で）＝ `feature/<filename-id>`。
 
 ## Common Mistakes
 
-- Writing frontmatter or `ID` by hand — `md2joifup` owns it (daemon assigns `ID`).
-- Degraded slug from a Japanese title — pass an English `--slug`.
-- Analysis / quotes / trade-offs in the body — the implementer gets bound to the filer's reading of the problem, and a misunderstanding rides along.
-- Pulled toward a referenced task's granularity — the Body rules win.
-- Hand-writing `children` back-refs — write `parent` on children only.
+- frontmatter や `ID` を手で書く — `md2joifup` が管理する（`ID` は daemon が割り振る）。
+- 日本語タイトルから壊れた slug が生成される — 英語の `--slug` を渡す。
+- 本文に分析・引用・トレードオフを書く — 実装者が起票者の問題理解に縛られ、誤解までそのまま引き継がれる。
+- 参照先タスクの粒度に引き寄せられる — 本文の規則が勝つ。
+- `children` の逆参照を手で書く — 子には `parent` のみを書く。
