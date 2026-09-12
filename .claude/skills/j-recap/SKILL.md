@@ -1,19 +1,19 @@
 ---
 name: j-recap
-description: Use when you want to review or share what you got done over a period (default today) — a 日報 / 振り返り / 作業まとめ organized by project and task. Triggers on "今日やったことまとめて" / "作業まとめ" / "振り返り" style requests, whether for your own check or to share with others.
+description: ある期間（既定は今日）にやったことを確認・共有したいときに使う。プロジェクト × タスク単位で日報／振り返り／作業まとめとしてまとめる。「今日やったことまとめて」「作業まとめ」「振り返り」に該当する場合。
 user-invocable: true
 argument-hint: "[期間 (省略時=今日)] [プロジェクト (任意)]"
 ---
 
 # j-recap
 
-## Overview
+## 概要
 
 その日（既定）または指定期間の作業を、**プロジェクト × タスク単位**でまとめる。主用途は自分の**確認・共有**なので、プロジェクト名・タスク番号・ステータスは**そのまま出す**（外部公開向けにぼかしたい時だけ末尾のサニタイズを使う）。
 
 **Core principle — 記録だけで完了判定しない。** 会話記録は「何を話したか」であって「何が完了したか」ではない。記録で全体像を拾い、**git / PR の実体で裏取りしてステータスを確定する**。さらに**正味（net）の成果で書く**：期間内の個々のコミットの途中経過（後の変更で相殺される増減）は拾わず、期間の始点→終点で実際に何が変わったかを語る。
 
-## Flow
+## 流れ
 
 1. **対象を決める** — `$ARGUMENTS` で上書き、省略時は**今日**（`currentDate` 基準、時刻取得 API は使わない）。`YYYY-MM-DD` / `this-week` / `last-week` / `A..B` の範囲を受ける。プロジェクト名があればそのリポジトリに絞る（省略時は横断）。
 2. **拾う（breadth）** — `agentType: episodic-memory:search-conversations` サブエージェントに、対象期間のセッションを**プロジェクト／タスク単位で構造化**して報告させる（憶測禁止・記録ベースの事実のみ）。→ タスク候補を得る。
@@ -62,7 +62,7 @@ argument-hint: "[期間 (省略時=今日)] [プロジェクト (任意)]"
   - その日の作業をまとめるスキルを作った。今 PR を出してレビュー中
 ```
 
-## Common Mistakes
+## よくある失敗
 
 - **記録だけで完了判定する** — このスキルの存在理由。必ず git / PR で裏取りする。
 - **frontmatter を読まず TASK-N・status・title を落とす** — git のコミットメッセージだけからタスクを組み立てると、daemon `ID: TASK-N` の併記漏れ・古い/誤った title・status のズレが起きる。番号が出たら**必ず `tasks/<番号>-*.md` を開いて**確定する（今回の実失敗）。
