@@ -7,16 +7,16 @@ argument-hint: "[タスク/アイデアの文（省略可）]"
 
 # j-task
 
-## Overview
+## 概要
 
 Joifup の **Task**（`Not started`）を `tasks/` に記録する。単体で完結する軽量な操作で、見つけた課題を backlog として一時置きする場合や、`j-devflow` の入口として使う。詳細な要件は各タスクの brainstorming に委ね、ここでは title と概要のみを記録する。永続化は `md2joifup --db tasks` に委譲する。
 
-## When to Use
+## 使う場面
 
 - 見つけた課題やアイデアを backlog タスクにするとき、あるいは作業を始める前にタスク記録が必要なとき。
 - ブランチ作成・設計・実装（それは `j-devflow`）には使わない。既存タスクの選択（id を `j-devflow` に渡す）にも使わない。
 
-## Flow
+## 流れ
 
 1. **粒度を見極める。** タスク = 1つの「要件精緻化ユニット」（j-devflow の1サイクル：brainstorming→plan→implement）。
    - 1ユニットに収まる → **単一タスク**（即時作成）。
@@ -28,7 +28,7 @@ Joifup の **Task**（`Not started`）を `tasks/` に記録する。単体で�
    - 分解：先に親を作成して filename id を控え、各子タスクを `--parent <parent-id>` 付きで作成する（`parent` は子側にのみ書く。`children` の同期は daemon が行う想定 — Joifup Plan 079）。
 5. **報告する** 作成したタスクのパス。ブランチも実装も行わない。
 
-## Body
+## 本文
 
 概要レベルのみ。詳細な要件はタスクの brainstorming に属する。
 
@@ -37,11 +37,11 @@ Joifup の **Task**（`Not started`）を `tasks/` に記録する。単体で�
 - **絶対に書かないもの：** 分析、調査結果、引用、トレードオフの比較、実装方針、受け入れ基準。これらはすべて brainstorming と plan に属する。
 - **既存タスクの粒度に合わせない。** 詳細に書かれた参照先タスクは基準ではない — **このルールが勝つ。**
 
-## Identifier
+## 識別子
 
 タスクの**filename id**（`NNN-slug`）が唯一の運用上の識別子であり、リレーション・ブランチ・`--task`/`--parent` はすべてこれを使う。daemon の `ID: TASK-N` は**別物**の内部連番で、filename の番号とは**一致しない**（食い違う — 例：file `085-…` vs `ID: TASK-48`）。リレーション・ブランチ・`--task` に `ID` を使ってはならない。ブランチ（後で j-devflow 内で）＝ `feature/<filename-id>`。
 
-## Common Mistakes
+## よくある失敗
 
 - frontmatter や `ID` を手で書く — `md2joifup` が管理する（`ID` は daemon が割り振る）。
 - 日本語タイトルから壊れた slug が生成される — 英語の `--slug` を渡す。
