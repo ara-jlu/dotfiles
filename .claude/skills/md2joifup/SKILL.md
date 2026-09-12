@@ -32,7 +32,7 @@ python3 scripts/md2joifup.py <source.md> --type <tag> \
 - `--task` — 既存の Task をその**filename id**（`NNN-slug`、パスではなく、daemon の `ID: TASK-N` **でもない** — これらは別物で一致しない）で紐づける。ブランチの判定は呼び出し側の責務である：ブランチは `feature/<filename-id>` なので、`feature/` の接頭辞を外して id を取り出し、ここに渡す。**md2joifup は `--task`（および `--parent`）が実在する `tasks/` ファイルに解決できるかを検証する**。できなければエラーにする — daemon の `ID` や typo は、黙って note の番号を誤るのではなく、明示的にエラーで落ちる。
 - `--new-task "TITLE"` — 新しい house-style の Task を作成して紐づける。note がそれ自身の task を生む場合に使う（例：新しい調査）。非 ASCII の title と併せて `--new-task-slug`（英語）を渡す。渡さなければ task のファイル名 slug が劣化する。
 - `--project` — 無ければ Task から継承し、それも無ければ `projects/` の単一の project にフォールバックする。
-- `--slug` — 上書き、デフォルトは title を slug 化したもの（**非 ASCII の title には英語の slug を渡す**。渡さなければ type に劣化する）、それも無ければ type。
+- `--slug` — 上書き。デフォルトは title を slug 化したもの（**非 ASCII の title には英語の slug を渡す**。渡さなければ type に劣化する）、それも無ければ type。
 - `--keep-source` — move ではなく copy にする（デフォルト：move / in-place）。
 
 配置先のパスを出力する。対応関係：superpowers の spec → `document`、plan → `plan`。
@@ -41,7 +41,7 @@ python3 scripts/md2joifup.py <source.md> --type <tag> \
 
 - H1 を抽出し、**frontmatter の `title` に反映する**。H1 自体は本文に残る。
 - superpowers の agentic-worker の scaffolding を取り除く（手書きの note では no-op）。
-- **house-style の frontmatter：** flow array（`tag: [log]`）、単一の relation → scalar、2 個以上 → flow array、`created_at`/`updated_at` が無ければ（今日の日付で）スタンプする。
+- **house-style の frontmatter：** flow array（`tag: [log]`）、単一の relation → scalar、2 個以上 → flow array。`created_at`/`updated_at` が無ければ（今日の日付で）スタンプする。
 - **Project は常に解決される：** 明示指定 → 新規/紐づけた Task の Project → `projects/` の単一エントリ。
 - **ファイル名** `<NNN>-<slug>.md`：`NNN` = 紐づけた task の id 番号、無ければ `notes/<type>/` の次の番号。
 - 自動採番の `ID` だけを daemon に委ねる。元から存在した source の frontmatter キーは保持する。
