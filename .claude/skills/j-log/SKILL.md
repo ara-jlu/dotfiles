@@ -17,7 +17,7 @@ argument-hint: "[task-id（任意）]"
 
 1. **Task を解決する**（このログはほぼ常に現在の作業を記録する）：
    - `$ARGUMENTS` に Task id があれば → 紐付ける（`--task <id>`）。
-   - なければ `git rev-parse --abbrev-ref HEAD`。ブランチに `TASK-<n>` があれば → `--task <n>`。
+   - なければ `git rev-parse --abbrev-ref HEAD`、ブランチに `TASK-<n>` があれば → `--task <n>`。
    - それも無ければ省く — `md2joifup` は単一の `projects/` Project にフォールバックする。
 2. **ログを生成する**（規定を参照）— H1 が title の一時 `.md` ファイルに出力する。
 3. **永続化する：** `python3 ~/.claude/skills/md2joifup/scripts/md2joifup.py <tmp>.md --type log --task <id> --slug <english-slug>`（未解決なら `--task` を省く）。英語の `--slug` を優先する。H1 title は日本語のままにする。
