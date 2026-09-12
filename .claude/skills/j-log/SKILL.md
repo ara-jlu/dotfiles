@@ -9,7 +9,7 @@ argument-hint: "[task-id（任意）]"
 
 ## 概要
 
-セッションの作業を**詳細で再現可能なログ**（タグ `log`）としてリポジトリ内 Joifup の `notes/log/` に記録する。これは*記録*であって要約ではない — 情報を圧縮して失ってはならない。単体で完結する：dev flow の内外を問わず、いつでも呼び出せる。
+セッションの作業を**詳細で再現可能なログ**（タグ `log`）としてリポジトリ内 Joifup の `notes/log/` に記録する。これは*記録*であって要約ではない — 情報を圧縮して失ってはならない。単体で完結する：開発フローの内外を問わず、いつでも呼び出せる。
 
 永続化・frontmatter は `md2joifup` に委譲する。このスキルが持つのは**内容**と**紐付けるタスク**である。
 
@@ -17,11 +17,11 @@ argument-hint: "[task-id（任意）]"
 
 1. **Task を解決する**（このログはほぼ常に現在の作業を記録する）：
    - `$ARGUMENTS` に Task id があれば → 紐付ける（`--task <id>`）。
-   - なければ `git rev-parse --abbrev-ref HEAD`；ブランチに `TASK-<n>` があれば → `--task <n>`。
+   - なければ `git rev-parse --abbrev-ref HEAD`。ブランチに `TASK-<n>` があれば → `--task <n>`。
    - それも無ければ省く — `md2joifup` は単一の `projects/` Project にフォールバックする。
 2. **ログを生成する**（規定を参照）— H1 が title の一時 `.md` ファイルに出力する。
-3. **永続化する：** `python3 ~/.claude/skills/md2joifup/scripts/md2joifup.py <tmp>.md --type log --task <id> --slug <english-slug>`（未解決なら `--task` を省く）。英語の `--slug` を優先する；H1 title は日本語のままにする。
-4. **報告する**：結果として得られた `notes/log/…md` のパス。
+3. **永続化する：** `python3 ~/.claude/skills/md2joifup/scripts/md2joifup.py <tmp>.md --type log --task <id> --slug <english-slug>`（未解決なら `--task` を省く）。英語の `--slug` を優先する。H1 title は日本語のままにする。
+4. 結果の `notes/log/…md` のパスを**報告する**。
 
 ## ログの内容規定
 
@@ -45,6 +45,6 @@ Title H1: `<task/topic> 作業ログ [YYYY-MM-DD]`。続けて：
 
 ## よくある失敗
 
-- 記録の代わりに要約してしまう — 情報は後から再構成できなければならない。
+- 記録の代わりに要約する — 情報は後から再構成できなければならない。
 - Notion のリッチ記法 — Joifup ノートは標準 markdown（＋任意で `joifup` フェンス）。
 - frontmatter を手で書く — それは `md2joifup` の役割。
