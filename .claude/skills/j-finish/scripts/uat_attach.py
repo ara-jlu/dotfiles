@@ -8,8 +8,11 @@ joifup tasks/295 以降、UAT 証跡 (画像・動画) は repo に commit せ�
   - --attach は `<file>#<alt text>` 形式。alt は証跡行の `name`。
     ファイル名は ASCII slug なので日本語の説明を運べない (295 D5)
   - 1 コマンドあたり 50 ファイルまで
-  - 画像はコメント本文から `![name](./file)` で参照する
-    (gh がアップロード先 URL に書き換え、インライン表示される)
+  - 画像はコメント本文から `![name](<evidence_dir>/<file>)` で参照する
+    (gh がアップロード先 URL に書き換え、インライン表示される)。参照パスは
+    `--attach` に渡すパスと**完全に一致**していなければならない —— ずれると
+    gh は「参照されていない添付」として末尾に積み、本文側の参照は壊れた
+    リンクのまま残る
   - 動画は本文から参照しない。gh が末尾に裸 URL として追記し、GitHub が
     プレイヤー化する。`![]()` で参照すると画像扱いになり再生できない
 
@@ -92,18 +95,30 @@ def _escape_alt(name):
     return str(name or "").replace("[", "\\[").replace("]", "\\]")
 
 
-def render_comment(task, shots):
+def render_comment(task, shots, evidence_dir):
     """証跡コメントの本文を組み立てる。
 
     画像は参照して説明付きでインライン表示させ、動画は参照せず gh の追記に
     任せる (docstring 冒頭の契約)。
+
+    **本文の参照パスは `--attach` に渡すパスと 1 バイト違わず同じにする。**
+    gh は「本文が添付ファイルを参照していれば、その参照をアップロード先の
+    URL へ書き換える。参照していない添付は末尾に追記する」という規則で
+    動く (`gh pr comment --help`)。以前ここは `./<file>` を書いていたが
+    `attach_args` は `<evidence_dir>/<file>` を渡しており、gh が同じ
+    ファイルだと対応付けられなかった。結果、本文の 8 枚は相対パスのまま
+    壊れたリンクとして残り、実物の 8 枚がキャプション無しで末尾に積まれる
+    ——「画像が二重に出ているが上半分が壊れている」コメントになる
+    (joifup PR #208 で実際に起きた)。パスの組み立てが 2 箇所にあると
+    また分岐するので、`attach_args` と同じ式をここでも使う。
     """
     images = [s for s in shots if not is_video(s.get("file"))]
     videos = [s for s in shots if is_video(s.get("file"))]
+    base = evidence_dir.rstrip("/")
     lines = [f"## UAT 証跡 — {task}", ""]
     for i, s in enumerate(images, 1):
         lines += [f"**{i}. {s.get('name', '')}**", "",
-                  f"![{_escape_alt(s.get('name'))}](./{s.get('file')})", ""]
+                  f"![{_escape_alt(s.get('name'))}]({base}/{s.get('file')})", ""]
     if videos:
         lines += ["### 動画", "",
                   "プレイヤーはこのコメントの末尾に表示されます。", ""]
@@ -388,7 +403,7 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
             " 分割ではなく shot() を減らしてください")
     validate_shots(evidence_dir, shots)
 
-    body = render_comment(task, shots)
+    body = render_comment(task, shots, evidence_dir)
     args = attach_args(evidence_dir, shots)
     if dry_run:
         print(f"[dry-run] gh pr comment {pr} --body-file <tmp> {' '.join(args)}")

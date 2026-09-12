@@ -70,17 +70,43 @@ class TestRenderComment(unittest.TestCase):
         ]
 
     def test_images_are_referenced_inline_with_their_name_as_alt(self):
-        body = ua.render_comment("005", self.shots)
-        self.assertIn("![初期表示](./shot-01-shot.png)", body)
+        body = ua.render_comment("005", self.shots, ".uat-evidence/005")
+        self.assertIn("![初期表示](.uat-evidence/005/shot-01-shot.png)", body)
 
     def test_videos_are_not_referenced_so_gh_appends_a_player(self):
-        body = ua.render_comment("005", self.shots)
-        self.assertNotIn("(./clip-01-drag.webm)", body)
+        body = ua.render_comment("005", self.shots, ".uat-evidence/005")
+        self.assertNotIn("clip-01-drag.webm)", body)
         self.assertIn("ドラッグ中", body)
 
     def test_escapes_brackets_in_the_alt_text(self):
-        body = ua.render_comment("005", [{"name": "[重要] 表示", "file": "a.png"}])
-        self.assertIn("![\\[重要\\] 表示](./a.png)", body)
+        body = ua.render_comment("005", [{"name": "[重要] 表示", "file": "a.png"}],
+                                 ".uat-evidence/005")
+        self.assertIn("![\\[重要\\] 表示](.uat-evidence/005/a.png)", body)
+
+    def test_body_reference_path_matches_the_attach_path_exactly(self):
+        """gh が本文の参照とアップロードした添付を対応付ける条件を固定する。
+
+        gh は「本文が添付ファイルを参照していればその参照を URL へ書き換え、
+        参照していない添付は末尾に追記する」で動く。両者のパスが 1 文字でも
+        違うと、本文の参照は壊れたまま残り実物が末尾に積まれる ——
+        「画像が二重に出て上半分が壊れている」コメントになる
+        (joifup PR #208)。`./` を書いていた頃はこれが起きていた。
+        """
+        evidence_dir = ".uat-evidence/005"
+        images = [s for s in self.shots if not ua.is_video(s["file"])]
+        body = ua.render_comment("005", self.shots, evidence_dir)
+        args = ua.attach_args(evidence_dir, images)
+        attached_paths = [a.split("#", 1)[0]
+                          for a in args if a != "--attach"]
+        self.assertTrue(attached_paths)
+        for path in attached_paths:
+            self.assertIn(f"]({path})", body)
+
+    def test_trailing_slash_on_the_evidence_dir_does_not_double_up(self):
+        body = ua.render_comment("005", [{"name": "初期表示", "file": "a.png"}],
+                                 ".uat-evidence/005/")
+        self.assertIn("](.uat-evidence/005/a.png)", body)
+        self.assertNotIn("//a.png", body)
 
 
 class TestAttachArgs(unittest.TestCase):
