@@ -1,6 +1,11 @@
+---
+paths:
+  - ".claude/skills/**/*.md"
+---
+
 # 自作スキルの記述言語ルール
 
-`CLAUDE.md` § 言語 の「自作スキルの SKILL.md: 日本語」の細則。**自作スキル（`.claude/skills/j-*` と `md2joifup`）を新規作成・改訂するときに読む。** superpowers / ECC のスキルは無改変で使うので対象外。
+`CLAUDE.md` § 言語 の「自作スキルの SKILL.md: 日本語」の細則。**自作スキル（`.claude/skills/j-*` と `md2joifup`）を新規作成・改訂するときに適用する。** superpowers / ECC のスキルは無改変で使うので対象外（それらはこのリポジトリの `.claude/skills/` 配下に無い）。
 
 以下はすべて `tasks/009` で9ファイルを日本語化した際に、実際の欠陥から確定したものである。推測ではない。
 
