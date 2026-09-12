@@ -17,6 +17,7 @@ Tasks:
 - 005-align-skills-with-pr-attached-uat-evidence
 - 006-harness-principles-research
 - 007-stop-duplicating-rationale
+- 009-unify-skill-language-ja
 
 ---
 # DevOps
