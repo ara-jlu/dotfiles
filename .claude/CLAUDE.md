@@ -45,7 +45,7 @@
 - **PR本文: 日本語**（diff から生成。commit 言語と独立）
 - ブランチ名・コード: 英語
 - 原則: **機械が扱う面 = 英語、人が読む面 = 日本語**（人が読む面 = PR本文・Discord・Joifup の doc/plan/log 本文・brainstorm 対話）
-- **自作スキルの SKILL.md: 日本語**（`.claude/skills/j-*` と `md2joifup`。本文・`##` 見出し・`description`・`argument-hint`）。機械が実行し**人が保守する**面なので、保守する側の言語に合わせる。英語のまま残すのは `name`・frontmatter のキー名・コマンド／パス／フラグ・他スキル名と `agentType`・status 値とタグ名・コミットメッセージ例・コードフェンスの中身。superpowers / ECC のスキルは無改変なので対象外。
+- **自作スキルの SKILL.md: 日本語**（`.claude/skills/j-*` と `md2joifup`。本文・`##`/`###` 見出し・`description`・`argument-hint`）。機械が実行し**人が保守する**面なので、保守する側の言語に合わせる。英語のまま残すのは `name`・frontmatter のキー名・コマンド／パス／フラグ・他スキル名と `agentType`・status 値とタグ名・コミットメッセージ例・コードフェンスの中身・原語で定着した技術識別子（`frontmatter`・`diff`・`worktree` 等）。superpowers / ECC のスキルは無改変なので対象外。**自作スキルを書く・直すときは `.claude/skill-language.md` を読む**（借用語の判断基準・語順・句読点・見出しの語彙表・`description` の規定。すべて実際の欠陥から確定したもの）。
 
 ## Git
 
