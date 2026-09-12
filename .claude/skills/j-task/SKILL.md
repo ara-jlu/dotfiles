@@ -39,7 +39,7 @@ Joifup の **Task**（status `Not started`）を `tasks/` に記録する。単�
 
 ## 識別子
 
-タスクの**filename id**（`NNN-slug`）が唯一の運用上の識別子であり、リレーション・ブランチ・`--task`/`--parent` はすべてこれを使う。daemon の `ID: TASK-N` は**別物**の内部連番で、filename の番号とは**一致しない**（食い違う — 例：file `085-…` vs `ID: TASK-48`）。リレーション・ブランチ・`--task` に `ID` を使ってはならない。ブランチ（後で j-devflow 内で）＝ `feature/<filename-id>`。
+タスクの**filename id**（`NNN-slug`）が唯一の運用上の識別子であり、リレーション・ブランチ・`--task`/`--parent` はすべてこれを使う。daemon の `ID: TASK-N` は**別物**の内部連番で、filename の番号とは**一致しない**（食い違う — 例：file `085-…` vs `ID: TASK-48`）。リレーション・ブランチ・`--task` に `ID` を使ってはならない。ブランチ（後で j-devflow 内で）＝ `feature-<filename-id>`。
 
 ## よくある失敗
 

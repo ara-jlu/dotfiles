@@ -29,7 +29,7 @@ python3 scripts/md2joifup.py <source.md> --type <tag> \
 — house-style の frontmatter（title/status/Project/parent、timestamps、ID なし）で `tasks/NNN-slug.md` を作成する。`--status` は tasks schema に対して検証される。`--db notes`（既定）は変わらない。
 
 - `--type` — Notes の**content タグ**（`plan`、`document`、`log`、`research`、`memo`）。schema のタグ選択肢に対して検証される。
-- `--task` — 既存の Task をその**filename id**（`NNN-slug`、パスではなく、daemon の `ID: TASK-N` **でもない** — これらは別物で一致しない）で紐づける。ブランチの判定は呼び出し側の責務である：ブランチは `feature/<filename-id>` なので、`feature/` の接頭辞を外して id を取り出し、ここに渡す。**md2joifup は `--task`（および `--parent`）が実在する `tasks/` ファイルに解決できるかを検証する**。できなければエラーにする — daemon の `ID` や typo は、黙って note の番号を誤るのではなく、明示的にエラーで落ちる。
+- `--task` — 既存の Task をその**filename id**（`NNN-slug`、パスではなく、daemon の `ID: TASK-N` **でもない** — これらは別物で一致しない）で紐づける。ブランチの判定は呼び出し側の責務である：ブランチは `feature-<filename-id>` なので、`feature-` の接頭辞を外して id を取り出し、ここに渡す。**md2joifup は `--task`（および `--parent`）が実在する `tasks/` ファイルに解決できるかを検証する**。できなければエラーにする — daemon の `ID` や typo は、黙って note の番号を誤るのではなく、明示的にエラーで落ちる。
 - `--new-task "TITLE"` — 新しい house-style の Task を作成して紐づける。note がそれ自身の task を生む場合に使う（例：新しい調査）。非 ASCII の title と併せて `--new-task-slug`（英語）を渡す。渡さなければ task のファイル名 slug が劣化する。
 - `--project` — 無ければ Task から継承し、それも無ければ `projects/` の単一の project にフォールバックする。
 - `--slug` — 上書き。既定は title を slug 化したもの（**非 ASCII の title には英語の slug を渡す**。渡さなければ type に劣化する）、それも無ければ type。
