@@ -1,22 +1,22 @@
 ---
 name: md2joifup
-description: Use when a markdown file must become a Joifup Notes-DB entry — a superpowers plan/spec after brainstorming/writing-plans, or a hand-authored doc/log/research note that belongs in the repo's notes/ tree with correct frontmatter.
+description: Markdown ファイルを Joifup の Notes-DB エントリにする必要があるときに使う。brainstorming/writing-plans 後の superpowers plan/spec、または repo の notes/ 配下に正しい frontmatter で入るべき手書きの doc/log/research note に該当する場合。
 ---
 
 # md2joifup
 
-## Overview
+## 概要
 
-The persistence primitive for the Joifup memory layer: it turns a markdown file into a house-style **Notes-DB row** (frontmatter + body) filed under `notes/<type>/`, in place. It backs both the dev flow (`j-devflow` persists superpowers plans/specs) and the standalone note skills (`j-doc` / `j-log` / `j-research`).
+Joifup のメモリ層の永続化プリミティブである：markdown ファイルを house-style の **Notes-DB row**（frontmatter + 本文）に変換し、`notes/<type>/` 配下にその場で配置する。開発フロー（`j-devflow` が superpowers の plan/spec を永続化する）と、単体の note 系スキル（`j-doc` / `j-log` / `j-research`）の両方を支えている。
 
-It reads the **authoritative Notes schema** for tag/relation/title conventions — never hardcodes them.
+tag/relation/title の規約については**正典の Notes schema**を読む — 絶対にハードコードしない。
 
-## When to Use
+## 使う場面
 
-- Persisting a `brainstorming`/`writing-plans` artifact, or a hand-authored doc/log/research note, into Joifup.
-- NOT for reading Joifup, editing schema (Joifup owns `schema.yaml`), or human-facing output (that is `j-finish`).
+- `brainstorming`/`writing-plans` の成果物、または手書きの doc/log/research note を Joifup に永続化するとき。
+- Joifup を読むこと、schema を編集すること（`schema.yaml` は Joifup が所有する）、人向けの出力（それは `j-finish` の役割）には使わない。
 
-## Usage
+## 使い方
 
 ```bash
 python3 scripts/md2joifup.py <source.md> --type <tag> \
@@ -24,31 +24,31 @@ python3 scripts/md2joifup.py <source.md> --type <tag> \
   [--notes-dir DIR] [--tasks-dir DIR] [--slug SLUG] [--keep-source]
 ```
 
-**Task creation (tasks db):**
+**Task 作成（tasks db）：**
 `python3 scripts/md2joifup.py <body.md> --db tasks [--status "Not started"] [--parent ID] [--project ID] [--slug EN-SLUG]`
-— creates `tasks/NNN-slug.md` with house-style frontmatter (title/status/Project/parent, timestamps, no ID). `--status` is validated against the tasks schema. `--db notes` (default) is unchanged.
+— house-style の frontmatter（title/status/Project/parent、timestamps、ID なし）で `tasks/NNN-slug.md` を作成する。`--status` は tasks schema に対して検証される。`--db notes`（デフォルト）は変わらない。
 
-- `--type` — a Notes **content tag** (`plan`, `document`, `log`, `research`, `memo`); validated against the schema's tag options.
-- `--task` — link an existing Task by its **filename id** (`NNN-slug`; not a path, and **not** the daemon `ID: TASK-N` — those diverge). Branch detection is the caller's job: the branch is `feature/<filename-id>`, so strip the `feature/` prefix to get the id and pass it here. **md2joifup validates** that `--task` (and `--parent`) resolves to a real `tasks/` file and errors otherwise — a daemon `ID` or typo fails loudly instead of silently mis-numbering the note.
-- `--new-task "TITLE"` — create a fresh house-style Task and link it; for a note that spawns its own task (e.g. a new investigation). Pass `--new-task-slug` (English) alongside a non-ASCII title, else the task filename slug degrades.
-- `--project` — else inherited from the Task, else the sole project in `projects/`.
-- `--slug` — override; default is a slug of the title (**pass an English slug for non-ASCII titles**, else it degrades to the type), else the type.
-- `--keep-source` — copy instead of move (default: move / in-place).
+- `--type` — Notes の**content タグ**（`plan`、`document`、`log`、`research`、`memo`）；schema のタグ選択肢に対して検証される。
+- `--task` — 既存の Task をその**filename id**（`NNN-slug`；パスではなく、daemon の `ID: TASK-N` **でもない** — これらは別物で一致しない）で紐づける。ブランチの判定は呼び出し側の責務である：ブランチは `feature/<filename-id>` なので、`feature/` の接頭辞を外して id を取り出し、ここに渡す。**md2joifup が検証する**のは `--task`（および `--parent`）が実在する `tasks/` ファイルに解決できることであり、できなければエラーにする — daemon の `ID` や typo は、note を静かに誤った番号で処理するのではなく、大きな声で失敗する。
+- `--new-task "TITLE"` — 新しい house-style の Task を作成して紐づける；note がそれ自身の task を生む場合に使う（例：新しい調査）。非 ASCII の title と併せて `--new-task-slug`（英語）を渡す、そうしなければ task のファイル名 slug が劣化する。
+- `--project` — 無ければ Task から継承し、それも無ければ `projects/` の単一の project にフォールバックする。
+- `--slug` — 上書き；デフォルトは title を slug 化したもの（**非 ASCII の title には英語の slug を渡す**、そうしなければ type に劣化する）、それも無ければ type。
+- `--keep-source` — move ではなく copy にする（デフォルト：move / in-place）。
 
-Prints the destination path. Concept map: superpowers spec → `document`, plan → `plan`.
+配置先のパスを出力する。対応関係：superpowers の spec → `document`、plan → `plan`。
 
-## What it does
+## 何をするか
 
-- Extracts the H1 and **mirrors it into frontmatter `title`**; the H1 stays in the body.
-- Strips superpowers agentic-worker scaffolding (no-op for hand-authored notes).
-- **House-style frontmatter:** flow arrays (`tag: [log]`), single relation → scalar, 2+ → flow array; stamps `created_at`/`updated_at` (today) unless present.
-- **Project always resolved:** explicit → new/linked Task's Project → sole `projects/` entry.
-- **Filenames** `<NNN>-<slug>.md`: `NNN` = the linked task's id number, else the next number in `notes/<type>/`.
-- Leaves only the auto-increment `ID` to the daemon; preserves any pre-existing source frontmatter keys.
+- H1 を抽出し、**frontmatter の `title` に反映する**；H1 自体は本文に残る。
+- superpowers の agentic-worker の scaffolding を取り除く（手書きの note では no-op）。
+- **house-style の frontmatter：** flow array（`tag: [log]`）、単一の relation → scalar、2 個以上 → flow array；`created_at`/`updated_at` が無ければ（today で）スタンプする。
+- **Project は常に解決される：** 明示指定 → 新規/紐づけた Task の Project → `projects/` の単一エントリ。
+- **ファイル名** `<NNN>-<slug>.md`：`NNN` = 紐づけた task の id 番号、無ければ `notes/<type>/` の次の番号。
+- 自動採番の `ID` だけを daemon に委ねる；元から存在した source の frontmatter キーは保持する。
 
-## Common Mistakes
+## よくある失敗
 
-- Passing a state tag (`inbox`/`seed`/`archive`) as `--type` — use a content tag; state is a separate axis.
-- Writing relation values as file paths — they are **ids** (`042-...`, `638-...`).
-- Making the script detect the branch — resolve the TASK-id in the caller and pass `--task`.
-- Hand-editing frontmatter conventions here — change the Joifup `schema.yaml` instead.
+- state タグ（`inbox`/`seed`/`archive`）を `--type` に渡す — content タグを使う；state は別の軸である。
+- relation の値をファイルパスとして書く — それらは**id**である（`042-...`、`638-...`）。
+- スクリプトにブランチを検出させる — 呼び出し側で TASK-id を解決し、`--task` に渡す。
+- ここで frontmatter の規約を手で編集する — 代わりに Joifup の `schema.yaml` を変更する。
