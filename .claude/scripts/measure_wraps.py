@@ -3,6 +3,9 @@
 
 「折り返された行」= 段落の途中で改行されている行。判定は「次の行が同じ
 段落の続き（空行でなく、見出し・リスト・表・フェンスの開始でもない）」。
+**文末（`。` `！` `？`）で終わる行は折り返しとして数えない。** 文末での改行
+は桁数の折り返しではなく「1文1行」という書き方であり、unwrap.py もそこでは
+結合しない。数え方を合わせないと、直さないと決めたものが残量に出続ける。
 frontmatter とコードフェンスの中は除外する。引用（`>`）の中も数えないので、
 引用に残った折り返しはこの数に出ない。
 
@@ -26,6 +29,10 @@ from pathlib import Path
 
 FENCE = re.compile(r"^\s*(```|~~~)")
 BLOCK_START = re.compile(r"^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|\||---\s*$|===)")
+# 文末。unwrap.py と同じ定義にしておく (一致は test_unwrap が固定している)。
+# 片方だけが文末を折り返しと見なすと、結合しないと決めた改行が残量に出て、
+# 直し切れない数がいつまでも残る。
+SENTENCE_END = re.compile("[。！？][*_`）」』】〕)\"']*$")
 # 除外するディレクトリ**名**。パスの接頭辞ではなく、対象ディレクトリからの
 # 相対パスの要素名と突き合わせる (理由は unwrap.py の SKIP_PARTS を見よ)。
 # unwrap.py と同じ一覧にしておく。片方だけが数えると、変換しないと決めた
@@ -65,6 +72,9 @@ def classify(path):
             continue
         body += 1
         nxt = lines[j + 1] if j + 1 < len(lines) else ""
+        if SENTENCE_END.search(line.rstrip()):
+            # 文末で終わる行は、次が段落の続きでも折り返しではない。
+            continue
         if nxt.strip() and not FENCE.match(nxt) and not BLOCK_START.match(nxt):
             cont += 1
             if CJK.search(line):

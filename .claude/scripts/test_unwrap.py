@@ -131,17 +131,23 @@ class TestUnwrapText(unittest.TestCase):
 
     def test_puts_no_space_between_japanese_punctuation(self):
         """日本語どうしの結合点には空白を入れない。約物も日本語と見なす。"""
-        src = "規則はこうである。\n「両側が日本語なら空白なし」と読む。\n"
+        src = "規則はこうである。ここでは\n「両側が日本語なら空白なし」と読む。\n"
         self.assertEqual(
             unwrap.unwrap_text(src),
-            "規則はこうである。「両側が日本語なら空白なし」と読む。\n")
+            "規則はこうである。ここでは「両側が日本語なら空白なし」と読む。\n")
 
     def test_puts_no_space_after_a_full_width_period(self):
-        """左が全角の句点なら、右が何であっても空白を入れない。"""
-        src = "実体パスへ解決される。\n`brew upgrade tmux` で更新する。\n"
+        """左が全角の句点なら、右が何であっても空白を入れない。
+
+        文末で結合を止めるようになったので、この結合点は unwrap_text からは
+        もう出ない (句点で終わる行はそこで切れる)。規則そのものは join_parts
+        に残っているので、ここで直接押さえておく。読点 (、) の側は文末では
+        ないため、いまも unwrap_text 経由で出る。
+        """
         self.assertEqual(
-            unwrap.unwrap_text(src),
-            "実体パスへ解決される。`brew upgrade tmux` で更新する。\n")
+            unwrap.join_parts(["実体パスへ解決される。",
+                               "`brew upgrade tmux` で更新する。"]),
+            "実体パスへ解決される。`brew upgrade tmux` で更新する。")
 
     def test_puts_no_space_after_a_full_width_comma(self):
         """読点でも同じ。"""
@@ -199,6 +205,81 @@ class TestUnwrapText(unittest.TestCase):
         src = "- \n  日本語の本文が桁数で\n  折り返されている。\n"
         self.assertEqual(unwrap.unwrap_text(src),
                          "- 日本語の本文が桁数で折り返されている。\n")
+
+
+class TestSentenceBoundaries(unittest.TestCase):
+    """文末での改行は折り返しではないので結合しない。
+
+    このタスクが問題にしているのは語や句の途中で割れることであり、文末は
+    意味のある位置だから害が無い。当初「1段落＝1行」として文末の改行まで
+    結合したが、それは規約を広く取りすぎていた。
+    """
+
+    def test_does_not_join_after_a_sentence_end(self):
+        src = ("このスキルは全ステップを自動実行します。\n"
+               "各ステップ完了後、必ず次のステップに進んでください。\n")
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_does_not_join_after_a_sentence_end_with_a_closing_marker(self):
+        """`。**` や `）。` のように閉じ記号が付いていても文末である。"""
+        for tail in ("**", "*", "`", "」", "』", "】", "〕", ")", '"', "'"):
+            src = f"一文目である。{tail}\n二文目が続く。\n"
+            self.assertEqual(unwrap.unwrap_text(src), src, tail)
+        src = "一文目である（注記）。\n二文目が続く。\n"
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_does_not_join_after_an_exclamation_or_a_question(self):
+        for mark in "！？":
+            src = f"本当にそうか{mark}\n次の文が続く。\n"
+            self.assertEqual(unwrap.unwrap_text(src), src, mark)
+
+    def test_joins_after_a_colon(self):
+        """`：` `:` は文末ではない。次に続く内容の導入なので結合する。"""
+        src = "**Task 作成（tasks db）：**\n本文が続く。\n"
+        self.assertEqual(unwrap.unwrap_text(src),
+                         "**Task 作成（tasks db）：** 本文が続く。\n")
+        src = "superpowers を使う:\n`brainstorming` から始める。\n"
+        self.assertEqual(unwrap.unwrap_text(src),
+                         "superpowers を使う: `brainstorming` から始める。\n")
+
+    def test_still_joins_a_phrase_broken_mid_way(self):
+        """句の途中で割れている行はこれまでどおり結合する。"""
+        src = "日本語の本文が桁数で\n折り返されている。\n"
+        self.assertEqual(unwrap.unwrap_text(src),
+                         "日本語の本文が桁数で折り返されている。\n")
+
+    def test_joins_each_side_of_a_sentence_boundary_separately(self):
+        """文末で止めたあとも、その先の折り返しは結合する。"""
+        src = ("一文目が桁数で\n"
+               "折り返されている。\n"
+               "二文目も桁数で\n"
+               "折り返されている。\n")
+        self.assertEqual(unwrap.unwrap_text(src),
+                         "一文目が桁数で折り返されている。\n"
+                         "二文目も桁数で折り返されている。\n")
+
+    def test_keeps_the_indent_of_a_continuation_line_after_a_sentence_end(self):
+        """文末で止めた次の行も、リストの中ならインデントを保つ。
+
+        落とすと段落が桁 0 に出てリストがそこで切れる。
+        """
+        src = ("- 箇条書きの項目である。\n"
+               "  二文目が桁数で\n"
+               "  折り返されている。\n")
+        self.assertEqual(unwrap.unwrap_text(src),
+                         "- 箇条書きの項目である。\n"
+                         "  二文目が桁数で折り返されている。\n")
+
+    def test_a_sentence_split_paragraph_stays_one_paragraph(self):
+        """結合を止めるだけで、段落は分割しない (空行を入れない)。"""
+        src = "一文目である。\n二文目である。\n\n次の段落。\n"
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_the_result_is_idempotent(self):
+        src = ("一文目が桁数で\n折り返されている。\n二文目も桁数で\n"
+               "折り返されている。\n")
+        once = unwrap.unwrap_text(src)
+        self.assertEqual(unwrap.unwrap_text(once), once)
 
 
 class TestJoinParts(unittest.TestCase):
@@ -409,6 +490,29 @@ class TestMeasureWraps(unittest.TestCase):
         直し切れない数がいつまでも残る。
         """
         self.assertEqual(measure_wraps.SKIP_PARTS, unwrap.SKIP_PARTS)
+
+    def test_the_sentence_end_pattern_matches_unwrap(self):
+        """文末の定義も2つのファイルで同じであること。
+
+        片方だけが文末を折り返しと見なすと、結合しないと決めた改行が残量に
+        出て、直し切れない数がいつまでも残る。
+        """
+        self.assertEqual(measure_wraps.SENTENCE_END.pattern,
+                         unwrap.SENTENCE_END.pattern)
+
+    def test_a_sentence_end_is_not_counted_as_a_wrap(self):
+        """文末で終わる行は、次が段落の続きでも折り返しに数えない。"""
+        path = self.tmp / "a.md"
+        path.write_text("一文目である。\n二文目である。\n", encoding="utf-8")
+        body, cont, cont_ja = measure_wraps.classify(path)
+        self.assertEqual((body, cont, cont_ja), (2, 0, 0))
+
+    def test_a_mid_phrase_wrap_is_still_counted(self):
+        path = self.tmp / "b.md"
+        path.write_text("日本語の本文が桁数で\n折り返されている。\n",
+                        encoding="utf-8")
+        body, cont, cont_ja = measure_wraps.classify(path)
+        self.assertEqual((body, cont, cont_ja), (2, 1, 1))
 
     def test_it_skips_the_same_directories(self):
         """除外の判定そのものも一致する (対象の内側でも外側でも)。"""
