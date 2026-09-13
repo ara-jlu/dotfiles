@@ -18,6 +18,9 @@ Tasks:
 - 006-harness-principles-research
 - 007-stop-duplicating-rationale
 - 009-unify-skill-language-ja
+- 011-hook-stdout-punycode-warning
+- 011-decision-principles-in-claude-md
+- 012-j-recap-direction-check
 
 ---
 # DevOps
