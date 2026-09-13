@@ -452,8 +452,7 @@ FAIL が出たら訳を直す。条件を緩めない。
 
 - [ ] **Step 4: ハード折り返しが無いことを確認**
 
-Run: `cd <WT> && awk 'length($0) > 0 && /^[^|#`-]/ && length($0) < 40 {print FILENAME":"FNR": "$0}' .claude/skills/j-task/SKILL.md`
-Expected: 散文が途中で切れた短い行が出ないこと（表・見出し・コード・箇条書きは除外している）。出た行は、前の行と結合すべき折り返しでないかを目で確かめる。
+Run: `cd <WT> && awk 'length($0) > 0 && /^[^|#`-]/ && length($0) < 40 {print FILENAME":"FNR": "$0}' .claude/skills/j-task/SKILL.md` Expected: 散文が途中で切れた短い行が出ないこと（表・見出し・コード・箇条書きは除外している）。出た行は、前の行と結合すべき折り返しでないかを目で確かめる。
 
 - [ ] **Step 5: コミット**
 
@@ -671,8 +670,7 @@ Expected: `PASS`、exit code 0
 
 - [ ] **Step 4: スクリプトを触っていないことを確認**
 
-Run: `cd <WT> && git status --porcelain .claude/skills/j-finish/scripts`
-Expected: 空（スクリプトは 009 の対象外。`tasks/007` の領域）
+Run: `cd <WT> && git status --porcelain .claude/skills/j-finish/scripts` Expected: 空（スクリプトは 009 の対象外。`tasks/007` の領域）
 
 - [ ] **Step 5: コミット**
 
@@ -714,8 +712,7 @@ Expected: `PASS`、exit code 0
 
 - [ ] **Step 4: 本文が変わっていないことを確認**
 
-Run: `cd <WT> && git diff --stat .claude/skills/j-recap/SKILL.md`
-Expected: 変更行数が **8 行以下**（見出し 3 行 × 2（削除＋追加）＋ `description` 1 行 × 2）。これを超えるなら本文に触っている。
+Run: `cd <WT> && git diff --stat .claude/skills/j-recap/SKILL.md` Expected: 変更行数が **8 行以下**（見出し 3 行 × 2（削除＋追加）＋ `description` 1 行 × 2）。これを超えるなら本文に触っている。
 
 - [ ] **Step 5: コミット**
 
@@ -767,8 +764,7 @@ Expected: `PASS`、exit code 0
 
 - [ ] **Step 4: 規定の強さが残っているか自己確認**
 
-Run: `cd <WT> && grep -c '絶対\|してはならない\|しない\|必ず\|STOP\|BLOCKED' .claude/skills/j-devflow/SKILL.md`
-Expected: 1 以上。そのうえで Step 2 に挙げた箇所を 1 つずつ目で確かめ、「禁止」が「推奨」に弱まっていないことを確認する。弱まっていたら直す。
+Run: `cd <WT> && grep -c '絶対\|してはならない\|しない\|必ず\|STOP\|BLOCKED' .claude/skills/j-devflow/SKILL.md` Expected: 1 以上。そのうえで Step 2 に挙げた箇所を 1 つずつ目で確かめ、「禁止」が「推奨」に弱まっていないことを確認する。弱まっていたら直す。
 
 - [ ] **Step 5: コミット**
 
@@ -814,8 +810,7 @@ Run: `cd <WT> && sed -n '/^## 言語/,/^## /p' .claude/CLAUDE.md`
 
 - [ ] **Step 3: 既存項目が消えていないことを確認**
 
-Run: `cd <WT> && git diff .claude/CLAUDE.md`
-Expected: 追加 1 行のみ（`+` が 1 行、`-` が 0 行）。既存行の削除があれば直す。
+Run: `cd <WT> && git diff .claude/CLAUDE.md` Expected: 追加 1 行のみ（`+` が 1 行、`-` が 0 行）。既存行の削除があれば直す。
 
 - [ ] **Step 4: コミット**
 
@@ -871,8 +866,7 @@ Expected: `Ran 14 tests ... OK` と `Ran 51 tests ... OK`（合計 65 件）
 
 - [ ] **Step 4: スクリプトと対象外ファイルを触っていないことを確認**
 
-Run: `cd <WT> && git diff --stat 42c70b5 HEAD --name-only`
-Expected: 現れるのは 9 個の SKILL.md と `.claude/CLAUDE.md`、および Phase A の成果物（`tasks/009-*.md`、`notes/document/009-*.md`）のみ。`*.py`、`j-pr/references/pr-body.md`、旧 Notion 系スキルが現れてはならない。
+Run: `cd <WT> && git diff --stat 42c70b5 HEAD --name-only` Expected: 現れるのは 9 個の SKILL.md と `.claude/CLAUDE.md`、および Phase A の成果物（`tasks/009-*.md`、`notes/document/009-*.md`）のみ。`*.py`、`j-pr/references/pr-body.md`、旧 Notion 系スキルが現れてはならない。
 
 - [ ] **Step 5: 検査スクリプトがコミットされていないことを確認**
 

@@ -306,8 +306,7 @@ def body_with_evidence_link(body, url):
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `python3 .claude/skills/j-finish/scripts/test_uat_attach.py`
-Expected: PASS（`OK`、16 tests 前後）
+Run: `python3 .claude/skills/j-finish/scripts/test_uat_attach.py` Expected: PASS（`OK`、16 tests 前後）
 
 - [ ] **Step 5: Commit**
 
@@ -746,8 +745,7 @@ def _warn_uat_evidence(changed, evidence_dir, exists=os.path.isfile):
 Run: `python3 .claude/skills/j-finish/scripts/test_j_finish.py`
 Expected: PASS（`OK`）
 
-Run: `python3 .claude/skills/j-finish/scripts/j_finish.py --help`
-Expected: `--uat-evidence-dir` がヘルプに出る
+Run: `python3 .claude/skills/j-finish/scripts/j_finish.py --help` Expected: `--uat-evidence-dir` がヘルプに出る
 
 - [ ] **Step 5: Commit**
 
@@ -846,8 +844,7 @@ positive recipe 内の
 
 - [ ] **Step 8: 旧運用の記述が残っていないことを確認する**
 
-Run: `grep -rn "Files changed\|証跡.*commit する\|を commit し" .claude/skills/j-devflow .claude/skills/j-finish .claude/skills/j-pr`
-Expected: 「証跡を commit する」を指す行が 0 件（`commit しない` を述べる行だけがヒットする）
+Run: `grep -rn "Files changed\|証跡.*commit する\|を commit し" .claude/skills/j-devflow .claude/skills/j-finish .claude/skills/j-pr` Expected: 「証跡を commit する」を指す行が 0 件（`commit しない` を述べる行だけがヒットする）
 
 - [ ] **Step 9: Commit**
 
