@@ -86,7 +86,9 @@ git commit -m "feat(skills): add j-recap skill for external-facing work recaps (
 
 - [ ] **Step 2: 出力が仕様を満たすか確認**
   - チェック: 2形式（短文＋まとめ）が出る／各タスクに完了・進行中の別が付く／コミットハッシュや `TASK-<n>` が出力に混ざっていない／内部リポジトリ名が一般化されている。
-  - Expected: 全チェック PASS。欠けていれば Task 1 に戻して SKILL.md を修正。
+  -
+
+Expected: 全チェック PASS。欠けていれば Task 1 に戻して SKILL.md を修正。
 
 - [ ] **Step 3: 検証結果を記録**
   - 通ったチェック項目と、実際の出力サンプルを実行ログとして残す（j-devflow の検証工程）。この検証は UI を含まないため UAT は不要。
