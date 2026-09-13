@@ -3,6 +3,7 @@
 
 段落の途中で改行されている行を結合し、frontmatter・コードフェンス・表・
 見出し・引用・意図的なハードブレイク・日本語を含まない段落は触らない。
+**文末 (`。` `！` `？`) での改行は折り返しではないので結合しない。**
 
 **規約と変換規則の正典は notes/document/008-no-hard-wrap-japanese-design.md**
 （dotfiles）である。結合点の空白・触らないものの一覧・検証の3条件は、
@@ -42,6 +43,11 @@ CJK = re.compile(r"[぀-ヿ一-鿿]")
 # だけでなく約物も来るためである。
 JA = re.compile(r"[　-〿぀-ヿ㐀-䶿一-鿿＀-￯]")
 HARD_BREAK = re.compile(r"(  |\\)$")
+# 文末。行末から閉じ記号 (強調・コードスパン・閉じ括弧・引用符) を剥がした
+# うえで、`。` `！` `？` のいずれかで終わっているか。`…します。**` や
+# `…する）。` のような形も文末として扱うためである。`：` や `:` は含めない。
+# 次に続く内容の導入なので、そこでの改行は折り返しである。
+SENTENCE_END = re.compile("[。！？][*_`）」』】〕)\"']*$")
 INDENT = re.compile(r"^\s*")
 # 全角の句読点。この直後には、右が何であっても空白を入れない。
 JA_PUNCT = "。、"
@@ -97,12 +103,36 @@ def _fold(raw_lines):
 
     触らない場合は原文の行をそのまま返す。触らないのは、日本語を含まない
     段落と、意図的なハードブレイクを含む段落である (設計の「触らないもの」)。
+
+    **文末での改行は折り返しではないので結合しない。** 前の行が `。` `！`
+    `？` で終わっていれば (末尾に `**` や `）` のような閉じ記号が付いていて
+    もよい)、そこで結合を止め、次の行から新しい結合の単位を始める。この
+    タスクが問題にしているのは語や句の途中で割れることであり、文末は意味の
+    ある位置だから害が無い。段落そのものは分割しない (空行は入れない)。
     """
     if not CJK.search("\n".join(raw_lines)):
         return list(raw_lines)
     if any(HARD_BREAK.search(line) for line in raw_lines):
         return list(raw_lines)
-    return [join_parts([line.strip() for line in raw_lines])]
+    groups = []
+    group = []
+    for line in raw_lines:
+        group.append(line)
+        if SENTENCE_END.search(line.rstrip()):
+            groups.append(group)
+            group = []
+    if group:
+        groups.append(group)
+    folded = []
+    for i, group in enumerate(groups):
+        text = join_parts([line.strip() for line in group])
+        if i:
+            # 2つ目以降の単位は原文のインデントを保つ。落とすとリストの中の
+            # 継続行が桁 0 に出てリストがそこで切れる。1つ目は呼び出し側が
+            # prefix (リストのマーカーまたは行頭のインデント) を戻す。
+            text = INDENT.match(group[0]).group(0) + text
+        folded.append(text)
+    return folded
 
 def unwrap_text(text):
     """md の全文を受け、段落の途中の改行を結合した全文を返す。"""

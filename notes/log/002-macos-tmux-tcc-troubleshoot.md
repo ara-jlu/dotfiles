@@ -12,9 +12,11 @@ updated_at: '2026-07-12'
 
 ## 概要
 
-別作業(joifup 開発)の最中、tmux 内で動かしている Claude Code が突然 `~/Documents` 配下へ **`Operation not permitted` (EPERM)** を返し始めた。「tmux 内で Claude を動かしていると時々起きる」という既知の体感事象。
+別作業(joifup 開発)の最中、tmux 内で動かしている Claude Code が突然 `~/Documents` 配下へ **`Operation not permitted` (EPERM)** を返し始めた。
+「tmux 内で Claude を動かしていると時々起きる」という既知の体感事象。
 
-調査の結果、**macOS TCC(Transparency, Consent, and Control)が保護フォルダ(`~/Documents`)へのアクセスを "responsible process" 単位で制御しており、daemon 化した tmux サーバがその責任プロセスになるため、tmux バイナリに Full Disk Access が無いと tmux 内全プロセスが拒否される**ことを特定。tmux バイナリへ FDA を付与して解消(**kill-server 不要で即反映**)。dotfiles にトラブルシュートドキュメント(`notes/document/002-macos-tmux-tcc-operation-not-permitted.md`)を作成した。
+調査の結果、**macOS TCC(Transparency, Consent, and Control)が保護フォルダ(`~/Documents`)へのアクセスを "responsible process" 単位で制御しており、daemon 化した tmux サーバがその責任プロセスになるため、tmux バイナリに Full Disk Access が無いと tmux 内全プロセスが拒否される**ことを特定。
+tmux バイナリへ FDA を付与して解消(**kill-server 不要で即反映**)。dotfiles にトラブルシュートドキュメント(`notes/document/002-macos-tmux-tcc-operation-not-permitted.md`)を作成した。
 
 環境: macOS 15.7.3 (Sequoia, 24G419) / tmux 3.6a / Homebrew(`/opt/homebrew`)。
 
@@ -27,7 +29,8 @@ updated_at: '2026-07-12'
   can't open file '/Users/ara/.claude/skills/md2joifup/scripts/md2joifup.py': [Errno 1] Operation not permitted
   ```
 - 続けて repo 内ファイルの `head` / `ls <dir>` / エディタ Read も一律 EPERM。
-- 特徴的だったのが **`ls -l <file>`(stat)は成功するのに `open`/`readdir` だけ失敗**する点。これは権限(mode)の問題ではなく、上位のアクセス制御(TCC/サンドボックス)が open 系 syscall を弾いている兆候。
+- 特徴的だったのが **`ls -l <file>`(stat)は成功するのに `open`/`readdir` だけ失敗**する点。
+  これは権限(mode)の問題ではなく、上位のアクセス制御(TCC/サンドボックス)が open 系 syscall を弾いている兆候。
 - 直前に別プロセス(subagent)の作業や `dangerouslyDisableSandbox` を挟んでいたため、最初は「Claude のサンドボックスが締まったか?」を疑ったが、sandbox 無効化でも回復せず → OS 側を疑う方針に切替。
 
 ### 2. 切り分け(アクセス probe)
@@ -56,7 +59,8 @@ done
   ls -ld ~/.claude/skills
   # lrwxr-xr-x … ~/.claude/skills -> /Users/ara/Documents/workspace/dotfiles/.claude/skills
   ```
-  **`~/.claude/skills` は `~/Documents` 配下(dotfiles)への symlink** なので巻き添えで拒否。→ skill スクリプト(md2joifup 等)が全滅していたのはこれが原因。
+  **`~/.claude/skills` は `~/Documents` 配下(dotfiles)への symlink** なので巻き添えで拒否。
+  → skill スクリプト(md2joifup 等)が全滅していたのはこれが原因。
 
 ### 3. tmux プロセス構造の確認
 
@@ -85,13 +89,19 @@ macOS TCC は保護フォルダ(`~/Documents` `~/Desktop` `~/Downloads` 等)へ�
 
 ### 5. 「時々」の正体
 
-FDA の許可は**バイナリの実体パス**に紐づく。`/opt/homebrew/bin/tmux` は `…/Cellar/tmux/<version>/bin/tmux` という**バージョン入り実体パス**に解決される。`brew upgrade tmux` でバージョンが上がると実体パスが変わり、**以前付与した FDA が旧パスに取り残されて無効化**される → 再発する。加えて tmux サーバが「いつ・どの文脈で起動したか」でも responsible process の解決が変わるため、再現性が「時々」になる。
+FDA の許可は**バイナリの実体パス**に紐づく。`/opt/homebrew/bin/tmux` は `…/Cellar/tmux/<version>/bin/tmux` という**バージョン入り実体パス**に解決される。
+`brew upgrade tmux` でバージョンが上がると実体パスが変わり、**以前付与した FDA が旧パスに取り残されて無効化**される → 再発する。
+加えて tmux サーバが「いつ・どの文脈で起動したか」でも responsible process の解決が変わるため、再現性が「時々」になる。
 
 ### 6. web リサーチ(裏取り)
 
-- manaflow-ai/cmux #2866 — macOS で多重化(tmux 系)配下の保護ディレクトリが Operation not permitted。原因は TCC だが**確定 fix は未記載**、回避策は「保護フォルダの外へ移動」のみ。<https://github.com/manaflow-ai/cmux/issues/2866>
-- Lapcat Software / Michael Tsai — FDA の継承と responsible process の解説。<https://lapcatsoftware.com/articles/FullDiskAccess.html> / <https://mjtsai.com/blog/2022/09/22/terminal-and-full-disk-access/>
-- OS X Daily — 端末/シェルへの FDA 付与手順。<https://osxdaily.com/2018/10/09/fix-operation-not-permitted-terminal-error-macos/>
+- manaflow-ai/cmux #2866 — macOS で多重化(tmux 系)配下の保護ディレクトリが Operation not permitted。
+  原因は TCC だが**確定 fix は未記載**、回避策は「保護フォルダの外へ移動」のみ。
+  <https://github.com/manaflow-ai/cmux/issues/2866>
+- Lapcat Software / Michael Tsai — FDA の継承と responsible process の解説。
+  <https://lapcatsoftware.com/articles/FullDiskAccess.html> / <https://mjtsai.com/blog/2022/09/22/terminal-and-full-disk-access/>
+- OS X Daily — 端末/シェルへの FDA 付与手順。
+  <https://osxdaily.com/2018/10/09/fix-operation-not-permitted-terminal-error-macos/>
 - 諸説を統合し「**端末でなく tmux バイナリ自身へ FDA**」が正解と結論。
 
 ### 7. 解消(実測)
@@ -116,7 +126,8 @@ FDA の許可は**バイナリの実体パス**に紐づく。`/opt/homebrew/bin
 ### 8. 恒久対策(ドキュメントに記載)
 
 - **A. `brew upgrade tmux` の度に FDA を付け直す**(バージョン入りパスが変わるため)。手軽だが手動。
-- **B. 作業ツリーを `~/Documents` の外へ**(例 `~/workspace`)。TCC 対象外になり本事象が原理的に起きない。cmux #2866 も推奨。ただし daemon の workspace_root / symlink 張り替えが伴う。
+- **B. 作業ツリーを `~/Documents` の外へ**(例 `~/workspace`)。TCC 対象外になり本事象が原理的に起きない。
+  cmux #2866 も推奨。ただし daemon の workspace_root / symlink 張り替えが伴う。
 - **C. 端末アプリ FDA 運用は daemon 化により不安定** → A/B 推奨。
 
 ### 9. ドキュメント化

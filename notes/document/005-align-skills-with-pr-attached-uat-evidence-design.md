@@ -98,7 +98,8 @@ python3 uat_attach.py --evidence-dir .uat-evidence/<id> --pr <url|number> [--dry
 ### D2. コメント本文の組み立て
 
 - **画像は `![<name>](./<file>)` で本文から参照する** → gh が URL に書き換え、説明付きでインライン表示される。
-- **動画は本文から参照しない** → gh が末尾に裸 URL として追記し、GitHub がプレイヤー化する（295 の実測）。`![]()` で参照すると画像として扱われ再生できない。代わりに「動画（以下に添付）: `<name>`」の行を本文に置き、対応を人が辿れるようにする。
+- **動画は本文から参照しない** → gh が末尾に裸 URL として追記し、GitHub がプレイヤー化する（295 の実測）。`![]()` で参照すると画像として扱われ再生できない。
+  代わりに「動画（以下に添付）: `<name>`」の行を本文に置き、対応を人が辿れるようにする。
 - `--attach` には **必ず `#<name>` を付ける**（295 D5 の契約）。ファイル名は ASCII slug で日本語の説明を運べないため、alt を省くと区別のつかないファイル名が並ぶ。
 
 ### D3. PR 本文の `## UAT 証跡`
@@ -112,7 +113,8 @@ python3 uat_attach.py --evidence-dir .uat-evidence/<id> --pr <url|number> [--dry
 
 ### D4. `_warn_missing_uat_evidence` の反転修正
 
-撤去ではなく **反転**させる。旧チェックの*意図*（UI を変えたなら証跡が要る）は今も正しく、壊れているのは*機構*（diff に commit されているかを見ていた）だけだから。撤去すると「`pnpm uat` を回し忘れたまま PR が出る」を誰も止めなくなる。
+撤去ではなく **反転**させる。旧チェックの*意図*（UI を変えたなら証跡が要る）は今も正しく、壊れているのは*機構*（diff に commit されているかを見ていた）だけだから。
+撤去すると「`pnpm uat` を回し忘れたまま PR が出る」を誰も止めなくなる。
 
 `_warn_uat_evidence(head_range, evidence_dir)` に改名し、2 つを警告する（どちらもブロックしない）:
 
@@ -121,7 +123,9 @@ python3 uat_attach.py --evidence-dir .uat-evidence/<id> --pr <url|number> [--dry
 
 ### D5. `j_finish.py` の実行順
 
-295 D5 の指定どおり **`push → PR 作成 → 証跡コメント → status → Discord`**。証跡コメントは `--no-pr` のときと `--dry-run` のときはスキップ／print に落とす。新フラグ `--uat-evidence-dir <path>`（省略時は添付を行わない）。
+295 D5 の指定どおり **`push → PR 作成 → 証跡コメント → status → Discord`**。
+証跡コメントは `--no-pr` のときと `--dry-run` のときはスキップ／print に落とす。
+新フラグ `--uat-evidence-dir <path>`（省略時は添付を行わない）。
 
 ### D6. skill 本文の書き換え（7 箇所）
 
@@ -142,7 +146,8 @@ python3 uat_attach.py --evidence-dir .uat-evidence/<id> --pr <url|number> [--dry
 
 ## テスト戦略
 
-dotfiles には test runner が無い。**stdlib の `unittest` だけ**で走る `j-finish/scripts/test_uat_attach.py` を新設する（`python3 scripts/test_uat_attach.py`）。副作用を注入し、純粋部分を固定する:
+dotfiles には test runner が無い。**stdlib の `unittest` だけ**で走る `j-finish/scripts/test_uat_attach.py` を新設する（`python3 scripts/test_uat_attach.py`）。
+副作用を注入し、純粋部分を固定する:
 
 - バージョン比較（`2.98.0` < `2.99.0` <= `2.100.0`、`gh version 2.100.0 (…)` の parse）
 - `results.jsonl` の parse（証跡行の抽出、壊れた行のスキップ）
@@ -157,7 +162,8 @@ dotfiles には test runner が無い。**stdlib の `unittest` だけ**で走�
 
 - **joifup 側の変更** — 295 で着地済み。
 - **`.uat-evidence/` の履歴書き換え** — joifup の launch 後（295 非スコープ）。
-- **skill の joifup 依存語（`apps/web/` / `pnpm uat`）の一般化** — 今回の誤りとは別軸。既存の形を保つ。
+- **skill の joifup 依存語（`apps/web/` / `pnpm uat`）の一般化** — 今回の誤りとは別軸。
+  既存の形を保つ。
 - **`gh issue` 側の添付** — 使っていない。
 
 ## 関連
