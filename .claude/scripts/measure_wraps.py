@@ -10,6 +10,9 @@ frontmatter とコードフェンスの中は除外する。引用（`>`）の�
 
     python3 measure_wraps.py <対象ディレクトリ> [<対象ディレクトリ> ...]
 
+対象を渡し忘れたとき、および対象がディレクトリとして存在しないときは、その旨
+を出して exit 2 する（unwrap.py と同じ扱い）。
+
 対象ごとに「折り返し行 / 段落行 = 割合（うち日本語 N）」を1行で出す。
 unwrap.py が「変更なし」と答えることと、そのファイルに折り返しが残って
 いないことは別である。**適用のあとはこれで残量を測って報告する。**
@@ -23,11 +26,19 @@ from pathlib import Path
 
 FENCE = re.compile(r"^\s*(```|~~~)")
 BLOCK_START = re.compile(r"^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|\||---\s*$|===)")
+# 除外するディレクトリ**名**。パスの接頭辞ではなく、対象ディレクトリからの
+# 相対パスの要素名と突き合わせる (理由は unwrap.py の SKIP_PARTS を見よ)。
 # unwrap.py と同じ一覧にしておく。片方だけが数えると、変換しないと決めた
 # ディレクトリの折り返しが残量に出て、直し切れない数がいつまでも残る。
-SKIP = ("/node_modules/", "/.git/", "/.claude/worktrees/", "/.superpowers/",
-        "/fixtures/", "/dist/", "/build/", "/target/", "/.next/",
-        "/coverage/")
+# 一致は test_unwrap の test_the_skip_list_matches_unwrap が固定している。
+SKIP_PARTS = frozenset({"node_modules", ".git", "worktrees", ".superpowers",
+                        "fixtures", "dist", "build", "target", ".next",
+                        "coverage"})
+
+
+def is_skipped(path, base):
+    """path (base の下のファイル) が除外対象のディレクトリの中にあるか。"""
+    return not SKIP_PARTS.isdisjoint(path.relative_to(base).parts[:-1])
 CJK = re.compile(r"[぀-ヿ一-鿿]")
 
 
@@ -60,23 +71,37 @@ def classify(path):
     return body, cont, cont_ja
 
 
-for root in sys.argv[1:]:
-    r = Path(root)
-    tb = tc = tj = files = 0
-    for p in r.rglob("*.md"):
-        # root より内側だけを見て判定する (root 自身が .claude/worktrees/ の
-        # 下にあるときに全件が除外されるのを避けるため)
-        if any(s in "/" + str(p.relative_to(r)) for s in SKIP):
-            continue
-        b, c, j = classify(p)
-        if b:
-            files += 1
-        tb += b
-        tc += c
-        tj += j
-    if tb:
-        print(f"{r.name:20s} {files:5d} files  "
-              f"{tc:6d}/{tb:6d} = {tc / tb:3.0%} 折り返し  "
-              f"(うち日本語 {tj})")
-    else:
-        print(f"{r.name:20s} {files:5d} files  対象なし")
+def main(argv):
+    # unwrap.py と同じ扱いにする。渡し忘れや打ち間違いで黙って 0 件を出して
+    # exit 0 すると、何も測っていないのに「残量なし」に見える。
+    if not argv:
+        print("使い方: python3 measure_wraps.py <対象ディレクトリ> [...]")
+        return 2
+    bases = [Path(root) for root in argv]
+    missing = [str(b) for b in bases if not b.is_dir()]
+    if missing:
+        for name in missing:
+            print(f"対象がディレクトリとして存在しない: {name}")
+        return 2
+    for r in bases:
+        tb = tc = tj = files = 0
+        for p in r.rglob("*.md"):
+            if is_skipped(p, r):
+                continue
+            b, c, j = classify(p)
+            if b:
+                files += 1
+            tb += b
+            tc += c
+            tj += j
+        if tb:
+            print(f"{r.name:20s} {files:5d} files  "
+                  f"{tc:6d}/{tb:6d} = {tc / tb:3.0%} 折り返し  "
+                  f"(うち日本語 {tj})")
+        else:
+            print(f"{r.name:20s} {files:5d} files  対象なし")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
