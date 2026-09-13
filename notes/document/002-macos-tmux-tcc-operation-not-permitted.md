@@ -35,7 +35,7 @@ macOS の **TCC (Transparency, Consent, and Control)** が `~/Documents` `~/Desk
 
 ### なぜ「時々」なのか
 
-FDA の許可は**バイナリの実体パス**に紐づく。`/opt/homebrew/bin/tmux` は `…/Cellar/tmux/<version>/bin/tmux` という**バージョン入り実体パス**へ解決される。 `brew upgrade tmux` でバージョンが上がると実体パスが変わり、**以前付与した FDA が旧パスに取り残されて無効化**→ 再発する。加えて、tmux サーバが「いつ・どの文脈で起動したか」 (権限付与の前/後、ログインシェル経由か launchd 経由か)でも責任プロセスの解決が変わり、再現性が「時々」になる。
+FDA の許可は**バイナリの実体パス**に紐づく。`/opt/homebrew/bin/tmux` は `…/Cellar/tmux/<version>/bin/tmux` という**バージョン入り実体パス**へ解決される。`brew upgrade tmux` でバージョンが上がると実体パスが変わり、**以前付与した FDA が旧パスに取り残されて無効化**→ 再発する。加えて、tmux サーバが「いつ・どの文脈で起動したか」 (権限付与の前/後、ログインシェル経由か launchd 経由か)でも責任プロセスの解決が変わり、再現性が「時々」になる。
 
 ## 対処
 
@@ -59,7 +59,7 @@ FDA の許可は**バイナリの実体パス**に紐づく。`/opt/homebrew/bin
 ### B. 恒久的に安定させる(いずれか)
 
 - **B1. `brew upgrade tmux` の度に A を再実行**(バージョン入りパスが変わるため)。最も手軽だが手動。
-- **B2. 作業ツリーを保護フォルダの外へ**:`~/Documents/workspace/…` → `~/workspace/…` 等へ移動。 `~/Documents` 外は TCC 対象外なので **本事象が原理的に起きない**(cmux #2866 でも推奨の回避策)。 Joifup の場合は daemon の workspace_root と各 symlink の張り替えが伴う。
+- **B2. 作業ツリーを保護フォルダの外へ**:`~/Documents/workspace/…` → `~/workspace/…` 等へ移動。`~/Documents` 外は TCC 対象外なので **本事象が原理的に起きない**(cmux #2866 でも推奨の回避策)。Joifup の場合は daemon の workspace_root と各 symlink の張り替えが伴う。
 - **B3. 端末アプリに FDA + tmux を端末の子として使う運用**は、daemon 化により責任プロセスが tmux に落ちるため**単独では不安定**。B1/B2 を推奨。
 
 ## この事象を早く見抜くチェックリスト
