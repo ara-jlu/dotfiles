@@ -37,8 +37,7 @@ updated_at: 2026-09-12
 
 - [ ] **Step 1: § 言語 の現在の末尾を確認する**
 
-Run: `grep -n "^## 言語" -A 12 .claude/CLAUDE.md`
-Expected: `- **自作スキルの SKILL.md: 日本語**…` で終わる箇条書きが見える。
+Run: `grep -n "^## 言語" -A 12 .claude/CLAUDE.md` Expected: `- **自作スキルの SKILL.md: 日本語**…` で終わる箇条書きが見える。
 
 - [ ] **Step 2: 規約の一文を足す**
 
@@ -50,8 +49,7 @@ Expected: `- **自作スキルの SKILL.md: 日本語**…` で終わる箇条�
 
 - [ ] **Step 3: 文面と位置を確認する**
 
-Run: `grep -n "桁数で折り返さない" .claude/CLAUDE.md`
-Expected: § 言語 の中に1件だけ出る。
+Run: `grep -n "桁数で折り返さない" .claude/CLAUDE.md` Expected: § 言語 の中に1件だけ出る。
 
 - [ ] **Step 4: Commit**
 
@@ -291,8 +289,7 @@ Expected: PASS（0 failures）
 
 このタスクの成果物は `$SCRATCH` にあり、リポジトリには何も足さない。`git status` が clean であることだけ確認する。
 
-Run: `git status --short`
-Expected: 出力なし
+Run: `git status --short` Expected: 出力なし
 
 ---
 
@@ -382,13 +379,11 @@ def verify(before, after):
 
 - [ ] **Step 4: テストが通ることを確認する**
 
-Run: `cd $SCRATCH && python3 -m unittest test_unwrap -v`
-Expected: PASS（0 failures。Task 2 のテストも引き続き通っていること）
+Run: `cd $SCRATCH && python3 -m unittest test_unwrap -v` Expected: PASS（0 failures。Task 2 のテストも引き続き通っていること）
 
 - [ ] **Step 5: Commit（スクリプトはコミットしない）**
 
-Run: `git status --short`
-Expected: 出力なし
+Run: `git status --short` Expected: 出力なし
 
 ---
 
@@ -452,19 +447,15 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: dry-run で対象と失敗を見る**
 
-Run: `cd $SCRATCH && python3 unwrap.py <WT>/notes <WT>/tasks <WT>/projects <WT>/.claude`
-（`<WT>` は worktree の絶対パス）
-Expected: `changed` の一覧と集計が出る。**`FAILED` が1件でもあれば、そのファイルを読んで原因を特定し、`unwrap_text` を直す。** 検証が落ちたまま先へ進まない。
+Run: `cd $SCRATCH && python3 unwrap.py <WT>/notes <WT>/tasks <WT>/projects <WT>/.claude` （`<WT>` は worktree の絶対パス） Expected: `changed` の一覧と集計が出る。**`FAILED` が1件でもあれば、そのファイルを読んで原因を特定し、`unwrap_text` を直す。** 検証が落ちたまま先へ進まない。
 
 - [ ] **Step 3: 適用する**
 
-Run: `cd $SCRATCH && python3 unwrap.py <WT>/notes <WT>/tasks <WT>/projects <WT>/.claude --apply`
-Expected: `失敗: 0`
+Run: `cd $SCRATCH && python3 unwrap.py <WT>/notes <WT>/tasks <WT>/projects <WT>/.claude --apply` Expected: `失敗: 0`
 
 - [ ] **Step 4: 差分を読む**
 
-Run: `cd <WT> && git diff --stat`
-そのうえで `git diff` を実際に読む。dotfiles の対象は日本語の折り返しが 67 行程度なので**全部読める**。次を確認する。
+Run: `cd <WT> && git diff --stat` そのうえで `git diff` を実際に読む。dotfiles の対象は日本語の折り返しが 67 行程度なので**全部読める**。次を確認する。
 
 - 語が潰れていない（`Claude Code` が `ClaudeCode` になっていない）
 - 表・コードフェンス・frontmatter が変わっていない
@@ -479,8 +470,7 @@ git commit -m "style(joifup): unwrap hard-wrapped Japanese prose in dotfiles"
 
 - [ ] **Step 6: 変換がべき等であることを確認する**
 
-Run: `cd $SCRATCH && python3 unwrap.py <WT>/notes <WT>/tasks <WT>/projects <WT>/.claude`
-Expected: `変換する (dry-run): 0 / 失敗: 0`
+Run: `cd $SCRATCH && python3 unwrap.py <WT>/notes <WT>/tasks <WT>/projects <WT>/.claude` Expected: `変換する (dry-run): 0 / 失敗: 0`
 
 これはスクリプトに直せるものが残っていないことを示すだけで、**折り返しが残っていないことは示さない。** 4スペース以上のインデント行は触らない仕様なので、入れ子の箇条書きの継続行は残る。それを次のステップで測る。
 
@@ -488,8 +478,7 @@ Expected: `変換する (dry-run): 0 / 失敗: 0`
 
 `$SCRATCH/measure_all.py` は、この worktree のパスを引数に取って「折り返された段落行 / 段落行」を出す既存のスクリプトである。
 
-Run: `cd $SCRATCH && python3 measure_all.py <WT>`
-Expected: 適用前は 171 / 1,034（17%、うち日本語 67）だった。適用後の数を記録する。
+Run: `cd $SCRATCH && python3 measure_all.py <WT>` Expected: 適用前は 171 / 1,034（17%、うち日本語 67）だった。適用後の数を記録する。
 
 残った行が日本語を含むなら、**実際にその箇所を開いて、なぜ残ったかを1件ずつ確かめる。** 4スペース以上のインデント継続行なら仕様どおりである。それ以外の理由なら `unwrap_text` の穴なので、報告に挙げる（このタスクでは直さない — 何が残ったかが分かることが先である）。
 

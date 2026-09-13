@@ -10,10 +10,8 @@
 
 ## 進め方の背骨 = superpowers
 
-- 計画・実行・レビューの"進め方"は superpowers を使う:
-  `brainstorming`（設計・HARD-GATE: 設計承認まで実装禁止）→ `writing-plans` → `subagent-driven-development` → `finishing-a-development-branch`。
-- **ECC のワークフロー駆動系スキルは背骨に使わない**（＝自動起動しない。明示指定時のみ可）。
-  該当例: plan系 / orch-* / feature-dev / multi-* / gan-* / tdd-workflow / 汎用レビュー駆動（code-review・review-pr・orch-review・santa-loop・verification-loop）/ git系（pr・git-workflow・github-ops・prp-*）/ セッション記憶（save/resume-session・continuous-learning v1）。
+- 計画・実行・レビューの"進め方"は superpowers を使う: `brainstorming`（設計・HARD-GATE: 設計承認まで実装禁止）→ `writing-plans` → `subagent-driven-development` → `finishing-a-development-branch`。
+- **ECC のワークフロー駆動系スキルは背骨に使わない**（＝自動起動しない。明示指定時のみ可）。該当例: plan系 / orch-* / feature-dev / multi-* / gan-* / tdd-workflow / 汎用レビュー駆動（code-review・review-pr・orch-review・santa-loop・verification-loop）/ git系（pr・git-workflow・github-ops・prp-*）/ セッション記憶（save/resume-session・continuous-learning v1）。
 - 新しい類似スキルが増えても「**ワークフロー駆動系は背骨に使わない**」の原則で判断する（列挙は例示。原則が優先）。
 
 ## 専門作業 = ECC

@@ -13,8 +13,7 @@ disable-model-invocation: true
 
 ## 概要
 
-新規プロジェクトのセットアップを支援するスキルです。
-以下の3ファイルを作成します：
+新規プロジェクトのセットアップを支援するスキルです。以下の3ファイルを作成します：
 
 - `.claude/settings.local.json` - プロジェクト固有の環境変数
 - `.claude/project/local-setup.md` - ローカル環境セットアップ手順
