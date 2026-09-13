@@ -1,3 +1,7 @@
+import contextlib
+import io
+import pathlib
+import tempfile
 import unittest
 
 import unwrap
@@ -156,6 +160,49 @@ class TestUnwrapText(unittest.TestCase):
         self.assertEqual(unwrap.unwrap_text(src),
                          "superpowers を使う: `brainstorming` から始める。\n")
 
+    def test_puts_no_space_before_a_full_width_opening_paren(self):
+        """右が全角の開き括弧なら、左が何であっても空白を入れない。
+
+        句読点の例外の鏡の側である。片側だけにすると、左が非日本語のときに
+        `` `.claude` `` + `（対象は…` のような箇所へ空白が入る。
+        """
+        src = "対象は `.claude`\n（対象ディレクトリからの相対で判定する）。\n"
+        self.assertEqual(
+            unwrap.unwrap_text(src),
+            "対象は `.claude`（対象ディレクトリからの相対で判定する）。\n")
+
+    def test_puts_no_space_before_a_full_width_opening_quote(self):
+        """「 でも同じ。"""
+        src = "**画像は入れない**\n「画像は入れない」と読む。\n"
+        self.assertEqual(
+            unwrap.unwrap_text(src),
+            "**画像は入れない**「画像は入れない」と読む。\n")
+
+    def test_puts_no_space_before_the_other_full_width_brackets(self):
+        """『【〔 も開き括弧として扱う。"""
+        for bracket in "『【〔":
+            src = f"`unwrap.py`\n{bracket}日本語の本文である。\n"
+            self.assertEqual(unwrap.unwrap_text(src),
+                             f"`unwrap.py`{bracket}日本語の本文である。\n")
+
+    def test_an_ascii_opening_paren_is_not_an_exception(self):
+        """( は半角なので例外に当たらず、空白が入る。"""
+        src = "対象は `.claude`\n(半角の括弧である) と読む。\n"
+        self.assertEqual(unwrap.unwrap_text(src),
+                         "対象は `.claude` (半角の括弧である) と読む。\n")
+
+    def test_a_marker_only_line_does_not_gain_a_double_space(self):
+        """本文がマーカーの次の行から始まっても空白は増えない。
+
+        結合点の左が空文字になる。空文字は in 判定でどの文字列にも含まれる
+        ので、明示的に落としておかないと `left in JA_PUNCT` が偽の真になる。
+        逆に素朴に空白を入れると行末が半角空白2つになり、意図しないハード
+        ブレイクが生まれる。
+        """
+        src = "- \n  日本語の本文が桁数で\n  折り返されている。\n"
+        self.assertEqual(unwrap.unwrap_text(src),
+                         "- 日本語の本文が桁数で折り返されている。\n")
+
 class TestVerify(unittest.TestCase):
     def test_a_clean_unwrap_has_no_problems(self):
         before = "日本語の本文が桁数で\n折り返されている。\n"
@@ -213,6 +260,86 @@ class TestVerify(unittest.TestCase):
         before = "列1 | 列2\n---|---\nあ | い\n"
         after = unwrap.unwrap_text(before)
         self.assertTrue(unwrap.verify(before, after))
+
+def _run_main(argv):
+    """main を走らせ、(終了コード, 標準出力) を返す。"""
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        code = unwrap.main(argv)
+    return code, buffer.getvalue()
+
+
+class TestMain(unittest.TestCase):
+    """main の除外パス判定と引数の扱い。
+
+    ここが壊れると「変更なし・失敗 0」と出て成功に見える。unwrap_text と
+    verify のテストはこの壊れ方を一切守らない。
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _write(self, relative):
+        path = self.tmp / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("日本語の本文が桁数で\n折り返されている。\n",
+                        encoding="utf-8")
+        return path
+
+    def test_a_target_inside_a_worktree_is_not_skipped(self):
+        """対象ディレクトリ自身が .claude/worktrees/ の下にあっても除外しない。
+
+        除外は対象ディレクトリからの相対で判定する。絶対パスで判定すると
+        worktree の中で走らせた瞬間に全件が除外され、「変更なし・失敗 0」と
+        出て成功に見える。
+        """
+        target = self.tmp / ".claude" / "worktrees" / "feature-008" / "notes"
+        self._write(".claude/worktrees/feature-008/notes/a.md")
+        code, output = _run_main([str(target)])
+        self.assertEqual(code, 0)
+        self.assertIn("変換する (dry-run): 1 / 変更なし: 0 / 失敗: 0", output)
+
+    def test_a_skipped_directory_inside_the_target_is_still_skipped(self):
+        """対象より内側の除外パスは、これまでどおり除外する。"""
+        self._write("node_modules/pkg/a.md")
+        self._write(".superpowers/sdd/task-1.md")
+        code, output = _run_main([str(self.tmp)])
+        self.assertEqual(code, 0)
+        self.assertIn("変換する (dry-run): 0 / 変更なし: 0 / 失敗: 0", output)
+
+    def test_dry_run_does_not_write(self):
+        path = self._write("notes/a.md")
+        before = path.read_text(encoding="utf-8")
+        _run_main([str(self.tmp)])
+        self.assertEqual(path.read_text(encoding="utf-8"), before)
+
+    def test_apply_writes(self):
+        path = self._write("notes/a.md")
+        code, _ = _run_main([str(self.tmp), "--apply"])
+        self.assertEqual(code, 0)
+        self.assertEqual(path.read_text(encoding="utf-8"),
+                         "日本語の本文が桁数で折り返されている。\n")
+
+    def test_no_target_directory_is_an_error(self):
+        """対象ディレクトリを渡し忘れたら、使い方を出して 2 で終わる。"""
+        code, output = _run_main([])
+        self.assertEqual(code, 2)
+        self.assertIn("使い方", output)
+        code, output = _run_main(["--apply"])
+        self.assertEqual(code, 2)
+        self.assertIn("使い方", output)
+
+    def test_an_unreadable_file_is_reported_and_the_run_continues(self):
+        """読めないファイルが1件あっても、残りの処理は続く。"""
+        (self.tmp / "notes").mkdir(parents=True, exist_ok=True)
+        (self.tmp / "notes" / "broken.md").write_bytes(b"\xff\xfe\x00broken")
+        self._write("notes/ok.md")
+        code, output = _run_main([str(self.tmp)])
+        self.assertEqual(code, 1)
+        self.assertIn("FAILED", output)
+        self.assertIn("変換する (dry-run): 1 / 変更なし: 0 / 失敗: 1", output)
 
 
 if __name__ == "__main__":

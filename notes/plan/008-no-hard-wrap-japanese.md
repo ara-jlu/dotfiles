@@ -448,7 +448,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: dry-run で対象と失敗を見る**
 
-Run: `cd $SCRATCH && python3 unwrap.py <WT>/notes <WT>/tasks <WT>/projects <WT>/.claude` （`<WT>` は worktree の絶対パス） Expected: `changed` の一覧と集計が出る。**`FAILED` が1件でもあれば、そのファイルを読んで原因を特定し、`unwrap_text` を直す。** 検証が落ちたまま先へ進まない。
+Run: `cd $SCRATCH && python3 unwrap.py <WT>/notes <WT>/tasks <WT>/projects <WT>/.claude`（`<WT>` は worktree の絶対パス） Expected: `changed` の一覧と集計が出る。**`FAILED` が1件でもあれば、そのファイルを読んで原因を特定し、`unwrap_text` を直す。** 検証が落ちたまま先へ進まない。
 
 - [ ] **Step 3: 適用する**
 

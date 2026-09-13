@@ -23,8 +23,11 @@ from pathlib import Path
 
 FENCE = re.compile(r"^\s*(```|~~~)")
 BLOCK_START = re.compile(r"^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|\||---\s*$|===)")
-SKIP = ("/node_modules/", "/.git/", "/.claude/worktrees/", "/fixtures/",
-        "/dist/", "/build/", "/target/", "/.next/", "/coverage/")
+# unwrap.py と同じ一覧にしておく。片方だけが数えると、変換しないと決めた
+# ディレクトリの折り返しが残量に出て、直し切れない数がいつまでも残る。
+SKIP = ("/node_modules/", "/.git/", "/.claude/worktrees/", "/.superpowers/",
+        "/fixtures/", "/dist/", "/build/", "/target/", "/.next/",
+        "/coverage/")
 CJK = re.compile(r"[぀-ヿ一-鿿]")
 
 
