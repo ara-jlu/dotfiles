@@ -11,14 +11,15 @@ updated_at: 2026-09-12
 
 **Goal:** 日本語の md 本文でハード折り返しをやめる規約を置き、dotfiles の既存分を機械的に結合する。
 
-**Architecture:** 規約はグローバル `CLAUDE.md` の § 言語 に一文だけ足す（`~/.claude/CLAUDE.md` は dotfiles への symlink なので全リポジトリに届く）。変換は scratchpad の Python スクリプトで行い、リポジトリにはコミットしない。スクリプトは「変換」と「検証」を分け、検証が通ったファイルだけ書き戻す。
+**Architecture:** 規約はグローバル `CLAUDE.md` の § 言語 に一文だけ足す（`~/.claude/CLAUDE.md` は dotfiles への symlink なので全リポジトリに届く）。変換は Python スクリプトで行い、「変換」と「検証」を分けて、検証が通ったファイルだけ書き戻す（着手時点は scratchpad 置きでコミットしない方針だったが、適用先が他の repo にも及ぶことが決まり、最終的に `.claude/scripts/` にコミットした。下の Global Constraints を参照）。
 
 **Tech Stack:** Python 3（標準ライブラリのみ）、`unittest`
 
 ## Global Constraints
 
 - 設計の正典は `notes/document/008-no-hard-wrap-japanese-design.md`。規則で迷ったらこれを読む。
-- スクリプトとテストは `$SCRATCH` = `/private/tmp/claude-501/-Users-ara-Joifup-dotfiles/c81cbf20-6de2-4b0e-bb13-a3a5d04fff6a/scratchpad` に置く。**リポジトリにコミットしない。**
+- **この計画は着手時点の記録である。実装の途中で規則が変わり、以下に埋め込んだコードは古い。** 確定した道具は `.claude/scripts/unwrap.py`・`.claude/scripts/test_unwrap.py`・`.claude/scripts/measure_wraps.py`（この計画の `$SCRATCH/measure_all.py` の改名先）にコミットしてある。次に別の repo へ当てるときは、以下のコードではなくそれを使う。
+- スクリプトとテストは `$SCRATCH` = `/private/tmp/claude-501/-Users-ara-Joifup-dotfiles/c81cbf20-6de2-4b0e-bb13-a3a5d04fff6a/scratchpad` に置く（**着手時点の方針。上記のとおり最終的には `.claude/scripts/` にコミットした**）。
 - コミットメッセージは英語。本文・コメント・docstring は日本語。
 - 日本語の本文は桁数で折り返さない（このタスクが置く規約を、書くものすべてで守る）。
 - 結合点の空白: 前後のどちらかが ASCII 英数なら半角空白1つ、日本語どうしなら空白なし。
