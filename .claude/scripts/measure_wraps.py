@@ -31,7 +31,8 @@ BLOCK_START = re.compile(r"^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|\||---\s*$|===)")
 # unwrap.py と同じ一覧にしておく。片方だけが数えると、変換しないと決めた
 # ディレクトリの折り返しが残量に出て、直し切れない数がいつまでも残る。
 # 一致は test_unwrap の test_the_skip_list_matches_unwrap が固定している。
-SKIP_PARTS = frozenset({"node_modules", ".git", "worktrees", ".superpowers",
+SKIP_PARTS = frozenset({"node_modules", ".git", "worktrees", ".worktrees",
+                        ".superpowers",
                         "fixtures", "dist", "build", "target", ".next",
                         "coverage"})
 
@@ -74,10 +75,11 @@ def classify(path):
 def main(argv):
     # unwrap.py と同じ扱いにする。渡し忘れや打ち間違いで黙って 0 件を出して
     # exit 0 すると、何も測っていないのに「残量なし」に見える。
-    if not argv:
+    roots = [a for a in argv if not a.startswith("--")]
+    if not roots:
         print("使い方: python3 measure_wraps.py <対象ディレクトリ> [...]")
         return 2
-    bases = [Path(root) for root in argv]
+    bases = [Path(root) for root in roots]
     missing = [str(b) for b in bases if not b.is_dir()]
     if missing:
         for name in missing:
