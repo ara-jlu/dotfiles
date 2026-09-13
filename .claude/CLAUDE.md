@@ -44,7 +44,7 @@
 - ブランチ名・コード: 英語
 - 原則: **機械が扱う面 = 英語、人が読む面 = 日本語**（人が読む面 = PR本文・Discord・Joifup の doc/plan/log 本文・brainstorm 対話）
 - **自作スキルの SKILL.md: 日本語**（`.claude/skills/j-*` と `md2joifup`。本文・`##`/`###` 見出し・`description`・`argument-hint`）。機械が実行し**人が保守する**面なので、保守する側の言語に合わせる。英語のまま残すのは `name`・frontmatter のキー名・コマンド／パス／フラグ・他スキル名と `agentType`・status 値とタグ名・コミットメッセージ例・コードフェンスの中身・原語で定着した技術識別子（`frontmatter`・`diff`・`worktree` 等）。superpowers / ECC のスキルは無改変なので対象外。細則は `.claude/rules/skill-language.md`（借用語の判断基準・語順・句読点・見出しの語彙表・`description` の規定。すべて実際の欠陥から確定したもの）。`paths` スコープで `.claude/skills/**/*.md` を読むときに自動で載るが、**スキルを新規作成するときは読む対象がまだ無いので明示的に開く**。
-- **日本語の本文とコメントは桁数で折り返さない**（1段落＝1行）。エディタが soft-wrap するので二重に折れ、日本語は語の間に空白が無いため語の途中で切れる。**コメントにはコードのコメントも含む**（既存分の整形は dotfiles の `tasks/007` が担当する）。禁じるのは桁数による折り返しだけで、**意図的な改行**（行末の半角空白2つや `\` によるハードブレイク）はそのまま残す。既存の md の変換は dotfiles の `.claude/scripts/unwrap.py`、規則の正典は同じく dotfiles の `notes/document/008-no-hard-wrap-japanese-design.md`。
+- **日本語の本文とコメントは桁数で折り返さない**（語や句の途中で切らない）。エディタが soft-wrap するので二重に折れ、日本語は語の間に空白が無いため語の途中で切れる。**文の切れ目（`。`）での改行は折り返しではないので、そのままでよい**（意味のある位置で切れているため害が無い）。**コメントにはコードのコメントも含む**（既存分の整形は dotfiles の `tasks/007` が担当する）。禁じるのは桁数による折り返しだけで、**意図的な改行**（行末の半角空白2つや `\` によるハードブレイク）はそのまま残す。既存の md の変換は dotfiles の `.claude/scripts/unwrap.py`、規則の正典は同じく dotfiles の `notes/document/008-no-hard-wrap-japanese-design.md`。
 
 ## Git
 
