@@ -219,7 +219,8 @@ def verify(before, after):
 # measure_wraps.py と同じ一覧にしておく (test_unwrap が一致を固定している)。
 # 片方だけが数えると、変換しないと決めた場所の折り返しが残量に出て、直し切れ
 # ない数がいつまでも残る。
-SKIP_PARTS = frozenset({"node_modules", ".git", "worktrees", ".superpowers",
+SKIP_PARTS = frozenset({"node_modules", ".git", "worktrees", ".worktrees",
+                        ".superpowers",
                         "fixtures", "dist", "build", "target", ".next",
                         "coverage"})
 
