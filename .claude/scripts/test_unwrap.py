@@ -4,6 +4,7 @@ import pathlib
 import tempfile
 import unittest
 
+import measure_wraps
 import unwrap
 
 class TestUnwrapText(unittest.TestCase):
@@ -123,12 +124,6 @@ class TestUnwrapText(unittest.TestCase):
         src = "- 項目である。\n\n  明示的に改行する。  \n  二行目である。\n"
         self.assertEqual(unwrap.unwrap_text(src), src)
 
-    def test_puts_a_space_between_two_symbols(self):
-        """記号どうしの結合点にも空白が入る (どちらも日本語ではないため)。"""
-        src = "superpowers を使う:\n`brainstorming` から始める。\n"
-        self.assertEqual(unwrap.unwrap_text(src),
-                         "superpowers を使う: `brainstorming` から始める。\n")
-
     def test_puts_a_space_between_a_code_span_and_an_em_dash(self):
         src = "`--slug EN-SLUG`\n— house-style に従う。\n"
         self.assertEqual(unwrap.unwrap_text(src),
@@ -155,7 +150,11 @@ class TestUnwrapText(unittest.TestCase):
                          "先に片づけてから、`--apply` で当てる。\n")
 
     def test_a_half_width_colon_is_not_an_exception(self):
-        """: は半角なので例外に当たらず、空白が入る。"""
+        """: は半角なので例外に当たらず、空白が入る。
+
+        記号どうし (: と `) の結合点でもあるので、「片側が ASCII 英数か」で
+        判定すると空白が落ちる形をここで押さえている。
+        """
         src = "superpowers を使う:\n`brainstorming` から始める。\n"
         self.assertEqual(unwrap.unwrap_text(src),
                          "superpowers を使う: `brainstorming` から始める。\n")
@@ -194,14 +193,29 @@ class TestUnwrapText(unittest.TestCase):
     def test_a_marker_only_line_does_not_gain_a_double_space(self):
         """本文がマーカーの次の行から始まっても空白は増えない。
 
-        結合点の左が空文字になる。空文字は in 判定でどの文字列にも含まれる
-        ので、明示的に落としておかないと `left in JA_PUNCT` が偽の真になる。
-        逆に素朴に空白を入れると行末が半角空白2つになり、意図しないハード
-        ブレイクが生まれる。
+        結合点の左が空文字になる。素朴に空白を入れると行末が半角空白2つに
+        なり、意図しないハードブレイクが生まれる。
         """
         src = "- \n  日本語の本文が桁数で\n  折り返されている。\n"
         self.assertEqual(unwrap.unwrap_text(src),
                          "- 日本語の本文が桁数で折り返されている。\n")
+
+
+class TestJoinParts(unittest.TestCase):
+    """join_parts を直接呼ぶ。unwrap_text 経由では通らない結合点を押さえる。"""
+
+    def test_an_empty_side_adds_no_space(self):
+        """どちらかが空なら結合点そのものが無いので、空白を入れない。
+
+        unwrap.py の明示のガードが受け持つ形である。ガードが無くても
+        `"" in JA_PUNCT` が真になるので結果は同じ (つまりガードを外しても
+        テストは通る)。ここで固定しているのは分岐の有無ではなく、**空側に
+        空白を入れない**という結合点の振る舞いそのものである。
+        """
+        self.assertEqual(unwrap.join_parts(["", "日本語の本文"]), "日本語の本文")
+        self.assertEqual(unwrap.join_parts(["", "ASCII text"]), "ASCII text")
+        self.assertEqual(unwrap.join_parts(["本文である。", ""]), "本文である。")
+        self.assertEqual(unwrap.join_parts(["ASCII text", ""]), "ASCII text")
 
 class TestVerify(unittest.TestCase):
     def test_a_clean_unwrap_has_no_problems(self):
@@ -269,6 +283,14 @@ def _run_main(argv):
     return code, buffer.getvalue()
 
 
+def _run_measure(argv):
+    """measure_wraps.main を走らせ、(終了コード, 標準出力) を返す。"""
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        code = measure_wraps.main(argv)
+    return code, buffer.getvalue()
+
+
 class TestMain(unittest.TestCase):
     """main の除外パス判定と引数の扱い。
 
@@ -309,6 +331,36 @@ class TestMain(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("変換する (dry-run): 0 / 変更なし: 0 / 失敗: 0", output)
 
+    def test_a_worktree_inside_the_target_is_skipped(self):
+        """対象の内側に worktrees/ があれば、その中は除外する。
+
+        接頭辞 `"/.claude/worktrees/"` で判定していたときは、対象を
+        `<repo>/.claude` にすると相対パスが `/worktrees/...` になって一致
+        せず、**進行中の別ブランチの worktree を書き換えていた**。
+        notes/plan の Step 2 が案内しているのがまさにこの形である。
+        """
+        claude = self.tmp / ".claude"
+        self._write(".claude/worktrees/feature-009/notes/a.md")
+        self._write(".claude/skills/j-log/SKILL.md")
+        code, output = _run_main([str(claude)])
+        self.assertEqual(code, 0)
+        self.assertIn("変換する (dry-run): 1 / 変更なし: 0 / 失敗: 0", output)
+        self.assertNotIn("worktrees", output)
+
+    def test_a_nonexistent_target_is_an_error(self):
+        """打ち間違いは黙って 0 件にせず、その旨を出して 2 で終わる。"""
+        code, output = _run_main([str(self.tmp / "notes-typo")])
+        self.assertEqual(code, 2)
+        self.assertIn("対象がディレクトリとして存在しない", output)
+        self.assertNotIn("変換する", output)
+
+    def test_a_file_passed_as_a_target_is_an_error(self):
+        """ディレクトリでなければ、存在していてもエラーにする。"""
+        path = self._write("notes/a.md")
+        code, output = _run_main([str(path)])
+        self.assertEqual(code, 2)
+        self.assertIn("対象がディレクトリとして存在しない", output)
+
     def test_dry_run_does_not_write(self):
         path = self._write("notes/a.md")
         before = path.read_text(encoding="utf-8")
@@ -340,6 +392,47 @@ class TestMain(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("FAILED", output)
         self.assertIn("変換する (dry-run): 1 / 変更なし: 0 / 失敗: 1", output)
+
+
+class TestMeasureWraps(unittest.TestCase):
+    """measure_wraps.py は unwrap.py と同じ除外・同じ引数の扱いであること。"""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def test_the_skip_list_matches_unwrap(self):
+        """除外の定義が2つのファイルで同じであること。
+
+        片方だけが数えると、変換しないと決めた場所の折り返しが残量に出て、
+        直し切れない数がいつまでも残る。
+        """
+        self.assertEqual(measure_wraps.SKIP_PARTS, unwrap.SKIP_PARTS)
+
+    def test_it_skips_the_same_directories(self):
+        """除外の判定そのものも一致する (対象の内側でも外側でも)。"""
+        base = self.tmp / ".claude"
+        inside = base / "worktrees" / "feature-009" / "notes" / "a.md"
+        outside = base / "skills" / "j-log" / "SKILL.md"
+        for path in (inside, outside):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("日本語の本文が桁数で\n折り返されている。\n",
+                            encoding="utf-8")
+        self.assertTrue(unwrap.is_skipped(inside, base))
+        self.assertTrue(measure_wraps.is_skipped(inside, base))
+        self.assertFalse(unwrap.is_skipped(outside, base))
+        self.assertFalse(measure_wraps.is_skipped(outside, base))
+
+    def test_no_target_directory_is_an_error(self):
+        code, output = _run_measure([])
+        self.assertEqual(code, 2)
+        self.assertIn("使い方", output)
+
+    def test_a_nonexistent_target_is_an_error(self):
+        code, output = _run_measure([str(self.tmp / "notes-typo")])
+        self.assertEqual(code, 2)
+        self.assertIn("対象がディレクトリとして存在しない", output)
 
 
 if __name__ == "__main__":

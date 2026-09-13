@@ -17,9 +17,10 @@
     python3 unwrap.py <対象ディレクトリ> [...] --apply
 
 対象ディレクトリの下の *.md を再帰的に見る（例: `<repo>/notes <repo>/tasks
-<repo>/.claude`）。除外パス（node_modules・.git・worktrees 等）は**対象
-ディレクトリからの相対**で判定するので、worktree の中を対象にしても全件が
-除外されることはない。
+<repo>/.claude`）。除外（node_modules・.git・worktrees 等）は**対象ディレクトリ
+からの相対パスの要素名**で判定する。だから worktree の中を対象にしても全件が
+除外されることはなく、対象の内側に worktrees/ があればその中は除外される。
+対象がディレクトリとして存在しなければ、その旨を出して exit 2 する。
 
 **他の repo に当てる前に必ずテストを走らせる**（`cd .claude/scripts &&
 python3 -m unittest test_unwrap -v`）。道具が壊れていないことを先に確かめて
@@ -75,9 +76,11 @@ def join_parts(parts):
         left = out[-1:] if out else ""
         right = part[:1]
         if not left or not right:
-            # どちらかが空なら結合点そのものが無い。空文字は in 判定でどの
-            # 文字列にも含まれるので、明示的に先に落としておかないと
-            # `left in JA_PUNCT` が偽の真になる (マーカーだけの行など)。
+            # どちらかが空なら結合点そのものが無いので、空白を入れない
+            # (マーカーだけの行など)。この分岐が無くても `"" in JA_PUNCT`
+            # が真になるため結果は同じだが、`in` の性質に意図を負わせない
+            # ために明示しておく。素朴に空白を入れると行末が半角空白2つに
+            # なり、意図しないハードブレイクが生まれる。
             out = out + part
         elif left in JA_PUNCT:
             out = out + part
@@ -207,9 +210,22 @@ def verify(before, after):
         problems.append("段落の頭のインデントの並びが変わった")
     return problems
 
-SKIP = ("/node_modules/", "/.git/", "/.claude/worktrees/", "/.superpowers/",
-        "/fixtures/", "/dist/", "/build/", "/target/", "/.next/",
-        "/coverage/")
+# 除外するディレクトリ**名**。パスの接頭辞ではなく、対象ディレクトリからの
+# 相対パスの要素名と突き合わせる。接頭辞で持つと、対象の渡し方によって効いたり
+# 効かなかったりする。たとえば `"/.claude/worktrees/"` を接頭辞で持ったまま
+# 対象を `<repo>/.claude` にすると、相対パスが `/worktrees/...` になって一致
+# せず、**進行中の別ブランチの worktree を書き換える**。要素名で持てば、対象を
+# どこに置いても、また対象の内側でも外側でも同じように効く。
+# measure_wraps.py と同じ一覧にしておく (test_unwrap が一致を固定している)。
+# 片方だけが数えると、変換しないと決めた場所の折り返しが残量に出て、直し切れ
+# ない数がいつまでも残る。
+SKIP_PARTS = frozenset({"node_modules", ".git", "worktrees", ".superpowers",
+                        "fixtures", "dist", "build", "target", ".next",
+                        "coverage"})
+
+def is_skipped(path, base):
+    """path (base の下のファイル) が除外対象のディレクトリの中にあるか。"""
+    return not SKIP_PARTS.isdisjoint(path.relative_to(base).parts[:-1])
 
 def unwrap_file(path, apply=False):
     """1ファイルを変換する。戻り値は ("changed"|"unchanged"|"failed", 詳細)。"""
@@ -241,14 +257,21 @@ def main(argv):
         # exit 0 すると、何もしていないのに成功に見える。
         print("使い方: python3 unwrap.py <対象ディレクトリ> [...] [--apply]")
         return 2
+    bases = [pathlib.Path(root) for root in roots]
+    missing = [str(b) for b in bases if not b.is_dir()]
+    if missing:
+        # 打ち間違いが最も起きやすい形である。黙って 0 件を報告して exit 0
+        # すると、何も走っていないのに成功に見える。
+        for name in missing:
+            print(f"対象がディレクトリとして存在しない: {name}")
+        return 2
     changed = unchanged = failed = 0
-    for root in roots:
-        base = pathlib.Path(root)
+    for base in bases:
         for path in sorted(base.rglob("*.md")):
-            # root より内側だけを見て判定する。root 自身が .claude/worktrees/
-            # の下にあるときに全件が除外されてしまうのを避けるため。
-            rel = "/" + str(path.relative_to(base))
-            if any(s in rel for s in SKIP):
+            # 除外は対象ディレクトリからの相対パスの**要素名**で判定する。
+            # 対象が worktree の中にあっても中身は除外されず、対象の内側に
+            # worktrees/ があればその中は除外される。
+            if is_skipped(path, base):
                 continue
             state, detail = unwrap_file(path, apply)
             if state == "changed":
