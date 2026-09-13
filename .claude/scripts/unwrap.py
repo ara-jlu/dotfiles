@@ -44,6 +44,8 @@ HARD_BREAK = re.compile(r"(  |\\)$")
 INDENT = re.compile(r"^\s*")
 # 全角の句読点。この直後には、右が何であっても空白を入れない。
 JA_PUNCT = "。、"
+# 全角の開き括弧。この直前には、左が何であっても空白を入れない。
+JA_OPEN = "（「『【〔"
 
 def is_block_start(line):
     """段落の続きになりえない行か。"""
@@ -55,9 +57,12 @@ def join_parts(parts):
 
     結合点の前後がともに日本語 (かな・漢字・全角の句読点や記号) なら空白
     なしで繋ぎ、それ以外は半角空白1つを入れる (設計の「結合点の空白」)。
-    ただし左が全角の句読点 (。、) なら、右が何であっても空白を入れない。
-    日本語では句読点の直後に空白を置かないためである。この例外が無いと
-    `解決される。` + `` `brew upgrade tmux` `` に空白が入る。
+    ただし全角の約物には例外を置く。左が全角の句読点 (。、) なら右が何で
+    あっても、右が全角の開き括弧 (（「『【〔) なら左が何であっても、空白を
+    入れない。日本語では句読点の直後にも開き括弧の直前にも空白を置かない
+    ためである。例外は必ず両側に置く。片側だけにすると鏡の側が開く。前者が
+    無いと `解決される。` + `` `brew upgrade tmux` `` に空白が入り、後者が
+    無いと `` `.claude` `` + `（対象は…` に空白が入る。
 
     判定は「片側が ASCII 英数か」ではなく「両側が日本語か」で行う。前者
     だと、結合点に記号どうしが来たときに空白が落ちるためである。たとえば
@@ -69,7 +74,14 @@ def join_parts(parts):
     for part in parts[1:]:
         left = out[-1:] if out else ""
         right = part[:1]
-        if left in JA_PUNCT:
+        if not left or not right:
+            # どちらかが空なら結合点そのものが無い。空文字は in 判定でどの
+            # 文字列にも含まれるので、明示的に先に落としておかないと
+            # `left in JA_PUNCT` が偽の真になる (マーカーだけの行など)。
+            out = out + part
+        elif left in JA_PUNCT:
+            out = out + part
+        elif right in JA_OPEN:
             out = out + part
         elif JA.match(left) and JA.match(right):
             out = out + part
@@ -195,12 +207,18 @@ def verify(before, after):
         problems.append("段落の頭のインデントの並びが変わった")
     return problems
 
-SKIP = ("/node_modules/", "/.git/", "/.claude/worktrees/", "/fixtures/",
-        "/dist/", "/build/", "/target/", "/.next/", "/coverage/")
+SKIP = ("/node_modules/", "/.git/", "/.claude/worktrees/", "/.superpowers/",
+        "/fixtures/", "/dist/", "/build/", "/target/", "/.next/",
+        "/coverage/")
 
 def unwrap_file(path, apply=False):
     """1ファイルを変換する。戻り値は ("changed"|"unchanged"|"failed", 詳細)。"""
-    before = path.read_text(encoding="utf-8")
+    try:
+        before = path.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError) as e:
+        # 他の repo には壊れたファイルや読めないファイルがある。1件で全体を
+        # 落とすと残りが処理されないので、そのファイルを失敗として報告して続ける。
+        return "failed", f"読めない ({e.__class__.__name__})"
     after = unwrap_text(before)
     if before == after:
         return "unchanged", ""
@@ -208,13 +226,21 @@ def unwrap_file(path, apply=False):
     if problems:
         return "failed", "; ".join(problems)
     if apply:
-        path.write_text(after, encoding="utf-8")
+        try:
+            path.write_text(after, encoding="utf-8")
+        except OSError as e:
+            return "failed", f"書けない ({e.__class__.__name__})"
     return "changed", ""
 
 def main(argv):
     import pathlib
     apply = "--apply" in argv
     roots = [a for a in argv if not a.startswith("--")]
+    if not roots:
+        # 渡し忘れたときに「変換した: 0 / 変更なし: 0 / 失敗: 0」を出して
+        # exit 0 すると、何もしていないのに成功に見える。
+        print("使い方: python3 unwrap.py <対象ディレクトリ> [...] [--apply]")
+        return 2
     changed = unchanged = failed = 0
     for root in roots:
         base = pathlib.Path(root)
