@@ -27,7 +27,32 @@ import re
 import sys
 from pathlib import Path
 
-FENCE = re.compile(r"^\s*(```|~~~)")
+# フェンスのマーカー行。unwrap.py と同じ定義にしておく (一致は
+# test_unwrap の test_the_fence_handling_matches_unwrap が固定している)。
+# 片方だけがフェンスの内と外を取り違えると、変換しないと決めた場所の
+# 折り返しが残量に出続ける。
+# markdown でフェンスを閉じられるのは**開いたときと同じ文字で、同じ長さ
+# 以上**のマーカーだけであり、**閉じマーカーの行には情報文字列を書けない**。
+FENCE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
+
+
+def fence_open(line):
+    """行がフェンスを開くなら (マーカーの文字, 長さ) を返す。開かないなら None。"""
+    m = FENCE.match(line)
+    if not m:
+        return None
+    return m.group(1)[0], len(m.group(1))
+
+
+def fence_closes(line, char, length):
+    """行が (char, length) で開いたフェンスを閉じるか。"""
+    m = FENCE.match(line)
+    if not m:
+        return False
+    marker = m.group(1)
+    return (marker[0] == char and len(marker) >= length
+            and not m.group(2).strip())
+
 BLOCK_START = re.compile(r"^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|\||---\s*$|===)")
 # 文末。unwrap.py と同じ定義にしておく (一致は test_unwrap が固定している)。
 # 片方だけが文末を折り返しと見なすと、結合しないと決めた改行が残量に出て、
@@ -61,14 +86,22 @@ def classify(path):
         while i < len(lines) and lines[i].strip() != "---":
             i += 1
         i += 1
-    in_fence = False
+    fence = None
     body = cont = cont_ja = 0
     for j in range(i, len(lines)):
         line = lines[j]
-        if FENCE.match(line):
-            in_fence = not in_fence
+        if fence is not None:
+            # フェンスの中。閉じられるのは開いたときと同じ文字で同じ長さ
+            # 以上のマーカーだけで、それ以外の行は中身である。閉じられない
+            # ままファイルが終われば最後まで中身として扱う。
+            if fence_closes(line, *fence):
+                fence = None
             continue
-        if in_fence or not line.strip() or BLOCK_START.match(line):
+        opened = fence_open(line)
+        if opened:
+            fence = opened
+            continue
+        if not line.strip() or BLOCK_START.match(line):
             continue
         body += 1
         nxt = lines[j + 1] if j + 1 < len(lines) else ""

@@ -30,7 +30,39 @@ python3 -m unittest test_unwrap -v`）。道具が壊れていないことを先
 """
 import re
 
-FENCE = re.compile(r"^\s*(```|~~~)")
+# フェンスのマーカー行。開くか閉じるかに関わらず、マーカーだけを見た形。
+# 1 群がマーカー (``` 以上または ~~~ 以上)、2 群がそのあとの情報文字列。
+FENCE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
+
+def fence_open(line):
+    """行がフェンスを開くなら (マーカーの文字, 長さ) を返す。開かないなら None。"""
+    m = FENCE.match(line)
+    if not m:
+        return None
+    return m.group(1)[0], len(m.group(1))
+
+def fence_closes(line, char, length):
+    """行が (char, length) で開いたフェンスを閉じるか。
+
+    markdown でフェンスを閉じられるのは、**開いたときと同じ文字で、同じ
+    長さ以上**のマーカーだけである。それより短いマーカーや別の文字の
+    マーカーは中身 (コンテンツ) であって、閉じない。また**閉じマーカーの
+    行には情報文字列を書けない**ので、マーカーのあとに空白以外が続く行も
+    閉じない。
+
+    以前はマーカーの文字と長さを見ず、`^\\s*(```|~~~)` に当たるどの行でも
+    開閉を反転させていた。そのため 4 個のバッククォートで開いたフェンスの
+    中に 3 個の行があると、そこで反転して**以降のフェンスの内と外が
+    入れ替わり**、本来コードである ```` ```ts ```` ブロックが本文として
+    結合された。verify の 3 条件 (文字の一致・構造の数・段落の頭の
+    インデント) はどれもこの壊れ方を検出できない。
+    """
+    m = FENCE.match(line)
+    if not m:
+        return False
+    marker = m.group(1)
+    return (marker[0] == char and len(marker) >= length
+            and not m.group(2).strip())
 HEADING = re.compile(r"^\s*#{1,6}\s")
 QUOTE = re.compile(r"^\s*>")
 TABLE = re.compile(r"^\s*\|")
@@ -153,12 +185,17 @@ def unwrap_text(text):
     while i < len(lines):
         line = lines[i]
 
-        if FENCE.match(line):
+        opened = fence_open(line)
+        if opened:
+            # 開いたマーカーの文字と長さを覚え、それを閉じられる行だけで
+            # 抜ける。閉じられないままファイルが終わる場合は、最後まで
+            # 中身として扱う。
             out.append(line)
             i += 1
+            char, length = opened
             while i < len(lines):
                 out.append(lines[i])
-                closed = FENCE.match(lines[i])
+                closed = fence_closes(lines[i], char, length)
                 i += 1
                 if closed:
                     break

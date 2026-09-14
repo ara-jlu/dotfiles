@@ -207,6 +207,123 @@ class TestUnwrapText(unittest.TestCase):
                          "- 日本語の本文が桁数で折り返されている。\n")
 
 
+class TestFences(unittest.TestCase):
+    """フェンスの開閉。マーカーの文字と長さを見ないと内と外が入れ替わる。
+
+    markdown でフェンスを閉じられるのは、開いたときと同じ文字で同じ長さ
+    以上のマーカーだけである。以前はマーカーに当たるどの行でも判定を反転
+    させていたため、4 個のバッククォートで開いたフェンスの中の 3 個の行で
+    反転し、以降のフェンスの内と外が入れ替わって、本来コードである
+    ```ts ブロックが本文として結合された。verify の 3 条件はこれを検出
+    できない (文字は欠けず、構造の数も段落の頭のインデントも変わらない)。
+    """
+
+    def test_a_shorter_marker_inside_a_longer_fence_does_not_close_it(self):
+        """4 個で開いたフェンスの中の 3 個の行は中身であって、閉じない。"""
+        src = ("````text\n"
+               "  ```\n"
+               "````\n"
+               "\n"
+               "本文が折り\n"
+               "返されている。\n")
+        expected = src.replace("本文が折り\n返されている。",
+                               "本文が折り返されている。")
+        self.assertEqual(unwrap.unwrap_text(src), expected)
+
+    def test_a_normal_fence_after_a_nested_fence_is_still_code(self):
+        """実際に壊れたケース。ts ブロックのコードが本文として結合された。
+
+        入れ子のマーカー行が奇数個あると、そこから先のフェンスの内と外が
+        入れ替わる。続く ```ts の開きマーカーが「閉じ」として食われ、
+        中身のコードが本文の段落として結合される。
+        """
+        src = ("````text\n"
+               "  ```\n"
+               "````\n"
+               "\n"
+               "```ts\n"
+               "// 日本語のコメント\n"
+               "const a = 1\n"
+               "```\n")
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_a_backtick_marker_does_not_close_a_tilde_fence(self):
+        src = ("~~~\n"
+               "  ```\n"
+               "~~~\n"
+               "\n"
+               "本文が折り\n"
+               "返されている。\n")
+        expected = src.replace("本文が折り\n返されている。",
+                               "本文が折り返されている。")
+        self.assertEqual(unwrap.unwrap_text(src), expected)
+
+    def test_a_longer_marker_closes_a_shorter_fence(self):
+        """3 個で開いて 4 個で閉じるのは有効 (同じ長さ以上なら閉じる)。"""
+        src = ("```\n"
+               "中身である\n"
+               "````\n"
+               "\n"
+               "本文が折り\n"
+               "返されている。\n")
+        expected = src.replace("本文が折り\n返されている。",
+                               "本文が折り返されている。")
+        self.assertEqual(unwrap.unwrap_text(src), expected)
+
+    def test_a_marker_with_an_info_string_does_not_close_a_fence(self):
+        """閉じマーカーの行には情報文字列 (言語名) を書けない。"""
+        src = ("```\n"
+               "```ts\n"
+               "中身である\n"
+               "```\n"
+               "\n"
+               "本文が折り\n"
+               "返されている。\n")
+        expected = src.replace("本文が折り\n返されている。",
+                               "本文が折り返されている。")
+        self.assertEqual(unwrap.unwrap_text(src), expected)
+
+    def test_an_unclosed_fence_runs_to_the_end_of_the_file(self):
+        src = ("```\n"
+               "中身が折り\n"
+               "返されている。\n")
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_the_fence_handling_matches_unwrap(self):
+        """unwrap.py と measure_wraps.py のフェンスの扱いが一致する。"""
+        markers = ["```", "````", "~~~", "~~~~", "```ts", "````md", "~~~ js",
+                   "  ```", "``", "本文", "```  ", "~~~~~"]
+        for line in markers:
+            self.assertEqual(unwrap.fence_open(line),
+                             measure_wraps.fence_open(line), line)
+            for char in ("`", "~"):
+                for length in (3, 4):
+                    self.assertEqual(
+                        unwrap.fence_closes(line, char, length),
+                        measure_wraps.fence_closes(line, char, length),
+                        (line, char, length))
+
+    def test_measure_does_not_count_wraps_inside_a_nested_fence(self):
+        """4 個で開いたフェンスの中の 3 個の行で内と外が入れ替わらない。
+
+        入れ替わると、フェンスの中のコード行を段落行として数え、本来の
+        段落行をフェンスの中として数えないので、残量の数が両側に狂う。
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "a.md"
+            path.write_text("````text\n"
+                            "  ```\n"
+                            "````\n"
+                            "\n"
+                            "本文が折り\n"
+                            "返されている。\n"
+                            "\n"
+                            "```ts\n"
+                            "const a = 1\n"
+                            "```\n", encoding="utf-8")
+            self.assertEqual(measure_wraps.classify(path), (2, 1, 1))
+
+
 class TestSentenceBoundaries(unittest.TestCase):
     """文末での改行は折り返しではないので結合しない。
 
