@@ -344,10 +344,12 @@ class TestFences(unittest.TestCase):
                "```\n")
         self.assertEqual(unwrap.unwrap_text(src), src)
 
-    def test_a_tab_indented_marker_matches_the_reference_parser(self):
+    def test_a_tab_indented_marker_does_not_corrupt_the_227_shape(self):
         """実データ (joifup の notes/document/227-*) の形をそのまま固定する。
 
         4 桁インデントで開いたフェンスの中の `    \\t```` は、展開すると 8 桁で開きから 4 桁なので閉じない。次の `    ```` (開きと同じ 4 桁) が閉じる。この 1 行を取り違えると、以降のファイル全体の内と外が入れ替わった。
+
+        **ブロックの種別までが参照パーサと一致するわけではない。** 最上位の 4 桁インデントは CommonMark ではフェンスではなくインデントされたコードブロックであり、unwrap はフェンスとして読む。ここで固定しているのは「中身を 1 文字も触らない」ことである。実データの 227 はこの形が外側のフェンスの中にあるので、種別の食い違いは表に出ない。
         """
         src = ("    ```joifup\n"
                "    \t```\n"
