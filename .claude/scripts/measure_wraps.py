@@ -1,42 +1,61 @@
 #!/usr/bin/env python3
 """md のハード折り返しの量を測る。unwrap.py の適用前後の比較に使う。
 
-「折り返された行」= 段落の途中で改行されている行。判定は「次の行が同じ
-段落の続き（空行でなく、見出し・リスト・表・フェンスの開始でもない）」。
-**文末（`。` `！` `？`）で終わる行は折り返しとして数えない。** 文末での改行
-は桁数の折り返しではなく「1文1行」という書き方であり、unwrap.py もそこでは
-結合しない。数え方を合わせないと、直さないと決めたものが残量に出続ける。
-frontmatter とコードフェンスの中は除外する。引用（`>`）の中も数えないので、
-引用に残った折り返しはこの数に出ない。
+「折り返された行」= 段落の途中で改行されている行。判定は「次の行が同じ段落の続き（空行でなく、見出し・リスト・表・フェンスの開始でもない）」。
+**文末（`。` `！` `？`）で終わる行は折り返しとして数えない。** 文末での改行は桁数の折り返しではなく「1文1行」という書き方であり、unwrap.py もそこでは結合しない。数え方を合わせないと、直さないと決めたものが残量に出続ける。
+frontmatter とコードフェンスの中は除外する。引用（`>`）の中も数えないので、引用に残った折り返しはこの数に出ない。
 
 使い方:
 
     python3 measure_wraps.py <対象ディレクトリ> [<対象ディレクトリ> ...]
 
-対象を渡し忘れたとき、および対象がディレクトリとして存在しないときは、その旨
-を出して exit 2 する（unwrap.py と同じ扱い）。
+対象を渡し忘れたとき、および対象がディレクトリとして存在しないときは、その旨を出して exit 2 する（unwrap.py と同じ扱い）。
 
 対象ごとに「折り返し行 / 段落行 = 割合（うち日本語 N）」を1行で出す。
-unwrap.py が「変更なし」と答えることと、そのファイルに折り返しが残って
-いないことは別である。**適用のあとはこれで残量を測って報告する。**
+unwrap.py が「変更なし」と答えることと、そのファイルに折り返しが残っていないことは別である。**適用のあとはこれで残量を測って報告する。**
 
-折り返しの定義と、直り切らないもの（4スペース以上のインデント行・引用の
-中）の扱いの正典は notes/document/008-no-hard-wrap-japanese-design.md。
+折り返しの定義と、直り切らないもの（4スペース以上のインデント行・引用の中）の扱いの正典は notes/document/008-no-hard-wrap-japanese-design.md。
 """
 import re
 import sys
 from pathlib import Path
 
-FENCE = re.compile(r"^\s*(```|~~~)")
+# フェンスのマーカー行。unwrap.py と同じ定義にしておく (一致は test_unwrap の test_the_fence_handling_matches_unwrap が固定している)。
+# 片方だけがフェンスの内と外を取り違えると、変換しないと決めた場所の折り返しが残量に出続ける。
+# markdown でフェンスを閉じられるのは**開いたときと同じ文字で、同じ長さ以上**のマーカーだけであり、**閉じマーカーの行には情報文字列を書けず、インデントは開きマーカーから 3 桁までである**。また**バッククォートのフェンスの情報文字列にはバッククォートを書けない** (含む行は段落である)。
+FENCE = re.compile(r"^(\s*)(`{3,}|~{3,})(.*)$")
+
+
+def fence_open(line):
+    """行がフェンスを開くなら (マーカーの文字, 長さ, インデント幅) を返す。"""
+    m = FENCE.match(line)
+    if not m:
+        return None
+    marker = m.group(2)
+    if marker[0] == "`" and "`" in m.group(3):
+        return None
+    return marker[0], len(marker), len(m.group(1))
+
+
+def fence_closes(line, char, length, indent):
+    """行が (char, length, indent) で開いたフェンスを閉じるか。
+
+    インデントは**開きからの相対**で見る。絶対の桁数で見ると、リスト項目の中で 4 桁以上インデントされて開いたフェンスが閉じられなくなる。
+    """
+    m = FENCE.match(line)
+    if not m:
+        return False
+    marker = m.group(2)
+    return (marker[0] == char and len(marker) >= length
+            and not m.group(3).strip()
+            and len(m.group(1)) <= indent + 3)
+
 BLOCK_START = re.compile(r"^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|\||---\s*$|===)")
 # 文末。unwrap.py と同じ定義にしておく (一致は test_unwrap が固定している)。
-# 片方だけが文末を折り返しと見なすと、結合しないと決めた改行が残量に出て、
-# 直し切れない数がいつまでも残る。
+# 片方だけが文末を折り返しと見なすと、結合しないと決めた改行が残量に出て、直し切れない数がいつまでも残る。
 SENTENCE_END = re.compile("[。！？][*_`）」』】〕)\"']*$")
-# 除外するディレクトリ**名**。パスの接頭辞ではなく、対象ディレクトリからの
-# 相対パスの要素名と突き合わせる (理由は unwrap.py の SKIP_PARTS を見よ)。
-# unwrap.py と同じ一覧にしておく。片方だけが数えると、変換しないと決めた
-# ディレクトリの折り返しが残量に出て、直し切れない数がいつまでも残る。
+# 除外するディレクトリ**名**。パスの接頭辞ではなく、対象ディレクトリからの相対パスの要素名と突き合わせる (理由は unwrap.py の SKIP_PARTS を見よ)。
+# unwrap.py と同じ一覧にしておく。片方だけが数えると、変換しないと決めたディレクトリの折り返しが残量に出て、直し切れない数がいつまでも残る。
 # 一致は test_unwrap の test_the_skip_list_matches_unwrap が固定している。
 SKIP_PARTS = frozenset({"node_modules", ".git", "worktrees", ".worktrees",
                         ".superpowers",
@@ -61,14 +80,20 @@ def classify(path):
         while i < len(lines) and lines[i].strip() != "---":
             i += 1
         i += 1
-    in_fence = False
+    fence = None
     body = cont = cont_ja = 0
     for j in range(i, len(lines)):
         line = lines[j]
-        if FENCE.match(line):
-            in_fence = not in_fence
+        if fence is not None:
+            # フェンスの中。閉じられるのは開いたときと同じ文字で同じ長さ以上のマーカーだけで、それ以外の行は中身である。閉じられないままファイルが終われば最後まで中身として扱う。
+            if fence_closes(line, *fence):
+                fence = None
             continue
-        if in_fence or not line.strip() or BLOCK_START.match(line):
+        opened = fence_open(line)
+        if opened:
+            fence = opened
+            continue
+        if not line.strip() or BLOCK_START.match(line):
             continue
         body += 1
         nxt = lines[j + 1] if j + 1 < len(lines) else ""
@@ -83,8 +108,7 @@ def classify(path):
 
 
 def main(argv):
-    # unwrap.py と同じ扱いにする。渡し忘れや打ち間違いで黙って 0 件を出して
-    # exit 0 すると、何も測っていないのに「残量なし」に見える。
+    # unwrap.py と同じ扱いにする。渡し忘れや打ち間違いで黙って 0 件を出して exit 0 すると、何も測っていないのに「残量なし」に見える。
     roots = [a for a in argv if not a.startswith("--")]
     if not roots:
         print("使い方: python3 measure_wraps.py <対象ディレクトリ> [...]")

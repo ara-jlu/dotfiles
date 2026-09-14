@@ -103,7 +103,7 @@ updated_at: 2026-09-12
 
 `<SP>/test_check_invariants.py`:
 
-```python
+````python
 import unittest
 from check_invariants import check_file
 
@@ -210,7 +210,7 @@ class TestCheckFile(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-```
+````
 
 - [ ] **Step 2: テストが落ちることを確認**
 
