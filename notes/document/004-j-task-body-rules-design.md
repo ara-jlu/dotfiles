@@ -12,7 +12,7 @@ updated_at: 2026-09-02
 
 ## 背景と問題
 
-`j-task` は Overview で "Detailed requirements are deferred to each task's brainstorming — this only records title + an overview body." と述べ、Common Mistakes にも "Deep requirements at capture" を挙げている。にもかかわらず起票時に詳細が書き込まれた（2026-09-02、別リポジトリ `tasks/027` が 7,455 B。同種の `003-j-recap-skill` は 1,447 B）。
+`j-task` は Overview で "Detailed requirements are deferred to each task's brainstorming — this only records title + an overview body." と述べ、Common Mistakes にも "Deep requirements at capture" を挙げている。にもかかわらず起票時に詳細が書き込まれた（2026-09-02、別リポジトリの `tasks/027` が 7,455 B。同種の `003-j-recap-skill` は 1,447 B）。
 
 原因は二つある。
 
@@ -37,7 +37,7 @@ updated_at: 2026-09-02
 
 ## 変更対象
 
-`.claude/skills/j-task/SKILL.md` の 1 ファイルのみ。既存タスク本文（別リポジトリ/027 および本リポジトリの 001〜004）の遡及整形は行わない。
+`.claude/skills/j-task/SKILL.md` の 1 ファイルのみ。既存タスク本文（別リポジトリの 027 および本リポジトリの 001〜004）の遡及整形は行わない。
 
 既存ファイルが全編英語なので、追記も英語で揃える。タスク本文の節名 `## 概要` / `## 背景` は、本文が日本語であるため日本語のまま扱う。
 
