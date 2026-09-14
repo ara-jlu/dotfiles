@@ -37,6 +37,19 @@ class TestUnwrapText(unittest.TestCase):
         src = "一行目で明示的に改行する。  \n二行目である。\n"
         self.assertEqual(unwrap.unwrap_text(src), src)
 
+    def test_keeps_a_hard_break_in_a_crlf_file(self):
+        """**CRLF でも保護が外れない。** 判定は rstrip の前の行に当てるので `\\r` を許して読む。
+
+        `\\r` を見ないと `本文  \\r` に一致せず、保護が**黙って**外れる。結合された結果は `_squeeze` も markdown-it も `\\r` を吸収するので**検証の 5 条件すべてを通る**。実データに CRLF は 0 件だが、`<pre>` と同じ基準で塞ぐ。
+        """
+        src = "本文が桁数で  \r\n折り返されている。\r\n"
+        self.assertEqual(unwrap.unwrap_text(src), src)
+        self.assertEqual(unwrap.verify(src, unwrap.unwrap_text(src)), [])
+
+    def test_keeps_a_backslash_hard_break_in_a_crlf_file(self):
+        src = "本文が桁数で\\\r\n折り返されている。\r\n"
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
     def test_keeps_a_backslash_hard_break(self):
         src = "一行目で明示的に改行する。\\\n二行目である。\n"
         self.assertEqual(unwrap.unwrap_text(src), src)
@@ -319,6 +332,43 @@ class TestFences(unittest.TestCase):
                                "本文が折り返されている。")
         self.assertEqual(unwrap.unwrap_text(src), expected)
 
+    def test_a_tab_indented_marker_does_not_close_a_fence(self):
+        """タブは 4 の倍数の桁まで展開する。`\\t```` は開きから 4 桁なので閉じない。
+
+        インデント幅を `len()` で数えるとタブが 1 桁になり、この行がフェンスを閉じる。そこから先の内と外が入れ替わり、本来コードである領域が本文として結合される。**フェンスの入れ子・HTML ブロックに続く 3 件目の、開閉の範囲の取り違えである。**
+        """
+        src = ("```\n"
+               "\t```\n"
+               "中身が折り\n"
+               "返されている\n"
+               "```\n")
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_a_tab_indented_marker_matches_the_reference_parser(self):
+        """実データ (joifup の notes/document/227-*) の形をそのまま固定する。
+
+        4 桁インデントで開いたフェンスの中の `    \\t```` は、展開すると 8 桁で開きから 4 桁なので閉じない。次の `    ```` (開きと同じ 4 桁) が閉じる。この 1 行を取り違えると、以降のファイル全体の内と外が入れ替わった。
+        """
+        src = ("    ```joifup\n"
+               "    \t```\n"
+               "    ```\n"
+               "\n"
+               "本文が折り\n"
+               "返されている。\n")
+        expected = src.replace("本文が折り\n返されている。",
+                               "本文が折り返されている。")
+        self.assertEqual(unwrap.unwrap_text(src), expected)
+        self.assertEqual(unwrap.verify(src, unwrap.unwrap_text(src)), [])
+
+    def test_indent_width_expands_tabs_to_the_next_tab_stop(self):
+        self.assertEqual(unwrap.indent_width(""), 0)
+        self.assertEqual(unwrap.indent_width("   "), 3)
+        self.assertEqual(unwrap.indent_width("\t"), 4)
+        self.assertEqual(unwrap.indent_width("  \t"), 4)
+        self.assertEqual(unwrap.indent_width("    \t"), 8)
+        self.assertEqual(unwrap.indent_width("\t\t"), 8)
+        self.assertEqual(unwrap.indent_width("\t "), 5)
+
     def test_an_indented_fence_in_a_list_closes_at_the_same_depth(self):
         """リスト項目の中の 8 桁インデントのフェンスは同じ深さで閉じる。
 
@@ -343,18 +393,43 @@ class TestFences(unittest.TestCase):
         markers = ["```", "````", "~~~", "~~~~", "```ts", "````md", "~~~ js",
                    "  ```", "``", "本文", "```  ", "~~~~~",
                    "```a` の書き方", "~~~`a`", "   ```", "    ```",
-                   "        ```", "        ```ts"]
+                   "        ```", "        ```ts",
+                   "\t```", "  \t```", "    \t```", "\t\t```", "\t~~~"]
         for line in markers:
             self.assertEqual(unwrap.fence_open(line),
                              measure_wraps.fence_open(line), line)
             for char in ("`", "~"):
                 for length in (3, 4):
-                    for indent in (0, 3, 8):
+                    for indent in (0, 3, 4, 8):
                         self.assertEqual(
                             unwrap.fence_closes(line, char, length, indent),
                             measure_wraps.fence_closes(line, char, length,
                                                        indent),
                             (line, char, length, indent))
+
+    def test_the_tab_expansion_matches_unwrap(self):
+        """インデントの桁の数え方も両者で一致していなければならない。"""
+        for indent in ("", " ", "   ", "    ", "\t", "  \t", "    \t", "\t\t",
+                       "\t "):
+            self.assertEqual(unwrap.indent_width(indent),
+                             measure_wraps.indent_width(indent), repr(indent))
+
+    def test_measure_does_not_close_a_fence_on_a_tab_indented_marker(self):
+        """タブを展開すると開きから 4 桁なので閉じない。
+
+        `len()` で数えると閉じたことになり、以降の内と外が入れ替わって、コード行を段落行として数える。
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "a.md"
+            path.write_text("```\n"
+                            "\t```\n"
+                            "code is\n"
+                            "wrapped\n"
+                            "```\n"
+                            "\n"
+                            "本文が折り\n"
+                            "返されている。\n", encoding="utf-8")
+            self.assertEqual(measure_wraps.classify(path), (2, 1, 1))
 
     def test_measure_does_not_count_wraps_inside_a_nested_fence(self):
         """4 個で開いたフェンスの中の 3 個の行で内と外が入れ替わらない。
@@ -1142,6 +1217,95 @@ class TestVerifyAst(unittest.TestCase):
             unwrap._MarkdownIt = saved
 
 
+class TestVerifyWiring(unittest.TestCase):
+    """**5つの条件が `verify()` に配線されていること**そのものを固定する。
+
+    条件ごとの検査は上のクラスが押さえているが、そこでは `ast_problems` のように**検査そのものを直接呼んで**いるものがある。直接呼ぶだけだと、`verify()` からその行を削っても全部のテストが通る —— 検証が 1 つ欠けたまま「成功」に見える形であり、この道具が最も警戒してきたものである。実際、第5条件を `verify()` から削る変異は 139 件のテストを全部すり抜けた。
+
+    そこでここでは**必ず `verify()` を呼び**、返るリストを丸ごと突き合わせる。件の条件だけが当たる入力を使い、期待値を完全一致で書くので、どれか 1 つの配線が外れればその 1 つのテストだけが落ちる。
+
+    AST 比較はパーサが無い環境では働かないので、第1〜4条件の期待値からは AST の 1 行を除いて比べる (その 1 行自体は下の第5条件のテストが押さえる)。
+    """
+
+    AST_PREFIX = "独立したパーサで見たブロックの列が変わった"
+
+    def without_ast(self, problems):
+        return [p for p in problems if not p.startswith(self.AST_PREFIX)]
+
+    def test_the_first_condition_is_wired(self):
+        """第1条件 (段落テキストの一致) が verify から呼ばれている。"""
+        before = "日本語の本文が桁数で\n折り返されている。\n"
+        after = "日本語の本文が桁数で\n"
+        self.assertEqual(
+            self.without_ast(unwrap.verify(before, after)),
+            ["段落テキストが一致しない (文字の欠落・重複・順序変更)"])
+
+    def test_the_second_condition_is_wired(self):
+        """第2条件 (構造の数の不変) が verify から呼ばれている。"""
+        before = "## 見出し\n\n本文である。\n"
+        after = "見出し\n\n本文である。\n"
+        self.assertIn("見出し の数が 1 から 0 に変わった",
+                      unwrap.verify(before, after))
+
+    def test_the_third_condition_is_wired(self):
+        """第3条件 (段落の頭のインデントの並び) が verify から呼ばれている。"""
+        before = ("- 箇条書きの項目である。\n"
+                  "\n"
+                  "  項目の中の段落が桁数で\n"
+                  "  折り返されている。\n"
+                  "\n"
+                  "- 次の項目。\n")
+        after = ("- 箇条書きの項目である。\n"
+                 "\n"
+                 "項目の中の段落が桁数で折り返されている。\n"
+                 "\n"
+                 "- 次の項目。\n")
+        self.assertEqual(self.without_ast(unwrap.verify(before, after)),
+                         ["段落の頭のインデントの並びが変わった"])
+
+    def test_the_fourth_condition_is_wired(self):
+        """第4条件 (マーカーだけの行) が verify から呼ばれている。
+
+        コンテナディレクティブ (`:::`) は CommonMark には無いので、AST から見ればただの段落である。第4条件を外すとこの壊れ方は 5 条件すべてを通る。
+        """
+        before = ":::column\n本文が\n折り返されている\n:::\n"
+        after = ":::column 本文が折り返されている :::\n"
+        self.assertEqual(
+            unwrap.verify(before, after),
+            ["マーカーだけの行 (英数字も CJK も含まない非空行) の並びが変わった: "
+             "1 行から 0 行"])
+
+    @unittest.skipUnless(unwrap.HAS_AST_PARSER, "markdown-it-py が無い")
+    def test_the_fifth_condition_is_wired(self):
+        """第5条件 (AST 比較) が verify から呼ばれている。
+
+        **潰れたフェンスは第1〜4条件のどれにも当たらない** (`test_the_fourth_condition_does_not_catch_a_collapsed_fence`)。だから `verify()` がこの見本に対して非空を返すことは、第5条件が配線されていることと同値である。この 1 行を `verify()` から削る変異は、このテストが入るまで 139 件のテストを全部通っていた。
+        """
+        before = "```\nconst a = 1\nconst b = 2\n```\n"
+        after = "```\nconst a = 1 const b = 2\n```\n"
+        self.assertEqual(
+            unwrap.verify(before, after),
+            ["独立したパーサで見たブロックの列が変わった: "
+             "1 番目のブロック (fence) の中身が変わった"])
+
+    def test_a_clean_unwrap_passes_every_condition(self):
+        """5 条件すべてが働いたうえで、正当な変換は素通りする (誤検出が無い)。"""
+        before = ("# 見出し\n"
+                  "\n"
+                  "- 箇条書きの項目が桁数で\n"
+                  "  折り返されている。\n"
+                  "\n"
+                  ":::column\n"
+                  "本文が桁数で\n"
+                  "折り返されている\n"
+                  ":::\n"
+                  "\n"
+                  "```ts\n"
+                  "const a = 1\n"
+                  "```\n")
+        self.assertEqual(unwrap.verify(before, unwrap.unwrap_text(before)), [])
+
+
 class TestOddJoins(unittest.TestCase):
     """未知の結合点の一覧。検証が全部通っても、見たことのない形は人間に見せる。"""
 
@@ -1198,6 +1362,26 @@ class TestOddJoins(unittest.TestCase):
         for right in ["——である", "→ 次の段", "①である", "§4 を見よ"]:
             unwrap.join_parts(["本文である", right], joins)
         self.assertEqual(joins, [])
+
+    def test_does_not_report_a_slash_or_a_dot(self):
+        """`/` と `.` は一覧のノイズの最上位だった。
+
+        `~/Joifup` 全体の 999 件 / 495 形のうち `/` が 317 件 (32%) を占め、実体は列挙の行末と**記号で始まるコードスパン**で、全部本文だった。
+        """
+        joins = []
+        for left, right in [("`brainstorming` /", "`writing-plans`"),
+                            ("本文である", "/ 次の要素"),
+                            ("本文である", "`.gitignore` を見よ"),
+                            ("本文である", ".uat-evidence/ に置く")]:
+            unwrap.join_parts([left, right], joins)
+        self.assertEqual(joins, [])
+
+    def test_still_reports_block_markers_after_adding_the_slash_and_the_dot(self):
+        """**足してもブロックの境界は見える。** どのマーカーも `/` や `.` を含まない。"""
+        for right in ["-->", "</div>", ":::", "$$", "===", "+++"]:
+            joins = []
+            unwrap.join_parts(["本文である", right], joins)
+            self.assertEqual(joins, [right], right)
 
     def test_still_reports_box_drawing(self):
         """**罫線は足さない。** フェンスの外の木構造図が結合されている印だからである。"""

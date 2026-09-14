@@ -24,6 +24,19 @@ from pathlib import Path
 # 片方だけがフェンスの内と外を取り違えると、変換しないと決めた場所の折り返しが残量に出続ける。
 # markdown でフェンスを閉じられるのは**開いたときと同じ文字で、同じ長さ以上**のマーカーだけであり、**閉じマーカーの行には情報文字列を書けず、インデントは開きマーカーから 3 桁までである**。また**バッククォートのフェンスの情報文字列にはバッククォートを書けない** (含む行は段落である)。
 FENCE = re.compile(r"^(\s*)(`{3,}|~{3,})(.*)$")
+# CommonMark のタブ幅。unwrap.py と同じ定義にしておく (一致は test_unwrap の test_the_fence_handling_matches_unwrap が固定している)。
+TAB_WIDTH = 4
+
+
+def indent_width(indent):
+    """行頭の空白を CommonMark の**桁**で数える。タブは次の 4 の倍数の桁まで進む。
+
+    `len()` で数えると、開きから 4 桁以上の位置にあるタブ付きの ``` の行がフェンスを閉じたことになり、そこから先の内と外が入れ替わる。unwrap.py と同じでなければ、片方だけがフェンスの内外を取り違える。
+    """
+    width = 0
+    for ch in indent:
+        width = width + TAB_WIDTH - width % TAB_WIDTH if ch == "\t" else width + 1
+    return width
 
 
 def fence_open(line):
@@ -34,7 +47,7 @@ def fence_open(line):
     marker = m.group(2)
     if marker[0] == "`" and "`" in m.group(3):
         return None
-    return marker[0], len(marker), len(m.group(1))
+    return marker[0], len(marker), indent_width(m.group(1))
 
 
 def fence_closes(line, char, length, indent):
@@ -48,7 +61,7 @@ def fence_closes(line, char, length, indent):
     marker = m.group(2)
     return (marker[0] == char and len(marker) >= length
             and not m.group(3).strip()
-            and len(m.group(1)) <= indent + 3)
+            and indent_width(m.group(1)) <= indent + 3)
 
 # HTML ブロックの開始行。unwrap.py と同じ定義にしておく (一致は test_unwrap の test_the_html_block_handling_matches_unwrap が固定している)。
 # 片方だけが HTML ブロックの内と外を取り違えると、変換しないと決めた場所の折り返しが残量に出続ける。
