@@ -17,9 +17,23 @@
 対象ディレクトリの下の *.md を再帰的に見る（例: `<repo>/notes <repo>/tasks <repo>/.claude`）。除外（node_modules・.git・worktrees 等）は**対象ディレクトリからの相対パスの要素名**で判定する。だから worktree の中を対象にしても全件が除外されることはなく、対象の内側に worktrees/ があればその中は除外される。
 対象がディレクトリとして存在しなければ、その旨を出して exit 2 する。
 
+検証の第5条件 (AST 比較) には `markdown-it-py` が要る。**任意の依存**であり、無ければその条件だけを飛ばして警告を出す。入れるには `pip3 install --user markdown-it-py`。
+
 **他の repo に当てる前に必ずテストを走らせる**（`cd .claude/scripts && python3 -m unittest test_unwrap -v`）。道具が壊れていないことを先に確かめてから実データに当てる。適用したあとは measure_wraps.py で折り返しの残量を測り、直り切らなかった分を数で見る。
 """
 import re
+
+# **テスト専用ではなく検証専用の、任意の依存である。** `markdown-it-py` があれば verify の第5条件 (独立したパーサによる AST 比較) が働き、無ければその条件だけを飛ばす。
+# **`unwrap.py` 本体は依存ゼロのまま保つ。** 変換そのものは markdown_it を一切使わない。使うのは「変換が壊していないか」を第三者の目で確かめる側だけである。
+# 無いときに黙って飛ばしてはならない。この道具は「黙って成功に見える」形を何度も潰してきた。main が警告を出し、verify も検査を行ったかどうかを呼び出し側に返す。
+try:
+    from markdown_it import MarkdownIt as _MarkdownIt
+except ImportError:  # pragma: no cover - パーサの有無は環境で決まる
+    _MarkdownIt = None
+
+HAS_AST_PARSER = _MarkdownIt is not None
+AST_MISSING_NOTE = ("markdown-it-py が無いため AST 比較 (検証の第5条件) を行っていない。"
+                    "`pip3 install --user markdown-it-py` で入れること。")
 
 # フェンスのマーカー行。開くか閉じるかに関わらず、マーカーだけを見た形。
 # 1 群が行頭のインデント、2 群がマーカー (``` 以上または ~~~ 以上)、3 群がそのあとの情報文字列。
@@ -136,8 +150,49 @@ def is_block_start(line):
                 or TABLE.match(line) or RULE.match(line) or LIST.match(line)
                 or DIRECTIVE.match(line) or html_block_open(line))
 
-def join_parts(parts):
+# 結合点の「普通の文字」。ASCII の英数字と、JA (かな・漢字・全角の約物) である。**どちらでもない文字が結合点の左右に現れたら、それは本文の結合ではないかもしれない。**
+# 判定は JA より広い。JA は結合点に空白を入れるかどうかを決める規則なので、そちらを広げると出力が変わる。こちらは**何を人間に見せるか**を決めるだけなので、別に持つ。
+# 足しているのは、**日本語の技術文書の本文に普通に出る記号**である: 一般句読点 (`—` `…` `‐` `※` の U+2010–U+205E)、矢印 (`→` `←`)、丸囲み数字 (`①`)、`§`・`°`・`×`。実測で `——` だけが 181 件出ており、これを未知の形として並べると一覧の先頭が本文の飾りで埋まる。
+# **罫線 (`│` `├──` の U+2500 台) は足さない。** フェンスの外の木構造図が本文として結合されている印であり、まさに見たい形だからである。
+ORDINARY = re.compile(r"[A-Za-z0-9\u00a7\u00b0\u00d7\u2010-\u205e"
+                      r"\u2190-\u21ff\u2460-\u24ff]")
+# **インラインの markdown 記法の文字。** 強調 (`**`)・コードスパン (`` ` ``)・リンク (`[]()`)・画像 (`!`)・取り消し線 (`~~`) は、**普通の本文の途中に普通に現れる**。判定の前にこれらを結合点から剥がす。
+# 剥がさずに実測したところ、fde で 2,101 件・1,600 形が出た。そのほとんどが `` `document/010-…` `` や `**Worker` のような、ただの強調とコードスパンだった。**一覧が 1,600 形になった時点で、それは読まれない。** 読まれない一覧は無いのと同じなので、噪音の側を落とす。
+# **`<` と `>` は剥がさない。** HTML のタグはまさに見たい形であり、自動リンク (`<https://…>`) が数件出るのは許容できる損である。同じ理由で `-`・`:`・`$`・`/`・`;`・`=`・`+` も剥がさない (`-->`・`:::`・`$$`・Setext の `===`・TOML の `+++`・コードの行末)。
+INLINE_MARKUP = "`*_[]()\"'~!"
+# 一覧に出す見本の長さの上限。長い行がそのまま出ると読めなくなる。
+JOIN_SAMPLE_MAX = 24
+
+
+def _is_ordinary(ch):
+    """結合点の片側の文字が、日本語でも英数字でもある「普通の文字」か。"""
+    return bool(ORDINARY.match(ch) or JA.match(ch))
+
+
+def _odd_join_key(left_text, right_text):
+    """結合点が「未知の形」なら、一覧でまとめるための鍵を返す。普通の結合なら None。
+
+    **見るのは結合点の左右 1 文字ずつである** (インラインの markdown 記法を剥がしたあとの)。どちらかが日本語でも英数字でもなければ、本文どうしの結合ではない疑いがある。`-->`・`:::`・`$$` のようなブロックのマーカーも、`const a = 1;` のようなコードも、必ずここに当たる。
+
+    鍵には**おかしいほうの側の語**を採る。右 (新しく足された行の先頭) を先に見るのは、ブロックの閉じマーカーが本文に巻き込まれるときは必ず右側に現れるからである (`-->`・`:::`)。左が原因のときだけ左の語を採る (コードの行末の `;` など)。両側を鍵にすると、相手側の本文が毎回違うので同じ形がまとまらず、一覧が件数分の行になって読まれなくなる。
+    """
+    left = left_text.rstrip(INLINE_MARKUP)[-1:]
+    right = right_text.lstrip(INLINE_MARKUP)[:1]
+    if not left_text or not right_text:
+        return None
+    if not _is_ordinary(right):
+        token = re.match(r"\S+", right_text).group(0)
+    elif not _is_ordinary(left):
+        token = re.search(r"\S+$", left_text).group(0)
+    else:
+        return None
+    return token[:JOIN_SAMPLE_MAX]
+
+
+def join_parts(parts, joins=None):
     """行の並びを1行に結合する。
+
+    `joins` にリストを渡すと、**未知の形の結合点**の鍵をそこへ足す (`_odd_join_key` を見よ)。検証が全部通っても、見たことのない形の結合が起きたことは人間に見せる必要がある。この道具が出した欠陥は 2 度とも「検証は通ったが本文でないものを結合していた」ものだったからである。
 
     結合点の前後がともに日本語 (かな・漢字・全角の句読点や記号) なら空白なしで繋ぎ、それ以外は半角空白1つを入れる (設計の「結合点の空白」)。
     ただし全角の約物には例外を置く。左が全角の句読点 (。、) なら右が何であっても、右が全角の開き括弧 (（「『【〔) なら左が何であっても、空白を入れない。日本語では句読点の直後にも開き括弧の直前にも空白を置かないためである。例外は必ず両側に置く。片側だけにすると鏡の側が開く。前者が無いと `解決される。` + `` `brew upgrade tmux` `` に空白が入り、後者が無いと `` `.claude` `` + `（対象は…` に空白が入る。
@@ -148,6 +203,10 @@ def join_parts(parts):
     for part in parts[1:]:
         left = out[-1:] if out else ""
         right = part[:1]
+        if joins is not None:
+            key = _odd_join_key(out, part)
+            if key is not None:
+                joins.append(key)
         if not left or not right:
             # どちらかが空なら結合点そのものが無いので、空白を入れない (マーカーだけの行など)。この分岐が無くても `"" in JA_PUNCT` が真になるため結果は同じだが、`in` の性質に意図を負わせないために明示しておく。素朴に空白を入れると行末が半角空白2つになり、意図しないハードブレイクが生まれる。
             out = out + part
@@ -161,7 +220,7 @@ def join_parts(parts):
             out = out + " " + part
     return out
 
-def _fold(raw_lines):
+def _fold(raw_lines, joins=None):
     """1つの段落 (またはリスト項目の本文) を結合して行の並びに返す。
 
     触らない場合は原文の行をそのまま返す。触らないのは、日本語を含まない段落と、意図的なハードブレイクを含む段落である (設計の「触らないもの」)。
@@ -183,15 +242,18 @@ def _fold(raw_lines):
         groups.append(group)
     folded = []
     for i, group in enumerate(groups):
-        text = join_parts([line.strip() for line in group])
+        text = join_parts([line.strip() for line in group], joins)
         if i:
             # 2つ目以降の単位は原文のインデントを保つ。落とすとリストの中の継続行が桁 0 に出てリストがそこで切れる。1つ目は呼び出し側が prefix (リストのマーカーまたは行頭のインデント) を戻す。
             text = INDENT.match(group[0]).group(0) + text
         folded.append(text)
     return folded
 
-def unwrap_text(text):
-    """md の全文を受け、段落の途中の改行を結合した全文を返す。"""
+def unwrap_text(text, joins=None):
+    """md の全文を受け、段落の途中の改行を結合した全文を返す。
+
+    `joins` にリストを渡すと、未知の形の結合点の鍵をそこへ足す (`_odd_join_key` を見よ)。
+    """
     lines = text.split("\n")
     out = []
     i = 0
@@ -253,7 +315,7 @@ def unwrap_text(text):
                 break
             raw.append(nxt)
             i += 1
-        folded = _fold(raw)
+        folded = _fold(raw, joins)
         folded[0] = prefix + folded[0]
         out.extend(folded)
 
@@ -293,16 +355,83 @@ def _paragraph_indents(text):
         previous_blank = blank
     return indents
 
+# **ブロックの中身をそのまま比べる種別。** unwrap はフェンス・インデントされたコードブロック・HTML ブロックの中の行を 1 文字も触らない。だから中身は**完全一致**でなければならず、正規化はしない。
+# ここを他と同じように空白ごと潰すと、**フェンスの欠陥がそのまま素通りする** —— 入れ子のフェンスを取り違えてコード行を結合しても、空白を落とせば `consta=1;constb=2;` は前後で同じだからである。実際に出た欠陥を捕まえられない正規化は、正規化してはならない側に入っている。
+AST_EXACT_TYPES = frozenset({"fence", "code_block", "html_block"})
+
+
+def ast_blocks(text):
+    """独立したパーサ (markdown-it-py) で text を解析し、ブロックの列を返す。
+
+    返すのは `(ネストの深さ, トークンの種別, 中身)` の並びである。これを前後で突き合わせると、**ブロックの境界がどこにあるか**が変わっていないことを確かめられる。
+
+    **なぜ独立したパーサが要るか。** verify の 1〜4 条件は「文字列としての md」の性質しか見ておらず、ブロックの境界を一切参照しない。かといって境界を `unwrap` 自身の分類器 (`fence_open` や `html_block_open`) で測れば自己参照になり、分類器のバグは定義上検出できない。この道具が出した欠陥 2 件はどちらも分類器のバグだった。**第二の観測者が要る。**
+
+    **何を正規化し、何をしないか。**
+
+    - `inline` (段落・見出し・リスト項目の本文) の中身は**空白と改行をすべて落として**比べる。段落の中の改行を消すことこそがこの道具の仕事なので、そこを差と見なしてはならない。結合点に入れる半角空白も同じ理由で落とす。
+    - 正規化は**ブロックの中だけ**に閉じる。既存の第1条件は文書全体で空白を潰すので、文がどのブロックに属するかが変わっても見えない。中身をブロックごとに区切って持つことが、第1条件との決定的な差である。
+    - `fence` / `code_block` / `html_block` の中身は**一切正規化しない** (`AST_EXACT_TYPES`)。unwrap がそこを触らない以上、1 文字でも違えば欠陥だからである。
+    - ネストの深さと種別はそのまま持つ。引用やリストの入れ子が浅くなる・深くなる壊し方は、ここでしか見えない。
+
+    パーサが無い環境では `None` を返す。呼び出し側が「検査を飛ばした」ことを利用者に見せる。
+    """
+    if _MarkdownIt is None:
+        return None
+    tokens = _MarkdownIt("commonmark").parse(text)
+    blocks = []
+    depth = 0
+    for token in tokens:
+        if token.nesting == -1:
+            depth -= 1
+        content = ""
+        if token.nesting == 0:
+            content = (token.content if token.type in AST_EXACT_TYPES
+                       else _squeeze(token.content))
+        blocks.append((depth, token.type, content))
+        if token.nesting == 1:
+            depth += 1
+    return blocks
+
+
+def _describe_ast_difference(before_blocks, after_blocks):
+    """最初に食い違ったブロックを、人が読める 1 行にして返す。"""
+    for i, (b, a) in enumerate(zip(before_blocks, after_blocks)):
+        if b != a:
+            return (f"{i + 1} 番目のブロックが "
+                    f"{b[1]} (深さ {b[0]}) から {a[1]} (深さ {a[0]}) に変わった"
+                    if (b[0], b[1]) != (a[0], a[1])
+                    else f"{i + 1} 番目のブロック ({b[1]}) の中身が変わった")
+    return (f"ブロックの数が {len(before_blocks)} から "
+            f"{len(after_blocks)} に変わった")
+
+
+def ast_problems(before, after):
+    """AST 比較 (検証の第5条件) の結果を返す。パーサが無ければ空のリスト。"""
+    before_blocks = ast_blocks(before)
+    if before_blocks is None:
+        return []
+    after_blocks = ast_blocks(after)
+    if before_blocks == after_blocks:
+        return []
+    return ["独立したパーサで見たブロックの列が変わった: "
+            + _describe_ast_difference(before_blocks, after_blocks)]
+
+
 def verify(before, after):
     """変換の前後を比べ、書き戻して安全でない理由を並べて返す。
 
-    空のリストなら安全である。設計の「検証」の4条件を実装している: 段落テキストが文字単位で一致すること、構造の数が変わらないこと、段落の頭のインデントの並びが変わらないこと、マーカーだけの行が同じ内容・同じ数・同じ順で独立した行として残ること。
+    空のリストなら安全である。設計の「検証」の5条件を実装している: 段落テキストが文字単位で一致すること、構造の数が変わらないこと、段落の頭のインデントの並びが変わらないこと、マーカーだけの行が同じ内容・同じ数・同じ順で独立した行として残ること、**独立したパーサで見たブロックの列が変わらないこと**。
 
     3つ目は、インデントを落としてリストを切る壊し方が1つ目も2つ目も素通りするから要る。リスト項目の数は変わらず、段落テキストの比較は空白を無視するので、どちらも気づかない。
 
     **4つ目は「ブロックの境界を本文に巻き込んだ」ことを見る。** 1〜3 は「文字列としての md」の性質しか見ておらず、**ブロックの境界がどこにあるか**を一切参照しない。ところが、この道具がこれまで出した欠陥 (フェンスの入れ子・HTML ブロック) はどちらもまさにその情報を壊すものであり、3条件をすべてすり抜けた。4つ目は `unwrap` のブロックモデルに一切依存しない純粋に語彙的な不変量なので、モデルの側の取りこぼしに巻き込まれない。英数字も CJK も含まない非空行 (`-->`・`:::`・`$$`・Setext の `===`・TOML の `+++` など) は、本文に巻き込まれた瞬間に独立した行でなくなるので、数と並びが変わる。今回の HTML コメントの欠陥は、修正前の版に対してこの条件が検出できる。誤検出は `~/Joifup` の md 1,691 ファイル・変換対象 690 ファイルに対して 0 件だった。
 
-    **限界も明記しておく。** フェンスの欠陥 (`` ``` `` の入れ子) と HTML ブロックの 1 種目 (`<pre>`) の欠陥は、**この条件でも捕まらない**。どちらもマーカーの行そのものは独立した行として全部残り、壊れるのはマーカーに挟まれた中身のほうだからである。4つ目は 3 条件の穴を**部分的に**塞ぐものであって、ブロックの認識が正しいことの代わりにはならない。
+    **4つ目の限界も明記しておく。** フェンスの欠陥 (`` ``` `` の入れ子) と HTML ブロックの 1 種目 (`<pre>`) の欠陥は、**この条件でも捕まらない**。どちらもマーカーの行そのものは独立した行として全部残り、壊れるのはマーカーに挟まれた中身のほうだからである。4つ目は 3 条件の穴を**部分的に**塞ぐものであって、ブロックの認識が正しいことの代わりにはならない。
+
+    **5つ目 (AST 比較) がその残りを塞ぐ。** 独立した markdown パーサでブロックの列を取り、種別・ネスト・ブロックごとの中身を突き合わせる (`ast_blocks` を見よ)。1〜4 と違ってブロックの境界そのものを見るので、フェンスの欠陥のようにマーカーが全部残る壊れ方も捕まる。`unwrap` 自身の分類器を使わないため自己参照にもならない。**パーサが入っていない環境ではこの条件だけが働かない。** そのときは main が警告を出す (`AST_MISSING_NOTE`)。
+
+    **5つ目でも残る穴。** パーサは CommonMark しか知らないので、**CommonMark にない構文の境界は見えない** —— コンテナディレクティブ (`:::`)・数式 (`$$`)・frontmatter は、パーサから見ればただの段落や水平線である。そこを本文に巻き込む壊し方は 5 条件のうち 4つ目 (語彙的なマーカー行) だけが見る。逆に 4つ目が見られない「マーカーに挟まれた中身」は 5つ目が見る。**2 つは互いの穴を埋め合う関係にあり、どちらも落とせない。** そしてどちらも「本文でないものを本文として結合した」形が**日本語でも英数字でもない文字を結合点に作らない**場合は素通りする。それを人間に見せるのが `_odd_join_key` の一覧である。
     """
     problems = []
     if _squeeze(before) != _squeeze(after):
@@ -319,6 +448,7 @@ def verify(before, after):
         problems.append(
             "マーカーだけの行 (英数字も CJK も含まない非空行) の並びが変わった: "
             f"{len(b)} 行から {len(a)} 行")
+    problems.extend(ast_problems(before, after))
     return problems
 
 # 除外するディレクトリ**名**。パスの接頭辞ではなく、対象ディレクトリからの相対パスの要素名と突き合わせる。接頭辞で持つと、対象の渡し方によって効いたり効かなかったりする。たとえば `"/.claude/worktrees/"` を接頭辞で持ったまま対象を `<repo>/.claude` にすると、相対パスが `/worktrees/...` になって一致せず、**進行中の別ブランチの worktree を書き換える**。要素名で持てば、対象をどこに置いても、また対象の内側でも外側でも同じように効く。
@@ -333,19 +463,25 @@ def is_skipped(path, base):
     """path (base の下のファイル) が除外対象のディレクトリの中にあるか。"""
     return not SKIP_PARTS.isdisjoint(path.relative_to(base).parts[:-1])
 
-def unwrap_file(path, apply=False):
-    """1ファイルを変換する。戻り値は ("changed"|"unchanged"|"failed", 詳細)。"""
+def unwrap_file(path, apply=False, joins=None):
+    """1ファイルを変換する。戻り値は ("changed"|"unchanged"|"failed", 詳細)。
+
+    `joins` にリストを渡すと、未知の形の結合点の鍵をそこへ足す。**書き戻したかどうかに関わらず足す** —— dry-run でこそ見たい情報だからである。検証に落ちたファイルの分は足さない (そのファイルは変換されないため)。
+    """
     try:
         before = path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError) as e:
         # 他の repo には壊れたファイルや読めないファイルがある。1件で全体を落とすと残りが処理されないので、そのファイルを失敗として報告して続ける。
         return "failed", f"読めない ({e.__class__.__name__})"
-    after = unwrap_text(before)
+    found = []
+    after = unwrap_text(before, found)
     if before == after:
         return "unchanged", ""
     problems = verify(before, after)
     if problems:
         return "failed", "; ".join(problems)
+    if joins is not None:
+        joins.extend(found)
     if apply:
         try:
             path.write_text(after, encoding="utf-8")
@@ -353,7 +489,30 @@ def unwrap_file(path, apply=False):
             return "failed", f"書けない ({e.__class__.__name__})"
     return "changed", ""
 
+# 未知の結合点の一覧に出す行数の上限。これを超えた分は件数だけを出す。
+ODD_JOINS_SHOWN = 20
+
+
+def report_odd_joins(counts, examples, out=print):
+    """未知の結合点の一覧を出す。`counts` は 鍵 -> 件数、`examples` は 鍵 -> 見本のパス。
+
+    **同じ形をまとめて数える。** `-->` が 20 件あれば「`-->` との結合が 20 件」の 1 行にする。件数が多すぎる一覧は読まれず、読まれない一覧は無いのと同じである。多い順に並べるのは、新しく生まれた形は普通ひとかたまりで現れるからである (`-->` の欠陥は 1 ファイルに 1 件ずつ、全ファイルに散らばった)。
+    """
+    if not counts:
+        return
+    out("")
+    out(f"未知の結合点 (左右のどちらかが日本語でも英数字でもない): "
+        f"{sum(counts.values())} 件 / {len(counts)} 形")
+    out("**検証は通っている。** 見たことのない形が出ていないかを目で確かめること。")
+    for key, n in counts.most_common(ODD_JOINS_SHOWN):
+        out(f"  {n:5d}  {key!r} との結合   例: {examples[key]}")
+    rest = len(counts) - ODD_JOINS_SHOWN
+    if rest > 0:
+        out(f"  (ほかに {rest} 形)")
+
+
 def main(argv):
+    import collections
     import pathlib
     apply = "--apply" in argv
     roots = [a for a in argv if not a.startswith("--")]
@@ -369,13 +528,19 @@ def main(argv):
             print(f"対象がディレクトリとして存在しない: {name}")
         return 2
     changed = unchanged = failed = 0
+    odd_counts = collections.Counter()
+    odd_examples = {}
     for base in bases:
         for path in sorted(base.rglob("*.md")):
             # 除外は対象ディレクトリからの相対パスの**要素名**で判定する。
             # 対象が worktree の中にあっても中身は除外されず、対象の内側に worktrees/ があればその中は除外される。
             if is_skipped(path, base):
                 continue
-            state, detail = unwrap_file(path, apply)
+            joins = []
+            state, detail = unwrap_file(path, apply, joins)
+            for key in joins:
+                odd_counts[key] += 1
+                odd_examples.setdefault(key, path)
             if state == "changed":
                 changed += 1
                 print(f"changed  {path}")
@@ -386,6 +551,10 @@ def main(argv):
                 unchanged += 1
     verb = "変換した" if apply else "変換する (dry-run)"
     print(f"\n{verb}: {changed} / 変更なし: {unchanged} / 失敗: {failed}")
+    if not HAS_AST_PARSER:
+        # 黙って飛ばさない。検証が 1 つ欠けたまま「成功」に見えるのが、この道具で最も危ない形である。
+        print(f"警告: {AST_MISSING_NOTE}")
+    report_odd_joins(odd_counts, odd_examples)
     return 1 if failed else 0
 
 if __name__ == "__main__":

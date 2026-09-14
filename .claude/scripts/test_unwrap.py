@@ -596,6 +596,37 @@ class TestMain(unittest.TestCase):
                         encoding="utf-8")
         return path
 
+    def test_warns_when_the_ast_parser_is_missing(self):
+        """**黙って飛ばさない。** 検証が 1 つ欠けたまま成功に見えるのが最も危ない形である。"""
+        self._write("notes/a.md")
+        saved = unwrap._MarkdownIt, unwrap.HAS_AST_PARSER
+        unwrap._MarkdownIt, unwrap.HAS_AST_PARSER = None, False
+        try:
+            code, output = _run_main([str(self.tmp)])
+        finally:
+            unwrap._MarkdownIt, unwrap.HAS_AST_PARSER = saved
+        self.assertEqual(code, 0)
+        self.assertIn("警告: markdown-it-py が無いため", output)
+
+    def test_does_not_warn_when_the_ast_parser_is_present(self):
+        self._write("notes/a.md")
+        code, output = _run_main([str(self.tmp)])
+        self.assertEqual(code, 0)
+        self.assertEqual("markdown-it-py が無い" in output,
+                         not unwrap.HAS_AST_PARSER)
+
+    def test_lists_odd_join_points_in_a_dry_run(self):
+        """**適用時と dry-run の両方で出す。** dry-run でこそ見たい情報である。"""
+        path = self.tmp / "notes" / "a.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("本文が折り返されて\n$$ x $$\n", encoding="utf-8")
+        code, output = _run_main([str(self.tmp)])
+        self.assertEqual(code, 0)
+        self.assertIn("未知の結合点", output)
+        self.assertIn(str(path), output)
+        self.assertEqual(path.read_text(encoding="utf-8"),
+                         "本文が折り返されて\n$$ x $$\n")
+
     def test_a_target_inside_a_worktree_is_not_skipped(self):
         """対象ディレクトリ自身が .claude/worktrees/ の下にあっても除外しない。
 
@@ -1035,13 +1066,166 @@ class TestVerifyMarkerLines(unittest.TestCase):
         self.assertEqual(unwrap._marker_lines("::::columns\n:::\n"), [":::"])
 
     def test_the_fourth_condition_does_not_catch_a_collapsed_fence(self):
-        """**限界の固定。** フェンスの欠陥と `<pre>` の欠陥はこの条件でも捕まらない。
+        """**限界の固定。** フェンスの欠陥と `<pre>` の欠陥は第4条件までのどれでも捕まらない。
 
-        どちらもマーカーの行そのものは独立した行として全部残り、壊れるのはマーカーに挟まれた中身のほうだからである。第4条件は 3 条件の穴を**部分的に**塞ぐものであって、ブロックの認識が正しいことの代わりにはならない。この事実を知らずに第4条件を信頼すると、同じ種類の欠陥をまた通す。
+        どちらもマーカーの行そのものは独立した行として全部残り、壊れるのはマーカーに挟まれた中身のほうだからである。第4条件は 3 条件の穴を**部分的に**塞ぐものであって、ブロックの認識が正しいことの代わりにはならない。この事実を知らずに第4条件を信頼すると、同じ種類の欠陥をまた通す。捕まえるのは第5条件 (AST 比較) である (`TestVerifyAst` を見よ)。
         """
         before = "```\nconst a = 1\nconst b = 2\n```\n"
         after = "```\nconst a = 1 const b = 2\n```\n"
-        self.assertEqual(unwrap.verify(before, after), [])
+        self.assertEqual(unwrap._squeeze(before), unwrap._squeeze(after))
+        self.assertEqual(unwrap._marker_lines(before),
+                         unwrap._marker_lines(after))
+        self.assertEqual(unwrap._paragraph_indents(before),
+                         unwrap._paragraph_indents(after))
+        for _, pattern in unwrap.STRUCTURE:
+            self.assertEqual(unwrap._count(before, pattern),
+                             unwrap._count(after, pattern))
+
+
+@unittest.skipUnless(unwrap.HAS_AST_PARSER, "markdown-it-py が無い")
+class TestVerifyAst(unittest.TestCase):
+    """検証の第5条件。独立したパーサ (markdown-it-py) で見たブロックの列を突き合わせる。"""
+
+    def test_catches_a_collapsed_fence_that_the_first_four_conditions_miss(self):
+        """**この検査の存在理由。** 第4条件までが素通りさせるフェンスの欠陥を捕まえる。"""
+        before = "```\nconst a = 1\nconst b = 2\n```\n"
+        after = "```\nconst a = 1 const b = 2\n```\n"
+        self.assertEqual(
+            unwrap.ast_problems(before, after),
+            ["独立したパーサで見たブロックの列が変わった: "
+             "1 番目のブロック (fence) の中身が変わった"])
+
+    def test_catches_a_collapsed_pre_block(self):
+        """HTML ブロックの 1 種目 (`<pre>`) の欠陥も、第4条件までは素通りする。"""
+        before = "<pre>\nline one\nline two\n</pre>\n"
+        after = "<pre>\nline one line two\n</pre>\n"
+        self.assertEqual(unwrap._marker_lines(before),
+                         unwrap._marker_lines(after))
+        self.assertTrue(unwrap.ast_problems(before, after))
+
+    def test_catches_a_paragraph_swallowing_a_block_boundary(self):
+        """ブロックの境界が動いたことを、ブロックの種別の違いとして見る。"""
+        before = "本文である\n\n> 引用である\n"
+        after = "本文である > 引用である\n"
+        self.assertTrue(unwrap.ast_problems(before, after))
+
+    def test_does_not_flag_removing_a_newline_inside_a_paragraph(self):
+        """**段落内の改行の除去は正当な変化である。** 差と見なしてはならない。"""
+        before = "日本語の本文が桁数で\n折り返されている\n"
+        self.assertEqual(unwrap.ast_problems(before, unwrap.unwrap_text(before)),
+                         [])
+
+    def test_does_not_flag_the_space_inserted_at_a_join(self):
+        before = "設計は Claude\nCode の上で動く\n"
+        self.assertEqual(unwrap.ast_problems(before, unwrap.unwrap_text(before)),
+                         [])
+
+    def test_normalisation_stays_inside_a_block(self):
+        """**第1条件との決定的な差。** 文が別のブロックに移っても、squeeze では見えない。"""
+        before = "# 見出しである\n\n本文である\n"
+        after = "# 見出しである本文である\n"
+        self.assertEqual(unwrap._squeeze(before), unwrap._squeeze(after))
+        self.assertTrue(unwrap.ast_problems(before, after))
+
+    def test_reports_a_missing_parser_instead_of_failing(self):
+        """パーサが無い環境では検査を行わず、空のリストを返す。
+
+        黙って飛ばさないための文言は `AST_MISSING_NOTE` にあり、main が出す (`TestMain` を見よ)。
+        """
+        saved = unwrap._MarkdownIt
+        unwrap._MarkdownIt = None
+        try:
+            self.assertIsNone(unwrap.ast_blocks("本文\n"))
+            self.assertEqual(unwrap.ast_problems("```\na\nb\n```\n",
+                                                 "```\na b\n```\n"), [])
+        finally:
+            unwrap._MarkdownIt = saved
+
+
+class TestOddJoins(unittest.TestCase):
+    """未知の結合点の一覧。検証が全部通っても、見たことのない形は人間に見せる。"""
+
+    def test_reports_a_join_with_a_non_japanese_non_alnum_side(self):
+        joins = []
+        unwrap.join_parts(["本文である", "-->"], joins)
+        self.assertEqual(joins, ["-->"])
+
+    def test_reports_the_offending_side_when_it_is_on_the_left(self):
+        joins = []
+        unwrap.join_parts(["const a = 1;", "const b = 2;"], joins)
+        self.assertEqual(joins, ["1;"])
+
+    def test_does_not_report_an_ordinary_japanese_join(self):
+        joins = []
+        unwrap.join_parts(["日本語の本文が", "折り返されている"], joins)
+        self.assertEqual(joins, [])
+
+    def test_does_not_report_a_japanese_to_ascii_join(self):
+        joins = []
+        unwrap.join_parts(["この規約は", "CLAUDE.md に置く"], joins)
+        self.assertEqual(joins, [])
+
+    def test_does_not_report_a_join_at_full_width_punctuation(self):
+        joins = []
+        unwrap.join_parts(["本文であり、", "続きである"], joins)
+        self.assertEqual(joins, [])
+
+    def test_unwrap_text_collects_joins(self):
+        joins = []
+        unwrap.unwrap_text(":::column\n本文が\n折り返されている\n:::\n", joins)
+        self.assertEqual(joins, [])
+
+    def test_ignores_inline_markdown_markup_at_the_boundary(self):
+        """**強調とコードスパンは普通の本文である。** 剥がさないと一覧が飾りで埋まる。
+
+        剥がさずに実測したところ fde で 2,101 件・1,600 形が出て、先頭は `` `document/010-…` `` のようなただのコードスパンだった。読まれない一覧は無いのと同じである。
+        """
+        joins = []
+        unwrap.join_parts(["本文である", "`document/010-outbound.md` を見よ"], joins)
+        unwrap.join_parts(["本文である", "**強調した語**である"], joins)
+        unwrap.join_parts(["`code`", "本文である"], joins)
+        self.assertEqual(joins, [])
+
+    def test_still_reports_an_html_tag_at_the_boundary(self):
+        """**`<` と `>` は剥がさない。** HTML のタグはまさに見たい形だからである。"""
+        joins = []
+        unwrap.join_parts(["本文である", "<div>"], joins)
+        self.assertEqual(joins, ["<div>"])
+
+    def test_does_not_report_symbols_that_are_ordinary_in_japanese_prose(self):
+        """`——`・`→`・`①`・`§` は日本語の技術文書の本文に普通に出る。"""
+        joins = []
+        for right in ["——である", "→ 次の段", "①である", "§4 を見よ"]:
+            unwrap.join_parts(["本文である", right], joins)
+        self.assertEqual(joins, [])
+
+    def test_still_reports_box_drawing(self):
+        """**罫線は足さない。** フェンスの外の木構造図が結合されている印だからである。"""
+        joins = []
+        unwrap.join_parts(["tools/", "├── workflow/"], joins)
+        self.assertEqual(joins, ["├──"])
+
+    def test_truncates_a_long_sample(self):
+        joins = []
+        unwrap.join_parts(["本文である", "-" * 100], joins)
+        self.assertEqual(len(joins[0]), unwrap.JOIN_SAMPLE_MAX)
+
+    def test_groups_the_same_shape_into_one_line(self):
+        import collections
+        lines = []
+        counts = collections.Counter({"-->": 20, ":::": 3})
+        unwrap.report_odd_joins(counts, {"-->": "a.md", ":::": "b.md"},
+                                lines.append)
+        body = "\n".join(lines)
+        self.assertIn("23 件 / 2 形", body)
+        self.assertIn("20  '-->' との結合", body)
+        self.assertEqual(len([l for l in lines if "との結合" in l]), 2)
+
+    def test_says_nothing_when_there_is_nothing_to_say(self):
+        import collections
+        lines = []
+        unwrap.report_odd_joins(collections.Counter(), {}, lines.append)
+        self.assertEqual(lines, [])
 
 
 if __name__ == "__main__":
