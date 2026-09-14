@@ -139,10 +139,7 @@ class TestUnwrapText(unittest.TestCase):
     def test_puts_no_space_after_a_full_width_period(self):
         """左が全角の句点なら、右が何であっても空白を入れない。
 
-        文末で結合を止めるようになったので、この結合点は unwrap_text からは
-        もう出ない (句点で終わる行はそこで切れる)。規則そのものは join_parts
-        に残っているので、ここで直接押さえておく。読点 (、) の側は文末では
-        ないため、いまも unwrap_text 経由で出る。
+        文末で結合を止めるようになったので、この結合点は unwrap_text からはもう出ない (句点で終わる行はそこで切れる)。規則そのものは join_parts に残っているので、ここで直接押さえておく。読点 (、) の側は文末ではないため、いまも unwrap_text 経由で出る。
         """
         self.assertEqual(
             unwrap.join_parts(["実体パスへ解決される。",
@@ -158,8 +155,7 @@ class TestUnwrapText(unittest.TestCase):
     def test_a_half_width_colon_is_not_an_exception(self):
         """: は半角なので例外に当たらず、空白が入る。
 
-        記号どうし (: と `) の結合点でもあるので、「片側が ASCII 英数か」で
-        判定すると空白が落ちる形をここで押さえている。
+        記号どうし (: と `) の結合点でもあるので、「片側が ASCII 英数か」で判定すると空白が落ちる形をここで押さえている。
         """
         src = "superpowers を使う:\n`brainstorming` から始める。\n"
         self.assertEqual(unwrap.unwrap_text(src),
@@ -168,8 +164,7 @@ class TestUnwrapText(unittest.TestCase):
     def test_puts_no_space_before_a_full_width_opening_paren(self):
         """右が全角の開き括弧なら、左が何であっても空白を入れない。
 
-        句読点の例外の鏡の側である。片側だけにすると、左が非日本語のときに
-        `` `.claude` `` + `（対象は…` のような箇所へ空白が入る。
+        句読点の例外の鏡の側である。片側だけにすると、左が非日本語のときに `` `.claude` `` + `（対象は…` のような箇所へ空白が入る。
         """
         src = "対象は `.claude`\n（対象ディレクトリからの相対で判定する）。\n"
         self.assertEqual(
@@ -199,8 +194,7 @@ class TestUnwrapText(unittest.TestCase):
     def test_a_marker_only_line_does_not_gain_a_double_space(self):
         """本文がマーカーの次の行から始まっても空白は増えない。
 
-        結合点の左が空文字になる。素朴に空白を入れると行末が半角空白2つに
-        なり、意図しないハードブレイクが生まれる。
+        結合点の左が空文字になる。素朴に空白を入れると行末が半角空白2つになり、意図しないハードブレイクが生まれる。
         """
         src = "- \n  日本語の本文が桁数で\n  折り返されている。\n"
         self.assertEqual(unwrap.unwrap_text(src),
@@ -210,12 +204,7 @@ class TestUnwrapText(unittest.TestCase):
 class TestFences(unittest.TestCase):
     """フェンスの開閉。マーカーの文字と長さを見ないと内と外が入れ替わる。
 
-    markdown でフェンスを閉じられるのは、開いたときと同じ文字で同じ長さ
-    以上のマーカーだけである。以前はマーカーに当たるどの行でも判定を反転
-    させていたため、4 個のバッククォートで開いたフェンスの中の 3 個の行で
-    反転し、以降のフェンスの内と外が入れ替わって、本来コードである
-    ```ts ブロックが本文として結合された。verify の 3 条件はこれを検出
-    できない (文字は欠けず、構造の数も段落の頭のインデントも変わらない)。
+    markdown でフェンスを閉じられるのは、開いたときと同じ文字で同じ長さ以上のマーカーだけである。以前はマーカーに当たるどの行でも判定を反転させていたため、4 個のバッククォートで開いたフェンスの中の 3 個の行で反転し、以降のフェンスの内と外が入れ替わって、本来コードである ```ts ブロックが本文として結合された。verify の 3 条件はこれを検出できない (文字は欠けず、構造の数も段落の頭のインデントも変わらない)。
     """
 
     def test_a_shorter_marker_inside_a_longer_fence_does_not_close_it(self):
@@ -233,9 +222,7 @@ class TestFences(unittest.TestCase):
     def test_a_normal_fence_after_a_nested_fence_is_still_code(self):
         """実際に壊れたケース。ts ブロックのコードが本文として結合された。
 
-        入れ子のマーカー行が奇数個あると、そこから先のフェンスの内と外が
-        入れ替わる。続く ```ts の開きマーカーが「閉じ」として食われ、
-        中身のコードが本文の段落として結合される。
+        入れ子のマーカー行が奇数個あると、そこから先のフェンスの内と外が入れ替わる。続く ```ts の開きマーカーが「閉じ」として食われ、中身のコードが本文の段落として結合される。
         """
         src = ("````text\n"
                "  ```\n"
@@ -293,9 +280,7 @@ class TestFences(unittest.TestCase):
         """バッククォートのフェンスの情報文字列にバッククォートは書けない。
 
         `` ```a` の書き方 `` のような行は段落であってフェンスではない。
-        これをフェンスとして開くと、以降のフェンスの内と外が入れ替わり、
-        続く本物のフェンスの中のコードが本文として結合される。verify の 3
-        条件はこれを検出できない。
+        これをフェンスとして開くと、以降のフェンスの内と外が入れ替わり、続く本物のフェンスの中のコードが本文として結合される。verify の 3 条件はこれを検出できない。
         """
         src = ("```a` の書き方\n"
                "\n"
@@ -337,9 +322,7 @@ class TestFences(unittest.TestCase):
     def test_an_indented_fence_in_a_list_closes_at_the_same_depth(self):
         """リスト項目の中の 8 桁インデントのフェンスは同じ深さで閉じる。
 
-        インデントを絶対の桁数で見ると、この形のフェンスが閉じられなくなり、
-        以降のファイル全体が中身として扱われる。見るのは開きからの相対で
-        ある。
+        インデントを絶対の桁数で見ると、この形のフェンスが閉じられなくなり、以降のファイル全体が中身として扱われる。見るのは開きからの相対である。
         """
         src = ("- 項目\n"
                "\n"
@@ -376,8 +359,7 @@ class TestFences(unittest.TestCase):
     def test_measure_does_not_count_wraps_inside_a_nested_fence(self):
         """4 個で開いたフェンスの中の 3 個の行で内と外が入れ替わらない。
 
-        入れ替わると、フェンスの中のコード行を段落行として数え、本来の
-        段落行をフェンスの中として数えないので、残量の数が両側に狂う。
+        入れ替わると、フェンスの中のコード行を段落行として数え、本来の段落行をフェンスの中として数えないので、残量の数が両側に狂う。
         """
         with tempfile.TemporaryDirectory() as tmp:
             path = pathlib.Path(tmp) / "a.md"
@@ -396,8 +378,7 @@ class TestFences(unittest.TestCase):
     def test_measure_does_not_open_a_fence_on_a_backtick_info_string(self):
         """情報文字列にバッククォートを含む行はフェンスを開かない。
 
-        開いてしまうと、以降のフェンスの内と外が入れ替わり、コード行を
-        段落行として数えて残量の数が両側に狂う。
+        開いてしまうと、以降のフェンスの内と外が入れ替わり、コード行を段落行として数えて残量の数が両側に狂う。
         """
         with tempfile.TemporaryDirectory() as tmp:
             path = pathlib.Path(tmp) / "a.md"
@@ -441,9 +422,7 @@ class TestFences(unittest.TestCase):
 class TestSentenceBoundaries(unittest.TestCase):
     """文末での改行は折り返しではないので結合しない。
 
-    このタスクが問題にしているのは語や句の途中で割れることであり、文末は
-    意味のある位置だから害が無い。当初「1段落＝1行」として文末の改行まで
-    結合したが、それは規約を広く取りすぎていた。
+    このタスクが問題にしているのは語や句の途中で割れることであり、文末は意味のある位置だから害が無い。当初「1段落＝1行」として文末の改行まで結合したが、それは規約を広く取りすぎていた。
     """
 
     def test_does_not_join_after_a_sentence_end(self):
@@ -519,10 +498,7 @@ class TestJoinParts(unittest.TestCase):
     def test_an_empty_side_adds_no_space(self):
         """どちらかが空なら結合点そのものが無いので、空白を入れない。
 
-        unwrap.py の明示のガードが受け持つ形である。ガードが無くても
-        `"" in JA_PUNCT` が真になるので結果は同じ (つまりガードを外しても
-        テストは通る)。ここで固定しているのは分岐の有無ではなく、**空側に
-        空白を入れない**という結合点の振る舞いそのものである。
+        unwrap.py の明示のガードが受け持つ形である。ガードが無くても `"" in JA_PUNCT` が真になるので結果は同じ (つまりガードを外してもテストは通る)。ここで固定しているのは分岐の有無ではなく、**空側に空白を入れない**という結合点の振る舞いそのものである。
         """
         self.assertEqual(unwrap.join_parts(["", "日本語の本文"]), "日本語の本文")
         self.assertEqual(unwrap.join_parts(["", "ASCII text"]), "ASCII text")
@@ -564,8 +540,7 @@ class TestVerify(unittest.TestCase):
     def test_a_dropped_paragraph_indent_is_caught(self):
         """インデントを落としてリストを切る壊し方を捕まえる。
 
-        リスト項目の数は変わらず、段落テキストの比較は空白を無視するので、
-        既存の2条件はどちらもこれを素通りする。
+        リスト項目の数は変わらず、段落テキストの比較は空白を無視するので、既存の2条件はどちらもこれを素通りする。
         """
         before = ("- 箇条書きの項目である。\n"
                   "\n"
@@ -606,8 +581,7 @@ def _run_measure(argv):
 class TestMain(unittest.TestCase):
     """main の除外パス判定と引数の扱い。
 
-    ここが壊れると「変更なし・失敗 0」と出て成功に見える。unwrap_text と
-    verify のテストはこの壊れ方を一切守らない。
+    ここが壊れると「変更なし・失敗 0」と出て成功に見える。unwrap_text と verify のテストはこの壊れ方を一切守らない。
     """
 
     def setUp(self):
@@ -625,9 +599,7 @@ class TestMain(unittest.TestCase):
     def test_a_target_inside_a_worktree_is_not_skipped(self):
         """対象ディレクトリ自身が .claude/worktrees/ の下にあっても除外しない。
 
-        除外は対象ディレクトリからの相対で判定する。絶対パスで判定すると
-        worktree の中で走らせた瞬間に全件が除外され、「変更なし・失敗 0」と
-        出て成功に見える。
+        除外は対象ディレクトリからの相対で判定する。絶対パスで判定すると worktree の中で走らせた瞬間に全件が除外され、「変更なし・失敗 0」と出て成功に見える。
         """
         target = self.tmp / ".claude" / "worktrees" / "feature-008" / "notes"
         self._write(".claude/worktrees/feature-008/notes/a.md")
@@ -646,9 +618,7 @@ class TestMain(unittest.TestCase):
     def test_a_worktree_inside_the_target_is_skipped(self):
         """対象の内側に worktrees/ があれば、その中は除外する。
 
-        接頭辞 `"/.claude/worktrees/"` で判定していたときは、対象を
-        `<repo>/.claude` にすると相対パスが `/worktrees/...` になって一致
-        せず、**進行中の別ブランチの worktree を書き換えていた**。
+        接頭辞 `"/.claude/worktrees/"` で判定していたときは、対象を `<repo>/.claude` にすると相対パスが `/worktrees/...` になって一致せず、**進行中の別ブランチの worktree を書き換えていた**。
         notes/plan の Step 2 が案内しているのがまさにこの形である。
         """
         claude = self.tmp / ".claude"
@@ -717,16 +687,14 @@ class TestMeasureWraps(unittest.TestCase):
     def test_the_skip_list_matches_unwrap(self):
         """除外の定義が2つのファイルで同じであること。
 
-        片方だけが数えると、変換しないと決めた場所の折り返しが残量に出て、
-        直し切れない数がいつまでも残る。
+        片方だけが数えると、変換しないと決めた場所の折り返しが残量に出て、直し切れない数がいつまでも残る。
         """
         self.assertEqual(measure_wraps.SKIP_PARTS, unwrap.SKIP_PARTS)
 
     def test_the_sentence_end_pattern_matches_unwrap(self):
         """文末の定義も2つのファイルで同じであること。
 
-        片方だけが文末を折り返しと見なすと、結合しないと決めた改行が残量に
-        出て、直し切れない数がいつまでも残る。
+        片方だけが文末を折り返しと見なすと、結合しないと決めた改行が残量に出て、直し切れない数がいつまでも残る。
         """
         self.assertEqual(measure_wraps.SENTENCE_END.pattern,
                          unwrap.SENTENCE_END.pattern)
