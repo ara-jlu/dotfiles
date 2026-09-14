@@ -1,6 +1,6 @@
 ---
 title: 日本語のコメントと本文でハード折り返しをやめる
-status: In review
+status: Done
 Project: devops
 created_at: 2026-09-08
 updated_at: 2026-09-08
