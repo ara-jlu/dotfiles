@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """日本語の md 本文のハード折り返しを結合する。
 
-段落の途中で改行されている行を結合し、frontmatter・コードフェンス・表・見出し・引用・意図的なハードブレイク・日本語を含まない段落は触らない。
+段落の途中で改行されている行を結合し、frontmatter・コードフェンス・HTML ブロック・表・見出し・引用・意図的なハードブレイク・日本語を含まない段落は触らない。
 **文末 (`。` `！` `？`) での改行は折り返しではないので結合しない。**
 
 **規約と変換規則の正典は notes/document/008-no-hard-wrap-japanese-design.md**（dotfiles）である。結合点の空白・触らないものの一覧・検証の3条件は、すべてそこで決めている。規則を変えるときは設計を先に直す。
@@ -57,6 +57,39 @@ def fence_closes(line, char, length, indent):
             and not m.group(3).strip()
             and len(m.group(1)) <= indent + 3)
 
+# HTML ブロックの開始行。1 種目は HTML コメント (`<!--`)、2 種目は行頭が HTML のタグに見える行。
+# markdown では、これらの行から始まる領域は **HTML ブロック**であり、中身はそのまま出力される (markdown として解釈されない)。結合すると、閉じの `-->` が箇条書きの項目にくっついたり、`<div>` の構造が壊れたりする。
+# インデントを 3 桁までに限るのは CommonMark の規則に合わせたものである。4 桁以上はインデントされたコードブロックであり、そちらは INDENTED_CODE が別に触らない側へ倒している。
+HTML_COMMENT_OPEN = re.compile(r"^ {0,3}<!--")
+# **どこまでを「タグに見える」とするか。** 行頭 (インデント 3 桁まで) が `<` または `</` で始まり、続いて ASCII の英字・英数字とハイフンのタグ名があり、そのあとが空白・`>`・`/>`・行末のいずれかである行をタグと見なす。
+# CommonMark の 6 種目 (既知のブロック要素名の一覧) より**広く**、7 種目 (行にタグだけがある形) より**緩い**。広い側に倒しているのは、結合しそこねても折り返しが残るだけだが、HTML を壊すのは戻せないためである。
+# 逆に `<https://example.com>` (自動リンク) や `<型引数>` のような行はタグ名の形に当たらないので、ここには入らない。
+HTML_TAG_OPEN = re.compile(r"^ {0,3}</?[A-Za-z][A-Za-z0-9-]*(\s|/?>|$)")
+
+
+def html_block_open(line):
+    """行が HTML ブロックを開くなら種別 ("comment" か "tag") を返す。開かないなら None。
+
+    **行の途中にある `<!--` は開かない。** インラインのコメントは HTML ブロックではなく段落の一部だからである。
+    **フェンスの中の `<!--` や `<div>` も開かない。** これは呼び出し側の順序で担保する。フェンスの判定を先に行い、フェンスの中は中身として読み飛ばす。
+    """
+    if HTML_COMMENT_OPEN.match(line):
+        return "comment"
+    if HTML_TAG_OPEN.match(line):
+        return "tag"
+    return None
+
+
+def html_block_closes(line, kind):
+    """行で HTML ブロックが終わるか。終わる行そのものもブロックの一部として扱う (出力はそのまま)。
+
+    コメントは `-->` を含む行までである。閉じが無ければファイルの終わりまで中身として扱う (フェンスと同じ扱い)。タグで始まるブロックは空行までである (CommonMark の 6 種目・7 種目と同じ)。
+    """
+    if kind == "comment":
+        return "-->" in line
+    return not line.strip()
+
+
 HEADING = re.compile(r"^\s*#{1,6}\s")
 QUOTE = re.compile(r"^\s*>")
 TABLE = re.compile(r"^\s*\|")
@@ -77,9 +110,13 @@ JA_PUNCT = "。、"
 JA_OPEN = "（「『【〔"
 
 def is_block_start(line):
-    """段落の続きになりえない行か。"""
+    """段落の続きになりえない行か。
+
+    HTML ブロックの開始行もここに含める。段落の続きに見える位置に `<!--` や `<div>` が来ても、そこで段落を切って触らない側に倒す。
+    """
     return bool(FENCE.match(line) or HEADING.match(line) or QUOTE.match(line)
-                or TABLE.match(line) or RULE.match(line) or LIST.match(line))
+                or TABLE.match(line) or RULE.match(line) or LIST.match(line)
+                or html_block_open(line))
 
 def join_parts(parts):
     """行の並びを1行に結合する。
@@ -163,6 +200,18 @@ def unwrap_text(text):
             while i < len(lines):
                 out.append(lines[i])
                 closed = fence_closes(lines[i], char, length, indent)
+                i += 1
+                if closed:
+                    break
+            continue
+
+        # **フェンスの判定より後に置く。** フェンスの中の `<!--` や `<div>` は HTML ブロックではなく、フェンスの中身だからである。上の分岐がフェンスを丸ごと読み飛ばすので、ここに来る時点でフェンスの外であることが保証される。
+        kind = html_block_open(line)
+        if kind:
+            # 開始行そのものも閉じの判定にかける。`<!-- 一行のコメント -->` は 1 行で閉じるからである (フェンスは開きマーカーの行が自分を閉じることはないので、この点だけ扱いが違う)。
+            while i < len(lines):
+                out.append(lines[i])
+                closed = html_block_closes(lines[i], kind)
                 i += 1
                 if closed:
                     break

@@ -3,7 +3,7 @@
 
 「折り返された行」= 段落の途中で改行されている行。判定は「次の行が同じ段落の続き（空行でなく、見出し・リスト・表・フェンスの開始でもない）」。
 **文末（`。` `！` `？`）で終わる行は折り返しとして数えない。** 文末での改行は桁数の折り返しではなく「1文1行」という書き方であり、unwrap.py もそこでは結合しない。数え方を合わせないと、直さないと決めたものが残量に出続ける。
-frontmatter とコードフェンスの中は除外する。引用（`>`）の中も数えないので、引用に残った折り返しはこの数に出ない。
+frontmatter・コードフェンス・HTML ブロックの中は除外する。引用（`>`）の中も数えないので、引用に残った折り返しはこの数に出ない。
 
 使い方:
 
@@ -50,6 +50,29 @@ def fence_closes(line, char, length, indent):
             and not m.group(3).strip()
             and len(m.group(1)) <= indent + 3)
 
+# HTML ブロックの開始行。unwrap.py と同じ定義にしておく (一致は test_unwrap の test_the_html_block_handling_matches_unwrap が固定している)。
+# 片方だけが HTML ブロックの内と外を取り違えると、変換しないと決めた場所の折り返しが残量に出続ける。
+# 「タグに見える」の範囲と、広い側 (触らない側) に倒した理由は unwrap.py の HTML_TAG_OPEN を見よ。
+HTML_COMMENT_OPEN = re.compile(r"^ {0,3}<!--")
+HTML_TAG_OPEN = re.compile(r"^ {0,3}</?[A-Za-z][A-Za-z0-9-]*(\s|/?>|$)")
+
+
+def html_block_open(line):
+    """行が HTML ブロックを開くなら種別 ("comment" か "tag") を返す。開かないなら None。"""
+    if HTML_COMMENT_OPEN.match(line):
+        return "comment"
+    if HTML_TAG_OPEN.match(line):
+        return "tag"
+    return None
+
+
+def html_block_closes(line, kind):
+    """行で HTML ブロックが終わるか。終わる行そのものもブロックの一部として扱う。"""
+    if kind == "comment":
+        return "-->" in line
+    return not line.strip()
+
+
 BLOCK_START = re.compile(r"^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|\||---\s*$|===)")
 # 文末。unwrap.py と同じ定義にしておく (一致は test_unwrap が固定している)。
 # 片方だけが文末を折り返しと見なすと、結合しないと決めた改行が残量に出て、直し切れない数がいつまでも残る。
@@ -81,9 +104,15 @@ def classify(path):
             i += 1
         i += 1
     fence = None
+    html = None
     body = cont = cont_ja = 0
     for j in range(i, len(lines)):
         line = lines[j]
+        if html is not None:
+            # HTML ブロックの中。中身は markdown として解釈されないので、折り返しとして数えない。
+            if html_block_closes(line, html):
+                html = None
+            continue
         if fence is not None:
             # フェンスの中。閉じられるのは開いたときと同じ文字で同じ長さ以上のマーカーだけで、それ以外の行は中身である。閉じられないままファイルが終われば最後まで中身として扱う。
             if fence_closes(line, *fence):
@@ -93,6 +122,12 @@ def classify(path):
         if opened:
             fence = opened
             continue
+        # **フェンスの判定より後に置く。** フェンスの中の `<!--` や `<div>` はフェンスの中身であって HTML ブロックではない。
+        html = html_block_open(line)
+        if html is not None:
+            if html_block_closes(line, html):
+                html = None
+            continue
         if not line.strip() or BLOCK_START.match(line):
             continue
         body += 1
@@ -100,7 +135,8 @@ def classify(path):
         if SENTENCE_END.search(line.rstrip()):
             # 文末で終わる行は、次が段落の続きでも折り返しではない。
             continue
-        if nxt.strip() and not FENCE.match(nxt) and not BLOCK_START.match(nxt):
+        if (nxt.strip() and not FENCE.match(nxt) and not BLOCK_START.match(nxt)
+                and html_block_open(nxt) is None):
             cont += 1
             if CJK.search(line):
                 cont_ja += 1

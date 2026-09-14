@@ -738,5 +738,108 @@ class TestMeasureWraps(unittest.TestCase):
         self.assertIn("対象がディレクトリとして存在しない", output)
 
 
+class TestHtmlBlocks(unittest.TestCase):
+    """HTML ブロックの中は触らない。
+
+    markdown では `<!--` から `-->` までのコメントや、ブロックレベルのタグで始まる領域は HTML ブロックであり、中身はそのまま出力される。結合すると閉じの `-->` が箇条書きの項目にくっつき、`<div>` のようなタグでは構造が壊れる。
+    **この壊れ方は verify の3条件をすべてすり抜ける。** フェンスの欠陥と同じで、文字は欠けず、構造の数も変わらず、段落の頭のインデントも変わらないからである。
+    """
+
+    def test_a_multi_line_html_comment_is_not_joined(self):
+        """テンプレートで実際に壊れた形をそのまま固定する。"""
+        src = ("<!--\n"
+               "執筆者チェックリスト:\n"
+               "- [ ] タイトル55〜60文字以内\n"
+               "- [ ] Notionログからの具体的エピソード\n"
+               "-->\n")
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_the_closing_marker_is_not_joined_to_the_previous_line(self):
+        src = "<!--\nコメントの本文である\n-->\n"
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_an_unclosed_html_comment_runs_to_the_end_of_the_file(self):
+        src = "<!--\n閉じの無いコメントが\n続いたまま終わる\n"
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_a_single_line_html_comment_closes_on_its_own_line(self):
+        """`<!-- ... -->` は 1 行で閉じる。閉じたことを見落とすと、後続の本文まで飲み込む。"""
+        src = "<!-- 一行のコメント -->\n\n本文が折り\n返されている。\n"
+        self.assertEqual(unwrap.unwrap_text(src),
+                         "<!-- 一行のコメント -->\n\n本文が折り返されている。\n")
+
+    def test_a_block_level_tag_region_is_not_joined_until_a_blank_line(self):
+        src = ("<div class=\"note\">\n"
+               "中の行が折り\n"
+               "返されている\n"
+               "</div>\n"
+               "\n"
+               "本文が折り\n"
+               "返されている。\n")
+        self.assertEqual(unwrap.unwrap_text(src),
+                         src.replace("本文が折り\n返されている。",
+                                     "本文が折り返されている。"))
+
+    def test_a_comment_inside_a_code_fence_does_not_open_an_html_block(self):
+        """フェンスの中の `<!--` はフェンスの中身である。順序を誤ると、フェンスが閉じたあとの本文まで HTML ブロックとして扱われる。"""
+        src = ("```html\n"
+               "<!--\n"
+               "```\n"
+               "\n"
+               "本文が折り\n"
+               "返されている。\n")
+        self.assertEqual(unwrap.unwrap_text(src),
+                         src.replace("本文が折り\n返されている。",
+                                     "本文が折り返されている。"))
+
+    def test_an_inline_comment_does_not_open_an_html_block(self):
+        """行の途中の `<!--` は段落の一部であって HTML ブロックではない。"""
+        src = "本文の途中に <!-- 注記 --> が\n入っている。\n"
+        self.assertEqual(unwrap.unwrap_text(src),
+                         "本文の途中に <!-- 注記 --> が入っている。\n")
+
+    def test_an_autolink_does_not_open_an_html_block(self):
+        """`<https://…>` はタグ名の形ではないので HTML ブロックを開かない。"""
+        src = "<https://example.com> を参照\nすること。\n"
+        self.assertEqual(unwrap.unwrap_text(src),
+                         "<https://example.com> を参照すること。\n")
+
+    def test_an_html_block_interrupts_a_paragraph(self):
+        """段落の続きに見える位置の `<!--` でも、そこで切って触らない。"""
+        src = "本文である\n<!--\nコメントの中\n-->\n"
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_the_html_block_handling_matches_unwrap(self):
+        """unwrap.py と measure_wraps.py の HTML ブロックの扱いが一致する。"""
+        lines = ["<!--", "-->", "<!-- 一行 -->", "  <!--", "    <!--",
+                 "<div>", "<div class=\"x\">", "</div>", "<br/>", "<hr />",
+                 "<https://example.com>", "<型引数>", "本文 <!-- 注記 -->",
+                 "本文", "", "   <span>", "<x-custom>", "<1tag>", "<!DOCTYPE>"]
+        for line in lines:
+            self.assertEqual(unwrap.html_block_open(line),
+                             measure_wraps.html_block_open(line), line)
+            for kind in ("comment", "tag"):
+                self.assertEqual(unwrap.html_block_closes(line, kind),
+                                 measure_wraps.html_block_closes(line, kind),
+                                 (line, kind))
+
+    def test_measure_does_not_count_wraps_inside_an_html_comment(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        base = pathlib.Path(tmp.name)
+        (base / "a.md").write_text("<!--\n折り返された行が\nコメントの中にある\n-->\n",
+                                   encoding="utf-8")
+        self.assertEqual(measure_wraps.classify(base / "a.md"), (0, 0, 0))
+
+    def test_measure_does_not_count_a_line_before_an_html_block_as_wrapped(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        base = pathlib.Path(tmp.name)
+        (base / "a.md").write_text("本文である\n<!--\nコメント\n-->\n",
+                                   encoding="utf-8")
+        body, cont, _ = measure_wraps.classify(base / "a.md")
+        self.assertEqual((body, cont), (1, 0))
+
+
 if __name__ == "__main__":
     unittest.main()
