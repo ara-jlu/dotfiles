@@ -3,7 +3,7 @@
 
 「折り返された行」= 段落の途中で改行されている行。判定は「次の行が同じ段落の続き（空行でなく、見出し・リスト・表・フェンスの開始でもない）」。
 **文末（`。` `！` `？`）で終わる行は折り返しとして数えない。** 文末での改行は桁数の折り返しではなく「1文1行」という書き方であり、unwrap.py もそこでは結合しない。数え方を合わせないと、直さないと決めたものが残量に出続ける。
-frontmatter・コードフェンス・HTML ブロックの中は除外する。引用（`>`）の中も数えないので、引用に残った折り返しはこの数に出ない。
+frontmatter・コードフェンス・HTML ブロックの中は除外する。引用（`>`）の中も数えないので、引用に残った折り返しはこの数に出ない。**HTML ブロックと誤認された領域も同じで、そこに残った折り返しはこの数に出ない**（判定は「迷ったら触らない側」に広く倒してあるため、本文が巻き込まれることがある）。
 
 使い方:
 
@@ -55,12 +55,18 @@ def fence_closes(line, char, length, indent):
 # 「タグに見える」の範囲と、広い側 (触らない側) に倒した理由は unwrap.py の HTML_TAG_OPEN を見よ。
 HTML_COMMENT_OPEN = re.compile(r"^ {0,3}<!--")
 HTML_TAG_OPEN = re.compile(r"^ {0,3}</?[A-Za-z][A-Za-z0-9-]*(\s|/?>|$)")
+# CommonMark の HTML ブロックの 1 種目。空行では終わらず閉じタグまでが範囲である (理由は unwrap.py の HTML_RAW_OPEN を見よ)。
+HTML_RAW_OPEN = re.compile(r"^ {0,3}<(pre|script|style|textarea)(\s|>|$)",
+                           re.IGNORECASE)
+HTML_RAW_CLOSE = re.compile(r"</(pre|script|style|textarea)>", re.IGNORECASE)
 
 
 def html_block_open(line):
-    """行が HTML ブロックを開くなら種別 ("comment" か "tag") を返す。開かないなら None。"""
+    """行が HTML ブロックを開くなら種別 ("comment" か "raw" か "tag") を返す。開かないなら None。"""
     if HTML_COMMENT_OPEN.match(line):
         return "comment"
+    if HTML_RAW_OPEN.match(line):
+        return "raw"
     if HTML_TAG_OPEN.match(line):
         return "tag"
     return None
@@ -70,10 +76,26 @@ def html_block_closes(line, kind):
     """行で HTML ブロックが終わるか。終わる行そのものもブロックの一部として扱う。"""
     if kind == "comment":
         return "-->" in line
+    if kind == "raw":
+        return bool(HTML_RAW_CLOSE.search(line))
     return not line.strip()
 
 
-BLOCK_START = re.compile(r"^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|\||---\s*$|===)")
+# コンテナディレクティブ (`:::column` / `::::columns` / 閉じの `:::`)。unwrap.py と同じ定義にしておく。
+DIRECTIVE = re.compile(r"^ {0,3}:{3,}")
+# 段落の続きになりえない行。**unwrap.py の is_block_start と同じ範囲にする** (一致は test_unwrap の test_the_block_start_judgement_matches_unwrap が固定している)。
+# ここは unwrap.py の HEADING・LIST・QUOTE・TABLE・RULE をそのまま並べたものである。片方だけが段落の境界をずらすと、直さないと決めた改行が残量に出たり、直したはずの改行が残量に出続けたりする。
+# 以前は `===` (Setext の h2 下線に見える形) を含み、`***` と `___` (unwrap.py の RULE が水平線として扱う形) を含んでいなかった。どちらも unwrap.py と食い違っていたので、unwrap.py 側に揃えた。`===` は unwrap.py が段落の境界と認識しない (設計の「直り切らないもの」に記録がある) ので、measure_wraps でも認識しないのが一致した扱いである。
+BLOCK_START = re.compile(
+    r"^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|\||(-{3,}|\*{3,}|_{3,})\s*$)")
+
+
+def is_block_start(line):
+    """段落の続きになりえない行か。unwrap.is_block_start と同じ判定である。"""
+    return bool(BLOCK_START.match(line) or DIRECTIVE.match(line)
+                or FENCE.match(line) or html_block_open(line))
+
+
 # 文末。unwrap.py と同じ定義にしておく (一致は test_unwrap が固定している)。
 # 片方だけが文末を折り返しと見なすと、結合しないと決めた改行が残量に出て、直し切れない数がいつまでも残る。
 SENTENCE_END = re.compile("[。！？][*_`）」』】〕)\"']*$")
@@ -128,15 +150,14 @@ def classify(path):
             if html_block_closes(line, html):
                 html = None
             continue
-        if not line.strip() or BLOCK_START.match(line):
+        if not line.strip() or BLOCK_START.match(line) or DIRECTIVE.match(line):
             continue
         body += 1
         nxt = lines[j + 1] if j + 1 < len(lines) else ""
         if SENTENCE_END.search(line.rstrip()):
             # 文末で終わる行は、次が段落の続きでも折り返しではない。
             continue
-        if (nxt.strip() and not FENCE.match(nxt) and not BLOCK_START.match(nxt)
-                and html_block_open(nxt) is None):
+        if nxt.strip() and not is_block_start(nxt):
             cont += 1
             if CJK.search(line):
                 cont_ja += 1

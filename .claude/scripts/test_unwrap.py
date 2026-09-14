@@ -742,7 +742,7 @@ class TestHtmlBlocks(unittest.TestCase):
     """HTML ブロックの中は触らない。
 
     markdown では `<!--` から `-->` までのコメントや、ブロックレベルのタグで始まる領域は HTML ブロックであり、中身はそのまま出力される。結合すると閉じの `-->` が箇条書きの項目にくっつき、`<div>` のようなタグでは構造が壊れる。
-    **この壊れ方は verify の3条件をすべてすり抜ける。** フェンスの欠陥と同じで、文字は欠けず、構造の数も変わらず、段落の頭のインデントも変わらないからである。
+    **この壊れ方は verify の3条件 (当時) をすべてすり抜けた。** フェンスの欠陥と同じで、文字は欠けず、構造の数も変わらず、段落の頭のインデントも変わらないからである。いまは第4条件 (マーカーだけの行) がこの形を検出する (TestVerifyMarkerLines を見よ) が、それは二重の網であって、ブロックの認識が正しいことの代わりではない。
     """
 
     def test_a_multi_line_html_comment_is_not_joined(self):
@@ -814,11 +814,15 @@ class TestHtmlBlocks(unittest.TestCase):
         lines = ["<!--", "-->", "<!-- 一行 -->", "  <!--", "    <!--",
                  "<div>", "<div class=\"x\">", "</div>", "<br/>", "<hr />",
                  "<https://example.com>", "<型引数>", "本文 <!-- 注記 -->",
-                 "本文", "", "   <span>", "<x-custom>", "<1tag>", "<!DOCTYPE>"]
+                 "本文", "", "   <span>", "<x-custom>", "<1tag>", "<!DOCTYPE>",
+                 "<pre>", "<PRE>", "</pre>", "<pre class=\"x\">",
+                 "<script>", "</script>", "<style>", "</style>",
+                 "<textarea>", "</textarea>", "<pre>コード</pre>",
+                 "<prefix>", "<presentation class=\"x\">"]
         for line in lines:
             self.assertEqual(unwrap.html_block_open(line),
                              measure_wraps.html_block_open(line), line)
-            for kind in ("comment", "tag"):
+            for kind in ("comment", "raw", "tag"):
                 self.assertEqual(unwrap.html_block_closes(line, kind),
                                  measure_wraps.html_block_closes(line, kind),
                                  (line, kind))
@@ -839,6 +843,205 @@ class TestHtmlBlocks(unittest.TestCase):
                                    encoding="utf-8")
         body, cont, _ = measure_wraps.classify(base / "a.md")
         self.assertEqual((body, cont), (1, 0))
+
+
+class TestRawHtmlBlocks(unittest.TestCase):
+    """CommonMark の HTML ブロックの 1 種目 (`<pre>` `<script>` `<style>` `<textarea>`) は空行では終わらない。
+
+    この 4 つで始まるブロックだけは**閉じタグを含む行までが範囲**である。他の種別と同じ「空行まで」で扱うと、空行をまたいだ続きが本文として結合される。`<pre>` は空白が意味を持つので、結合すれば描画が変わる。
+    実データには 0 件だが、**フェンスの欠陥と完全に同じ種類 (開閉の範囲の取り違え)** なので件数に関わらず塞ぐ。
+    """
+
+    def test_a_pre_block_is_not_joined_across_a_blank_line(self):
+        src = ("<pre>\n"
+               "最初の行\n"
+               "\n"
+               "続きの行が\n"
+               "折り返されている\n"
+               "</pre>\n")
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_a_script_block_is_not_joined_across_a_blank_line(self):
+        src = ("<script>\n"
+               "// 説明が\n"
+               "// 折り返されている\n"
+               "\n"
+               "// 空行の後も\n"
+               "// 中身である\n"
+               "</script>\n")
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_a_style_block_is_not_joined_across_a_blank_line(self):
+        src = ("<style>\n"
+               "/* 説明が */\n"
+               "\n"
+               "/* 空行の後も */\n"
+               "/* 中身である */\n"
+               "</style>\n")
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_the_block_ends_at_the_closing_tag_and_the_body_after_it_is_joined(self):
+        src = ("<pre>\n"
+               "中身が\n"
+               "\n"
+               "ある\n"
+               "</pre>\n"
+               "\n"
+               "本文が折り\n"
+               "返されている。\n")
+        self.assertEqual(unwrap.unwrap_text(src),
+                         src.replace("本文が折り\n返されている。",
+                                     "本文が折り返されている。"))
+
+    def test_a_pre_block_closed_on_its_own_line_does_not_swallow_the_body(self):
+        src = "<pre>コード</pre>\n\n本文が折り\n返されている。\n"
+        self.assertEqual(unwrap.unwrap_text(src),
+                         "<pre>コード</pre>\n\n本文が折り返されている。\n")
+
+    def test_a_tag_whose_name_merely_starts_with_pre_is_an_ordinary_tag_block(self):
+        """`<prefix>` は 1 種目ではない。タグ名の直後が空白・`>`・`/>`・行末のいずれかであることを見る。"""
+        self.assertEqual(unwrap.html_block_open("<prefix>"), "tag")
+        self.assertEqual(unwrap.html_block_open("<pre>"), "raw")
+
+    def test_the_closing_tag_match_is_case_insensitive(self):
+        src = "<PRE>\n中身が\n\nある\n</PRE>\n"
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_an_unclosed_raw_block_runs_to_the_end_of_the_file(self):
+        src = "<pre>\n閉じの無い中身が\n\n続いたまま終わる\n"
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_measure_does_not_count_wraps_inside_a_pre_block(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        base = pathlib.Path(tmp.name)
+        (base / "a.md").write_text(
+            "<pre>\n最初の行\n\n続きの行が\n折り返されている\n</pre>\n",
+            encoding="utf-8")
+        self.assertEqual(measure_wraps.classify(base / "a.md"), (0, 0, 0))
+
+
+class TestContainerDirectives(unittest.TestCase):
+    """コンテナディレクティブ (`:::column` / `::::columns` / 閉じの `:::`) の行は本文ではない。
+
+    適用先のリポジトリがプロダクトの記法としてこれを使っている。現時点で壊れていないのは、たまたま `:::column` の直後が見出しで段落が切れているからにすぎず、**日本語の段落の直後に閉じの `:::` が来た瞬間に本文として結合される**。しかも verify の 3 条件はこれをすべてすり抜ける。
+    中身は普通の markdown の本文なので、**マーカーの行だけを触らない行として扱い、中の折り返しは結合する**。
+    """
+
+    def test_a_closing_directive_is_not_joined_to_the_paragraph_above(self):
+        """レビューが挙げた再現入力をそのまま固定する。"""
+        src = (":::column\n"
+               "左のカラムの本文が\n"
+               "折り返されている\n"
+               ":::\n"
+               "::::\n")
+        self.assertEqual(unwrap.unwrap_text(src),
+                         ":::column\n"
+                         "左のカラムの本文が折り返されている\n"
+                         ":::\n"
+                         "::::\n")
+
+    def test_an_opening_directive_does_not_join_the_line_below_it(self):
+        src = "::::columns\n:::column\n本文が折り\n返されている。\n"
+        self.assertEqual(unwrap.unwrap_text(src),
+                         "::::columns\n:::column\n本文が折り返されている。\n")
+
+    def test_the_body_inside_a_container_is_still_joined(self):
+        """マーカーを触らないだけで、中身は普通の本文として結合する。フェンスのように「開いたら閉じるまで中身」にすると、カラムの中の折り返しが一切直らない。"""
+        src = ("::::columns\n"
+               ":::column\n"
+               "### 左カラム\n"
+               "\n"
+               "説明の文が折り\n"
+               "返されている。\n"
+               ":::\n"
+               "::::\n")
+        self.assertEqual(unwrap.unwrap_text(src),
+                         src.replace("説明の文が折り\n返されている。",
+                                     "説明の文が折り返されている。"))
+
+    def test_a_directive_indented_within_three_columns_is_still_a_directive(self):
+        src = "本文である\n   :::\n"
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_two_colons_are_not_a_directive(self):
+        """コロン 2 個は本文である。広げすぎると普通の行を触らなくなる。"""
+        self.assertIsNone(unwrap.DIRECTIVE.match("::だから"))
+        self.assertTrue(unwrap.DIRECTIVE.match(":::"))
+
+    def test_measure_does_not_count_a_line_before_a_closing_directive_as_wrapped(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        base = pathlib.Path(tmp.name)
+        (base / "a.md").write_text(":::column\n本文である\n:::\n", encoding="utf-8")
+        body, cont, _ = measure_wraps.classify(base / "a.md")
+        self.assertEqual((body, cont), (1, 0))
+
+    def test_the_block_start_judgement_matches_unwrap(self):
+        """unwrap.py の is_block_start と measure_wraps.py の同名の判定が一致する。
+
+        以前は `measure_wraps.BLOCK_START` が `===` を含み `***` `___` を含まず、unwrap.py と食い違っていた。片方だけが段落の境界をずらすと、直さないと決めた改行が残量に出たり、直したはずの改行が残量に出続けたりする。
+        """
+        lines = [":::", "::::columns", ":::column", "   :::", "    :::",
+                 "::だから", "===", "==", "---", "----", "***", "___",
+                 "*強調*", "_強調_", "- 項目", "1. 項目", "1) 項目", "-",
+                 "# 見出し", "####### 七個", "> 引用", "| a | b |",
+                 "```", "```ts", "~~~", "<!--", "<div>", "<pre>",
+                 "本文である", "", "    インデント"]
+        for line in lines:
+            self.assertEqual(unwrap.is_block_start(line),
+                             measure_wraps.is_block_start(line), line)
+
+
+class TestVerifyMarkerLines(unittest.TestCase):
+    """verify の第4条件: 英数字も CJK も含まない非空行は、変換後も同じ内容の独立した行として同じ数だけ存在する。
+
+    1〜3 は「文字列としての md」の性質しか見ておらず、**ブロックの境界がどこにあるか**を一切参照しない。この道具が出した欠陥はどちらもまさにその情報を壊すものだった。第4条件は `unwrap` のブロックモデルに一切依存しない純粋に語彙的な不変量である。
+    """
+
+    def test_a_swallowed_html_comment_close_is_caught(self):
+        """今回の HTML コメントの欠陥 (修正前の版の出力) がこの条件で捕まる。"""
+        before = "<!--\n執筆者チェックリスト:\n- [ ] タイトル\n-->\n"
+        after = "<!-- 執筆者チェックリスト:\n- [ ] タイトル -->\n"
+        self.assertTrue(unwrap.verify(before, after))
+
+    def test_a_swallowed_container_directive_is_caught(self):
+        before = ":::column\n本文が\n折り返されている\n:::\n"
+        after = ":::column 本文が折り返されている :::\n"
+        self.assertTrue(unwrap.verify(before, after))
+
+    def test_a_swallowed_math_delimiter_is_caught(self):
+        before = "式の説明である\n$$\n"
+        after = "式の説明である $$\n"
+        self.assertTrue(unwrap.verify(before, after))
+
+    def test_a_swallowed_setext_underline_is_caught(self):
+        before = "見出しの文字列\n===\n"
+        after = "見出しの文字列 ===\n"
+        self.assertTrue(unwrap.verify(before, after))
+
+    def test_a_swallowed_toml_fence_is_caught(self):
+        before = "説明の文\n+++\n"
+        after = "説明の文 +++\n"
+        self.assertTrue(unwrap.verify(before, after))
+
+    def test_an_ordinary_unwrap_is_not_a_false_positive(self):
+        before = ":::column\n本文が\n折り返されている\n:::\n\n---\n"
+        after = unwrap.unwrap_text(before)
+        self.assertEqual(unwrap.verify(before, after), [])
+
+    def test_a_line_containing_digits_is_not_a_marker_line(self):
+        """英数字を含む行は対象外である。`::::columns` のような情報文字列つきの行もここに入らない。"""
+        self.assertEqual(unwrap._marker_lines("::::columns\n:::\n"), [":::"])
+
+    def test_the_fourth_condition_does_not_catch_a_collapsed_fence(self):
+        """**限界の固定。** フェンスの欠陥と `<pre>` の欠陥はこの条件でも捕まらない。
+
+        どちらもマーカーの行そのものは独立した行として全部残り、壊れるのはマーカーに挟まれた中身のほうだからである。第4条件は 3 条件の穴を**部分的に**塞ぐものであって、ブロックの認識が正しいことの代わりにはならない。この事実を知らずに第4条件を信頼すると、同じ種類の欠陥をまた通す。
+        """
+        before = "```\nconst a = 1\nconst b = 2\n```\n"
+        after = "```\nconst a = 1 const b = 2\n```\n"
+        self.assertEqual(unwrap.verify(before, after), [])
 
 
 if __name__ == "__main__":
