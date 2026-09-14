@@ -32,26 +32,36 @@ from pathlib import Path
 # 片方だけがフェンスの内と外を取り違えると、変換しないと決めた場所の
 # 折り返しが残量に出続ける。
 # markdown でフェンスを閉じられるのは**開いたときと同じ文字で、同じ長さ
-# 以上**のマーカーだけであり、**閉じマーカーの行には情報文字列を書けない**。
-FENCE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
+# 以上**のマーカーだけであり、**閉じマーカーの行には情報文字列を書けず、
+# インデントは開きマーカーから 3 桁までである**。また**バッククォートの
+# フェンスの情報文字列にはバッククォートを書けない** (含む行は段落である)。
+FENCE = re.compile(r"^(\s*)(`{3,}|~{3,})(.*)$")
 
 
 def fence_open(line):
-    """行がフェンスを開くなら (マーカーの文字, 長さ) を返す。開かないなら None。"""
+    """行がフェンスを開くなら (マーカーの文字, 長さ, インデント幅) を返す。"""
     m = FENCE.match(line)
     if not m:
         return None
-    return m.group(1)[0], len(m.group(1))
+    marker = m.group(2)
+    if marker[0] == "`" and "`" in m.group(3):
+        return None
+    return marker[0], len(marker), len(m.group(1))
 
 
-def fence_closes(line, char, length):
-    """行が (char, length) で開いたフェンスを閉じるか。"""
+def fence_closes(line, char, length, indent):
+    """行が (char, length, indent) で開いたフェンスを閉じるか。
+
+    インデントは**開きからの相対**で見る。絶対の桁数で見ると、リスト項目の
+    中で 4 桁以上インデントされて開いたフェンスが閉じられなくなる。
+    """
     m = FENCE.match(line)
     if not m:
         return False
-    marker = m.group(1)
+    marker = m.group(2)
     return (marker[0] == char and len(marker) >= length
-            and not m.group(2).strip())
+            and not m.group(3).strip()
+            and len(m.group(1)) <= indent + 3)
 
 BLOCK_START = re.compile(r"^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|\||---\s*$|===)")
 # 文末。unwrap.py と同じ定義にしておく (一致は test_unwrap が固定している)。

@@ -289,19 +289,89 @@ class TestFences(unittest.TestCase):
                "返されている。\n")
         self.assertEqual(unwrap.unwrap_text(src), src)
 
+    def test_a_backtick_in_the_info_string_does_not_open_a_fence(self):
+        """バッククォートのフェンスの情報文字列にバッククォートは書けない。
+
+        `` ```a` の書き方 `` のような行は段落であってフェンスではない。
+        これをフェンスとして開くと、以降のフェンスの内と外が入れ替わり、
+        続く本物のフェンスの中のコードが本文として結合される。verify の 3
+        条件はこれを検出できない。
+        """
+        src = ("```a` の書き方\n"
+               "\n"
+               "```\n"
+               "// 日本語のコメントが折り\n"
+               "返されている\n"
+               "const a = 1\n"
+               "```\n")
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_a_tilde_fence_allows_a_backtick_in_the_info_string(self):
+        """チルダのフェンスには情報文字列の制限が無い。"""
+        src = ("~~~`a`\n"
+               "中身が折り\n"
+               "返されている\n"
+               "~~~\n")
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_a_deeply_indented_marker_does_not_close_a_fence(self):
+        """閉じマーカーのインデントは開きから 3 桁まで。4 桁以上は中身。"""
+        src = ("```\n"
+               "    ```\n"
+               "中身が折り\n"
+               "返されている\n"
+               "```\n")
+        self.assertEqual(unwrap.unwrap_text(src), src)
+
+    def test_a_marker_within_three_columns_still_closes_a_fence(self):
+        src = ("```\n"
+               "中身である\n"
+               "   ```\n"
+               "\n"
+               "本文が折り\n"
+               "返されている。\n")
+        expected = src.replace("本文が折り\n返されている。",
+                               "本文が折り返されている。")
+        self.assertEqual(unwrap.unwrap_text(src), expected)
+
+    def test_an_indented_fence_in_a_list_closes_at_the_same_depth(self):
+        """リスト項目の中の 8 桁インデントのフェンスは同じ深さで閉じる。
+
+        インデントを絶対の桁数で見ると、この形のフェンスが閉じられなくなり、
+        以降のファイル全体が中身として扱われる。見るのは開きからの相対で
+        ある。
+        """
+        src = ("- 項目\n"
+               "\n"
+               "    - 入れ子\n"
+               "\n"
+               "        ```\n"
+               "        code\n"
+               "        ```\n"
+               "\n"
+               "本文が折り\n"
+               "返されている。\n")
+        expected = src.replace("本文が折り\n返されている。",
+                               "本文が折り返されている。")
+        self.assertEqual(unwrap.unwrap_text(src), expected)
+
     def test_the_fence_handling_matches_unwrap(self):
         """unwrap.py と measure_wraps.py のフェンスの扱いが一致する。"""
         markers = ["```", "````", "~~~", "~~~~", "```ts", "````md", "~~~ js",
-                   "  ```", "``", "本文", "```  ", "~~~~~"]
+                   "  ```", "``", "本文", "```  ", "~~~~~",
+                   "```a` の書き方", "~~~`a`", "   ```", "    ```",
+                   "        ```", "        ```ts"]
         for line in markers:
             self.assertEqual(unwrap.fence_open(line),
                              measure_wraps.fence_open(line), line)
             for char in ("`", "~"):
                 for length in (3, 4):
-                    self.assertEqual(
-                        unwrap.fence_closes(line, char, length),
-                        measure_wraps.fence_closes(line, char, length),
-                        (line, char, length))
+                    for indent in (0, 3, 8):
+                        self.assertEqual(
+                            unwrap.fence_closes(line, char, length, indent),
+                            measure_wraps.fence_closes(line, char, length,
+                                                       indent),
+                            (line, char, length, indent))
 
     def test_measure_does_not_count_wraps_inside_a_nested_fence(self):
         """4 個で開いたフェンスの中の 3 個の行で内と外が入れ替わらない。
@@ -321,6 +391,50 @@ class TestFences(unittest.TestCase):
                             "```ts\n"
                             "const a = 1\n"
                             "```\n", encoding="utf-8")
+            self.assertEqual(measure_wraps.classify(path), (2, 1, 1))
+
+    def test_measure_does_not_open_a_fence_on_a_backtick_info_string(self):
+        """情報文字列にバッククォートを含む行はフェンスを開かない。
+
+        開いてしまうと、以降のフェンスの内と外が入れ替わり、コード行を
+        段落行として数えて残量の数が両側に狂う。
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "a.md"
+            path.write_text("```a` の書き方\n"
+                            "\n"
+                            "```ts\n"
+                            "const a = 1\n"
+                            "```\n"
+                            "\n"
+                            "本文が折り\n"
+                            "返されている。\n", encoding="utf-8")
+            self.assertEqual(measure_wraps.classify(path), (3, 1, 1))
+
+    def test_measure_does_not_close_a_fence_on_a_deeply_indented_marker(self):
+        """開きから 4 桁以上深いマーカーは中身であって、閉じない。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "a.md"
+            path.write_text("```\n"
+                            "    ```\n"
+                            "code is\n"
+                            "wrapped\n"
+                            "```\n"
+                            "\n"
+                            "本文が折り\n"
+                            "返されている。\n", encoding="utf-8")
+            self.assertEqual(measure_wraps.classify(path), (2, 1, 1))
+
+    def test_measure_treats_an_unclosed_fence_as_content_to_the_end(self):
+        """閉じられないままファイルが終われば、最後まで中身として扱う。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "a.md"
+            path.write_text("本文が折り\n"
+                            "返されている。\n"
+                            "\n"
+                            "```\n"
+                            "中身が折り\n"
+                            "返されている\n", encoding="utf-8")
             self.assertEqual(measure_wraps.classify(path), (2, 1, 1))
 
 

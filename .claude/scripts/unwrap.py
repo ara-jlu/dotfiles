@@ -31,24 +31,44 @@ python3 -m unittest test_unwrap -v`）。道具が壊れていないことを先
 import re
 
 # フェンスのマーカー行。開くか閉じるかに関わらず、マーカーだけを見た形。
-# 1 群がマーカー (``` 以上または ~~~ 以上)、2 群がそのあとの情報文字列。
-FENCE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
+# 1 群が行頭のインデント、2 群がマーカー (``` 以上または ~~~ 以上)、
+# 3 群がそのあとの情報文字列。
+FENCE = re.compile(r"^(\s*)(`{3,}|~{3,})(.*)$")
 
 def fence_open(line):
-    """行がフェンスを開くなら (マーカーの文字, 長さ) を返す。開かないなら None。"""
+    """行がフェンスを開くなら (マーカーの文字, 長さ, インデント幅) を返す。
+
+    開かないなら None。**バッククォートのフェンスの情報文字列には
+    バッククォートを書けない**ので、`` ```a` の書き方 `` のような行は
+    フェンスではなく段落である。これを見ないとただの段落行がフェンスを
+    開き、以降のフェンスの内と外が入れ替わる。チルダのフェンスにはこの
+    制限が無い (情報文字列にバッククォートを書いてよい)。
+
+    インデント幅を返すのは、閉じマーカーのインデントを**開きからの相対**で
+    見るためである (fence_closes を見よ)。
+    """
     m = FENCE.match(line)
     if not m:
         return None
-    return m.group(1)[0], len(m.group(1))
+    marker = m.group(2)
+    if marker[0] == "`" and "`" in m.group(3):
+        return None
+    return marker[0], len(marker), len(m.group(1))
 
-def fence_closes(line, char, length):
-    """行が (char, length) で開いたフェンスを閉じるか。
+def fence_closes(line, char, length, indent):
+    """行が (char, length, indent) で開いたフェンスを閉じるか。
 
     markdown でフェンスを閉じられるのは、**開いたときと同じ文字で、同じ
     長さ以上**のマーカーだけである。それより短いマーカーや別の文字の
     マーカーは中身 (コンテンツ) であって、閉じない。また**閉じマーカーの
     行には情報文字列を書けない**ので、マーカーのあとに空白以外が続く行も
     閉じない。
+
+    **閉じマーカーのインデントは開きマーカーから 3 桁までである。** それより
+    深くインデントされた行は中身であって、閉じない。絶対の桁数で「3 桁まで」
+    と書いてはならない。リスト項目の中のフェンスは 4 桁以上インデントされて
+    開くことがあり、その閉じマーカーも同じ深さにあるからである。見るのは
+    **開きからの相対**である。
 
     以前はマーカーの文字と長さを見ず、`^\\s*(```|~~~)` に当たるどの行でも
     開閉を反転させていた。そのため 4 個のバッククォートで開いたフェンスの
@@ -60,9 +80,11 @@ def fence_closes(line, char, length):
     m = FENCE.match(line)
     if not m:
         return False
-    marker = m.group(1)
+    marker = m.group(2)
     return (marker[0] == char and len(marker) >= length
-            and not m.group(2).strip())
+            and not m.group(3).strip()
+            and len(m.group(1)) <= indent + 3)
+
 HEADING = re.compile(r"^\s*#{1,6}\s")
 QUOTE = re.compile(r"^\s*>")
 TABLE = re.compile(r"^\s*\|")
@@ -192,10 +214,10 @@ def unwrap_text(text):
             # 中身として扱う。
             out.append(line)
             i += 1
-            char, length = opened
+            char, length, indent = opened
             while i < len(lines):
                 out.append(lines[i])
-                closed = fence_closes(lines[i], char, length)
+                closed = fence_closes(lines[i], char, length, indent)
                 i += 1
                 if closed:
                     break
