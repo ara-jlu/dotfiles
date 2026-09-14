@@ -168,6 +168,7 @@ if __name__ == "__main__":
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `python3 .claude/skills/j-finish/scripts/test_uat_attach.py`
+
 Expected: FAIL — `ModuleNotFoundError: No module named 'uat_attach'`
 
 - [ ] **Step 3: Write minimal implementation**
@@ -307,6 +308,7 @@ def body_with_evidence_link(body, url):
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `python3 .claude/skills/j-finish/scripts/test_uat_attach.py`
+
 Expected: PASS（`OK`、16 tests 前後）
 
 - [ ] **Step 5: Commit**
@@ -430,6 +432,7 @@ class TestAttachEvidence(unittest.TestCase):
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `python3 .claude/skills/j-finish/scripts/test_uat_attach.py`
+
 Expected: FAIL — `AttributeError: module 'uat_attach' has no attribute 'AttachError'`
 
 - [ ] **Step 3: Write minimal implementation**
@@ -558,6 +561,7 @@ if __name__ == "__main__":
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `python3 .claude/skills/j-finish/scripts/test_uat_attach.py`
+
 Expected: PASS（`OK`）
 
 - [ ] **Step 5: Commit**
@@ -642,6 +646,7 @@ if __name__ == "__main__":
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `python3 .claude/skills/j-finish/scripts/test_j_finish.py`
+
 Expected: FAIL — `AttributeError: module 'j_finish' has no attribute '_warn_uat_evidence'`
 
 - [ ] **Step 3: Write minimal implementation**
@@ -744,9 +749,11 @@ def _warn_uat_evidence(changed, evidence_dir, exists=os.path.isfile):
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `python3 .claude/skills/j-finish/scripts/test_j_finish.py`
+
 Expected: PASS（`OK`）
 
 Run: `python3 .claude/skills/j-finish/scripts/j_finish.py --help`
+
 Expected: `--uat-evidence-dir` がヘルプに出る
 
 - [ ] **Step 5: Commit**
@@ -847,6 +854,7 @@ positive recipe 内の
 - [ ] **Step 8: 旧運用の記述が残っていないことを確認する**
 
 Run: `grep -rn "Files changed\|証跡.*commit する\|を commit し" .claude/skills/j-devflow .claude/skills/j-finish .claude/skills/j-pr`
+
 Expected: 「証跡を commit する」を指す行が 0 件（`commit しない` を述べる行だけがヒットする）
 
 - [ ] **Step 9: Commit**

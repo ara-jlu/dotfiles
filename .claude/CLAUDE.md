@@ -10,8 +10,7 @@
 
 ## 進め方の背骨 = superpowers
 
-- 計画・実行・レビューの"進め方"は superpowers を使う:
-  `brainstorming`（設計・HARD-GATE: 設計承認まで実装禁止）→ `writing-plans` → `subagent-driven-development` → `finishing-a-development-branch`。
+- 計画・実行・レビューの"進め方"は superpowers を使う: `brainstorming`（設計・HARD-GATE: 設計承認まで実装禁止）→ `writing-plans` → `subagent-driven-development` → `finishing-a-development-branch`。
 - **ECC のワークフロー駆動系スキルは背骨に使わない**（＝自動起動しない。明示指定時のみ可）。
   該当例: plan系 / orch-* / feature-dev / multi-* / gan-* / tdd-workflow / 汎用レビュー駆動（code-review・review-pr・orch-review・santa-loop・verification-loop）/ git系（pr・git-workflow・github-ops・prp-*）/ セッション記憶（save/resume-session・continuous-learning v1）。
 - 新しい類似スキルが増えても「**ワークフロー駆動系は背骨に使わない**」の原則で判断する（列挙は例示。原則が優先）。
@@ -46,6 +45,7 @@
 - ブランチ名・コード: 英語
 - 原則: **機械が扱う面 = 英語、人が読む面 = 日本語**（人が読む面 = PR本文・Discord・Joifup の doc/plan/log 本文・brainstorm 対話）
 - **自作スキルの SKILL.md: 日本語**（`.claude/skills/j-*` と `md2joifup`。本文・`##`/`###` 見出し・`description`・`argument-hint`）。機械が実行し**人が保守する**面なので、保守する側の言語に合わせる。英語のまま残すのは `name`・frontmatter のキー名・コマンド／パス／フラグ・他スキル名と `agentType`・status 値とタグ名・コミットメッセージ例・コードフェンスの中身・原語で定着した技術識別子（`frontmatter`・`diff`・`worktree` 等）。superpowers / ECC のスキルは無改変なので対象外。細則は `.claude/rules/skill-language.md`（借用語の判断基準・語順・句読点・見出しの語彙表・`description` の規定。すべて実際の欠陥から確定したもの）。`paths` スコープで `.claude/skills/**/*.md` を読むときに自動で載るが、**スキルを新規作成するときは読む対象がまだ無いので明示的に開く**。
+- **日本語の本文とコメントは桁数で折り返さない**（語や句の途中で切らない）。エディタが soft-wrap するので二重に折れ、日本語は語の間に空白が無いため語の途中で切れる。**文の切れ目（`。`）での改行は折り返しではないので、そのままでよい**（意味のある位置で切れているため害が無い）。**コメントにはコードのコメントも含む**（既存分の整形は dotfiles の `tasks/007` が担当する）。禁じるのは桁数による折り返しだけで、**意図的な改行**（行末の半角空白2つや `\` によるハードブレイク）はそのまま残す。既存の md の変換は dotfiles の `.claude/scripts/unwrap.py`、規則の正典は同じく dotfiles の `notes/document/008-no-hard-wrap-japanese-design.md`。
 
 ## Git
 

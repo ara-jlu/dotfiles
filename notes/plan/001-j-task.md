@@ -65,6 +65,7 @@ echo "T1 OK"
 - [ ] **Step 2: 実行して失敗を確認**
 
 Run: `bash t1.sh`
+
 Expected: FAIL（`--db` 未対応で argparse エラー、または tasks/ に出力されない）
 
 - [ ] **Step 3: argparse に db/status/parent を追加**
@@ -134,6 +135,7 @@ Expected: FAIL（`--db` 未対応で argparse エラー、または tasks/ に�
 - [ ] **Step 5: 実行して通過を確認**
 
 Run: `bash t1.sh`
+
 Expected: `T1 OK`
 
 - [ ] **Step 6: 親子（--parent）と既定 notes 不変を確認**
@@ -149,6 +151,7 @@ python3 ~/.claude/skills/md2joifup/scripts/md2joifup.py n.md --type memo --slug 
 grep -q '^tag: \[memo\]$' notes/memo/001-memo1.md
 echo "T1 parent+notes OK"
 ```
+
 Expected: `T1 parent+notes OK`
 
 - [ ] **Step 7: Commit**
@@ -173,6 +176,7 @@ git -C ~/Documents/workspace/dotfiles commit -m "feat(md2joifup): add --db tasks
 - [ ] **Step 1: RED — 現状に tasks モード記述が無いことを確認**
 
 Run: `grep -c 'db tasks' ~/.claude/skills/md2joifup/SKILL.md`
+
 Expected: `0`
 
 - [ ] **Step 2: Usage に tasks モードを追記**
@@ -187,6 +191,7 @@ Expected: `0`
 - [ ] **Step 3: GREEN 確認**
 
 Run: `grep -c 'db tasks' ~/.claude/skills/md2joifup/SKILL.md`
+
 Expected: `1` 以上
 
 - [ ] **Step 4: Commit**
@@ -212,6 +217,7 @@ git -C ~/Documents/workspace/dotfiles commit -m "docs(md2joifup): document --db 
 - [ ] **Step 1: RED ベースライン**
 
 general-purpose サブエージェントに「skill 無しで、この課題を Joifup Task 化して」と指示（schema と md2joifup の存在のみ伝える）。観察ポイント: house-style を守るか / ファイル名 id を使うか / 大課題で分解の発想が出るか / `ID` を書かないか。
+
 Expected: いくつか外す（分解しない・slug 劣化・ID 記入など）。ギャップを記録。
 
 - [ ] **Step 2: SKILL.md を書く（GREEN）**
@@ -263,11 +269,13 @@ The task's **filename id** (`NNN-slug`) is the single operational identifier (re
 - [ ] **Step 3: GREEN 検証（単一）**
 
 一時 dir で「小さな課題」を capture させ、`tasks/001-*.md` が status=Not started / Project fallback / 英語slug / ID 無し / house-style であることを確認。
+
 Expected: 単一 Task が house-style で作成。
 
 - [ ] **Step 4: GREEN 検証（分解）**
 
 「大きな課題（複数の独立塊を含む）」を capture させ、親＋子の提案が出て、確認後に `parent` 一方向で作成されることを確認。
+
 Expected: 親1＋子N、子は `parent: <親id>`。
 
 - [ ] **Step 5: Commit**
@@ -293,6 +301,7 @@ git -C ~/Documents/workspace/dotfiles commit -m "feat: add j-task skill for Joif
 - [ ] **Step 1: RED — 現状に j-task 参照が無いことを確認**
 
 Run: `grep -c 'j-task' ~/.claude/skills/j-devflow/SKILL.md`
+
 Expected: `0`
 
 - [ ] **Step 2: j-devflow Session A step1 を更新**
@@ -316,6 +325,7 @@ Run:
 grep -c 'j-task' ~/.claude/skills/j-devflow/SKILL.md
 grep -c 'ファイル名 id' ~/.claude/CLAUDE.md
 ```
+
 Expected: 両方 `1` 以上
 
 - [ ] **Step 5: Commit**

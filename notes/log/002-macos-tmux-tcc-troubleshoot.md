@@ -12,15 +12,11 @@ updated_at: '2026-07-12'
 
 ## 概要
 
-別作業(joifup 開発)の最中、tmux 内で動かしている Claude Code が突然
-`~/Documents` 配下へ **`Operation not permitted` (EPERM)** を返し始めた。
+別作業(joifup 開発)の最中、tmux 内で動かしている Claude Code が突然 `~/Documents` 配下へ **`Operation not permitted` (EPERM)** を返し始めた。
 「tmux 内で Claude を動かしていると時々起きる」という既知の体感事象。
 
-調査の結果、**macOS TCC(Transparency, Consent, and Control)が保護フォルダ(`~/Documents`)への
-アクセスを "responsible process" 単位で制御しており、daemon 化した tmux サーバがその責任プロセスに
-なるため、tmux バイナリに Full Disk Access が無いと tmux 内全プロセスが拒否される**ことを特定。
-tmux バイナリへ FDA を付与して解消(**kill-server 不要で即反映**)。dotfiles にトラブルシュート
-ドキュメント(`notes/document/002-macos-tmux-tcc-operation-not-permitted.md`)を作成した。
+調査の結果、**macOS TCC(Transparency, Consent, and Control)が保護フォルダ(`~/Documents`)へのアクセスを "responsible process" 単位で制御しており、daemon 化した tmux サーバがその責任プロセスになるため、tmux バイナリに Full Disk Access が無いと tmux 内全プロセスが拒否される**ことを特定。
+tmux バイナリへ FDA を付与して解消(**kill-server 不要で即反映**)。dotfiles にトラブルシュートドキュメント(`notes/document/002-macos-tmux-tcc-operation-not-permitted.md`)を作成した。
 
 環境: macOS 15.7.3 (Sequoia, 24G419) / tmux 3.6a / Homebrew(`/opt/homebrew`)。
 
@@ -34,10 +30,8 @@ tmux バイナリへ FDA を付与して解消(**kill-server 不要で即反映*
   ```
 - 続けて repo 内ファイルの `head` / `ls <dir>` / エディタ Read も一律 EPERM。
 - 特徴的だったのが **`ls -l <file>`(stat)は成功するのに `open`/`readdir` だけ失敗**する点。
-  これは権限(mode)の問題ではなく、上位のアクセス制御(TCC/サンドボックス)が
-  open 系 syscall を弾いている兆候。
-- 直前に別プロセス(subagent)の作業や `dangerouslyDisableSandbox` を挟んでいたため、
-  最初は「Claude のサンドボックスが締まったか?」を疑ったが、sandbox 無効化でも回復せず → OS 側を疑う方針に切替。
+  これは権限(mode)の問題ではなく、上位のアクセス制御(TCC/サンドボックス)が open 系 syscall を弾いている兆候。
+- 直前に別プロセス(subagent)の作業や `dangerouslyDisableSandbox` を挟んでいたため、最初は「Claude のサンドボックスが締まったか?」を疑ったが、sandbox 無効化でも回復せず → OS 側を疑う方針に切替。
 
 ### 2. 切り分け(アクセス probe)
 
@@ -85,24 +79,19 @@ lsof -p 3716 | awk '$4=="txt"{print $NF}'
 
 ### 4. root cause 確定
 
-macOS TCC は保護フォルダ(`~/Documents` `~/Desktop` `~/Downloads` 等)へのアクセスを
-**"responsible process"(責任プロセス)単位**で許可する。
+macOS TCC は保護フォルダ(`~/Documents` `~/Desktop` `~/Downloads` 等)へのアクセスを **"responsible process"(責任プロセス)単位**で許可する。
 
 - 通常、端末アプリ(iTerm2/Terminal 等)が子プロセスの責任プロセスになり、端末に付けた FDA を継承する。
-- **しかし tmux サーバは daemon 化して launchd の子になる**ため、tmux 内の全プロセス
-  (シェル・Claude・`ls`)の責任プロセスは **tmux バイナリ自身**になり、端末アプリの FDA を継承しない。
+- **しかし tmux サーバは daemon 化して launchd の子になる**ため、tmux 内の全プロセス (シェル・Claude・`ls`)の責任プロセスは **tmux バイナリ自身**になり、端末アプリの FDA を継承しない。
 - その tmux バイナリに Documents/FDA が無いので、tmux 内からの `~/Documents` は一律 EPERM。
 
 → **「端末アプリに FDA を付けても tmux 内では直らない」**のはこのため。
 
 ### 5. 「時々」の正体
 
-FDA の許可は**バイナリの実体パス**に紐づく。`/opt/homebrew/bin/tmux` は
-`…/Cellar/tmux/<version>/bin/tmux` という**バージョン入り実体パス**に解決される。
-`brew upgrade tmux` でバージョンが上がると実体パスが変わり、**以前付与した FDA が旧パスに
-取り残されて無効化**される → 再発する。
-加えて tmux サーバが「いつ・どの文脈で起動したか」でも responsible process の解決が変わるため、
-再現性が「時々」になる。
+FDA の許可は**バイナリの実体パス**に紐づく。`/opt/homebrew/bin/tmux` は `…/Cellar/tmux/<version>/bin/tmux` という**バージョン入り実体パス**に解決される。
+`brew upgrade tmux` でバージョンが上がると実体パスが変わり、**以前付与した FDA が旧パスに取り残されて無効化**される → 再発する。
+加えて tmux サーバが「いつ・どの文脈で起動したか」でも responsible process の解決が変わるため、再現性が「時々」になる。
 
 ### 6. web リサーチ(裏取り)
 
@@ -143,8 +132,7 @@ FDA の許可は**バイナリの実体パス**に紐づく。`/opt/homebrew/bin
 
 ### 9. ドキュメント化
 
-- `md2joifup --type document --project devops` で
-  **`dotfiles/notes/document/002-macos-tmux-tcc-operation-not-permitted.md`** を作成。
+- `md2joifup --type document --project devops` で **`dotfiles/notes/document/002-macos-tmux-tcc-operation-not-permitted.md`** を作成。
 
 ---
 

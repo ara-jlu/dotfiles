@@ -10,27 +10,23 @@ updated_at: '2026-07-12'
 
 # macOS: tmux 内で "Operation not permitted"(~/Documents アクセス拒否)
 
-tmux 内で Claude Code / シェルを動かすと、`~/Documents` 配下(このリポジトリや dotfiles)への
-アクセスが **`Operation not permitted` (EPERM)** で拒否される事象と、その原因・恒久対処。
+tmux 内で Claude Code / シェルを動かすと、`~/Documents` 配下(このリポジトリや dotfiles)へのアクセスが **`Operation not permitted` (EPERM)** で拒否される事象と、その原因・恒久対処。
 
 ## 症状
 
 - tmux 内で `ls ~/Documents` / ファイル読み書きが `Operation not permitted` になる。
 - `~/.zshrc`・`/tmp`・`~/.claude/settings.json` など **保護フォルダ外は正常**。
-- `~/.claude/skills`(→ `~/Documents/workspace/dotfiles/.claude/skills` への symlink)も巻き添えで拒否され、
-  そこに置いた skill スクリプト(例 `md2joifup.py`)が全滅する。
+- `~/.claude/skills`(→ `~/Documents/workspace/dotfiles/.claude/skills` への symlink)も巻き添えで拒否され、そこに置いた skill スクリプト(例 `md2joifup.py`)が全滅する。
 - `ls -l <file>`(stat)は通るのに `open` / `readdir` だけ落ちる、という TCC 特有の挙動。
 - **tmux の外(素の端末)では再現しない。tmux 内でだけ・かつ「時々」起きる。**
 
 ## 原因(root cause)
 
-macOS の **TCC (Transparency, Consent, and Control)** が `~/Documents` `~/Desktop` `~/Downloads` 等の
-保護フォルダへのアクセスを **「責任プロセス (responsible process)」単位**で許可制御している。
+macOS の **TCC (Transparency, Consent, and Control)** が `~/Documents` `~/Desktop` `~/Downloads` 等の保護フォルダへのアクセスを **「責任プロセス (responsible process)」単位**で許可制御している。
 
 - tmux の**サーバは daemon 化して launchd (PID 1) に再ペアレント**される。
   検証時: tmux server PID 3716 の親 = launchd。
-- そのため tmux 内の全プロセス(シェル・Claude・`ls` 等)の TCC 責任プロセスは、
-  起動元の端末アプリ(iTerm2 / Terminal 等)ではなく **tmux サーバのバイナリ自身**になる。
+- そのため tmux 内の全プロセス(シェル・Claude・`ls` 等)の TCC 責任プロセスは、起動元の端末アプリ(iTerm2 / Terminal 等)ではなく **tmux サーバのバイナリ自身**になる。
 - tmux バイナリに Documents / Full Disk Access が無ければ、tmux 内からの `~/Documents` は全て EPERM。
 - → **端末アプリに FDA を付けても、daemon 化した tmux サーバ配下には効かない**のが要点。
 
@@ -40,21 +36,15 @@ macOS の **TCC (Transparency, Consent, and Control)** が `~/Documents` `~/Desk
 
 ### なぜ「時々」なのか
 
-FDA の許可は**バイナリの実体パス**に紐づく。`/opt/homebrew/bin/tmux` は
-`…/Cellar/tmux/<version>/bin/tmux` という**バージョン入り実体パス**へ解決される。
-`brew upgrade tmux` でバージョンが上がると実体パスが変わり、**以前付与した FDA が旧パスに
-取り残されて無効化**→ 再発する。加えて、tmux サーバが「いつ・どの文脈で起動したか」
-(権限付与の前/後、ログインシェル経由か launchd 経由か)でも責任プロセスの解決が変わり、
-再現性が「時々」になる。
+FDA の許可は**バイナリの実体パス**に紐づく。`/opt/homebrew/bin/tmux` は `…/Cellar/tmux/<version>/bin/tmux` という**バージョン入り実体パス**へ解決される。
+`brew upgrade tmux` でバージョンが上がると実体パスが変わり、**以前付与した FDA が旧パスに取り残されて無効化**→ 再発する。加えて、tmux サーバが「いつ・どの文脈で起動したか」 (権限付与の前/後、ログインシェル経由か launchd 経由か)でも責任プロセスの解決が変わり、再現性が「時々」になる。
 
 ## 対処
 
 ### A. すぐ直す(このマシンの tmux に FDA を付与)
 
 1. System Settings → Privacy & Security → **Full Disk Access**。
-2. `+` を押し、ファイル選択ダイアログで **⌘⇧G**(パス直接入力)→ 実体パスを入力:
-   `/opt/homebrew/Cellar/tmux/3.6a/bin/tmux`
-   (`/opt/homebrew/bin/tmux` を選んでも macOS が実体=Cellar パスに解決して登録する。
+2. `+` を押し、ファイル選択ダイアログで **⌘⇧G**(パス直接入力)→ 実体パスを入力: `/opt/homebrew/Cellar/tmux/3.6a/bin/tmux` (`/opt/homebrew/bin/tmux` を選んでも macOS が実体=Cellar パスに解決して登録する。
     確実性のため実体パスを直接指定するのが吉)
 3. 追加した tmux をトグル **ON**。
 4. **tmux サーバを入れ替える**(既存サーバは旧 TCC 文脈のまま):
@@ -74,8 +64,7 @@ FDA の許可は**バイナリの実体パス**に紐づく。`/opt/homebrew/bin
 - **B2. 作業ツリーを保護フォルダの外へ**:`~/Documents/workspace/…` → `~/workspace/…` 等へ移動。
   `~/Documents` 外は TCC 対象外なので **本事象が原理的に起きない**(cmux #2866 でも推奨の回避策)。
   Joifup の場合は daemon の workspace_root と各 symlink の張り替えが伴う。
-- **B3. 端末アプリに FDA + tmux を端末の子として使う運用**は、daemon 化により責任プロセスが
-  tmux に落ちるため**単独では不安定**。B1/B2 を推奨。
+- **B3. 端末アプリに FDA + tmux を端末の子として使う運用**は、daemon 化により責任プロセスが tmux に落ちるため**単独では不安定**。B1/B2 を推奨。
 
 ## この事象を早く見抜くチェックリスト
 
@@ -92,10 +81,8 @@ lsof -p "$S" | awk '$4=="txt"{print $NF; exit}'                # FDA 付与す�
 
 ## 参考
 
-- manaflow-ai/cmux #2866 — macOS で多重化(tmux 系)配下の保護ディレクトリが Operation not permitted:
-  https://github.com/manaflow-ai/cmux/issues/2866
-- Lapcat Software — Terminal と Full Disk Access(FDA の継承と責任プロセス):
-  https://lapcatsoftware.com/articles/FullDiskAccess.html
+- manaflow-ai/cmux #2866 — macOS で多重化(tmux 系)配下の保護ディレクトリが Operation not permitted: https://github.com/manaflow-ai/cmux/issues/2866
+- Lapcat Software — Terminal と Full Disk Access(FDA の継承と責任プロセス): https://lapcatsoftware.com/articles/FullDiskAccess.html
 - Michael Tsai — Terminal and Full Disk Access:
   https://mjtsai.com/blog/2022/09/22/terminal-and-full-disk-access/
 - OS X Daily — Fix "Operation not permitted" Terminal error:

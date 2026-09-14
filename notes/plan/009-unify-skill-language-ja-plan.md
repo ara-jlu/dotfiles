@@ -215,6 +215,7 @@ if __name__ == "__main__":
 - [ ] **Step 2: テストが落ちることを確認**
 
 Run: `cd <SP> && python3 test_check_invariants.py`
+
 Expected: FAIL — `ModuleNotFoundError: No module named 'check_invariants'`
 
 - [ ] **Step 3: チェッカーを実装**
@@ -397,6 +398,7 @@ if __name__ == "__main__":
 - [ ] **Step 4: テストが通ることを確認**
 
 Run: `cd <SP> && python3 test_check_invariants.py`
+
 Expected: PASS — `Ran 12 tests ... OK`
 
 - [ ] **Step 5: 未変更の実ファイル 9 個が全部 PASS することを確認**
@@ -410,6 +412,7 @@ cd <WT> && python3 <SP>/check_invariants.py \
   .claude/skills/j-finish/SKILL.md .claude/skills/j-recap/SKILL.md \
   .claude/skills/j-devflow/SKILL.md
 ```
+
 Expected: 9 行すべて `PASS:`、exit code 0。（まだ 1 文字も訳していないので、ここで FAIL が出るならチェッカー側のバグ。とくに `j-doc` の 4 連バッククォートと `j-recap` の出力例フェンスを疑う。）
 
 - [ ] **Step 6: コミットしない**
@@ -446,6 +449,7 @@ description: タスクやアイデアを Joifup に backlog として起票す�
 - [ ] **Step 3: 不変条件を検査**
 
 Run: `cd <WT> && python3 <SP>/check_invariants.py .claude/skills/j-task/SKILL.md`
+
 Expected: `PASS: .claude/skills/j-task/SKILL.md`、exit code 0
 
 FAIL が出たら訳を直す。条件を緩めない。
@@ -453,6 +457,7 @@ FAIL が出たら訳を直す。条件を緩めない。
 - [ ] **Step 4: ハード折り返しが無いことを確認**
 
 Run: `cd <WT> && awk 'length($0) > 0 && /^[^|#`-]/ && length($0) < 40 {print FILENAME":"FNR": "$0}' .claude/skills/j-task/SKILL.md`
+
 Expected: 散文が途中で切れた短い行が出ないこと（表・見出し・コード・箇条書きは除外している）。出た行は、前の行と結合すべき折り返しでないかを目で確かめる。
 
 - [ ] **Step 5: コミット**
@@ -487,6 +492,7 @@ Run: `cd <WT> && cat .claude/skills/j-task/SKILL.md && cat .claude/skills/j-pr/S
 - [ ] **Step 3: 不変条件を検査**
 
 Run: `cd <WT> && python3 <SP>/check_invariants.py .claude/skills/j-pr/SKILL.md`
+
 Expected: `PASS`、exit code 0
 
 - [ ] **Step 4: コミット**
@@ -521,6 +527,7 @@ Run: `cd <WT> && cat .claude/skills/j-task/SKILL.md && cat .claude/skills/j-doc/
 - [ ] **Step 3: 不変条件を検査**
 
 Run: `cd <WT> && python3 <SP>/check_invariants.py .claude/skills/j-doc/SKILL.md`
+
 Expected: `PASS`、exit code 0
 
 - [ ] **Step 4: コミット**
@@ -555,6 +562,7 @@ Run: `cd <WT> && cat .claude/skills/j-task/SKILL.md && cat .claude/skills/j-rese
 - [ ] **Step 3: 不変条件を検査**
 
 Run: `cd <WT> && python3 <SP>/check_invariants.py .claude/skills/j-research/SKILL.md`
+
 Expected: `PASS`、exit code 0
 
 - [ ] **Step 4: コミット**
@@ -589,6 +597,7 @@ Run: `cd <WT> && cat .claude/skills/j-task/SKILL.md && cat .claude/skills/j-log/
 - [ ] **Step 3: 不変条件を検査**
 
 Run: `cd <WT> && python3 <SP>/check_invariants.py .claude/skills/j-log/SKILL.md`
+
 Expected: `PASS`、exit code 0
 
 - [ ] **Step 4: コミット**
@@ -626,6 +635,7 @@ Run: `cd <WT> && cat .claude/skills/j-task/SKILL.md && cat .claude/skills/md2joi
 - [ ] **Step 3: 不変条件を検査**
 
 Run: `cd <WT> && python3 <SP>/check_invariants.py .claude/skills/md2joifup/SKILL.md`
+
 Expected: `PASS`、exit code 0
 
 - [ ] **Step 4: コミット**
@@ -667,11 +677,13 @@ Run: `cd <WT> && cat .claude/skills/j-task/SKILL.md && cat .claude/skills/j-fini
 - [ ] **Step 3: 不変条件を検査**
 
 Run: `cd <WT> && python3 <SP>/check_invariants.py .claude/skills/j-finish/SKILL.md`
+
 Expected: `PASS`、exit code 0
 
 - [ ] **Step 4: スクリプトを触っていないことを確認**
 
 Run: `cd <WT> && git status --porcelain .claude/skills/j-finish/scripts`
+
 Expected: 空（スクリプトは 009 の対象外。`tasks/007` の領域）
 
 - [ ] **Step 5: コミット**
@@ -710,11 +722,13 @@ Run: `cd <WT> && cat .claude/skills/j-recap/SKILL.md`
 - [ ] **Step 3: 不変条件を検査**
 
 Run: `cd <WT> && python3 <SP>/check_invariants.py .claude/skills/j-recap/SKILL.md`
+
 Expected: `PASS`、exit code 0
 
 - [ ] **Step 4: 本文が変わっていないことを確認**
 
 Run: `cd <WT> && git diff --stat .claude/skills/j-recap/SKILL.md`
+
 Expected: 変更行数が **8 行以下**（見出し 3 行 × 2（削除＋追加）＋ `description` 1 行 × 2）。これを超えるなら本文に触っている。
 
 - [ ] **Step 5: コミット**
@@ -763,11 +777,13 @@ Run: `cd <WT> && cat .claude/skills/j-task/SKILL.md && cat .claude/skills/j-fini
 - [ ] **Step 3: 不変条件を検査**
 
 Run: `cd <WT> && python3 <SP>/check_invariants.py .claude/skills/j-devflow/SKILL.md`
+
 Expected: `PASS`、exit code 0
 
 - [ ] **Step 4: 規定の強さが残っているか自己確認**
 
 Run: `cd <WT> && grep -c '絶対\|してはならない\|しない\|必ず\|STOP\|BLOCKED' .claude/skills/j-devflow/SKILL.md`
+
 Expected: 1 以上。そのうえで Step 2 に挙げた箇所を 1 つずつ目で確かめ、「禁止」が「推奨」に弱まっていないことを確認する。弱まっていたら直す。
 
 - [ ] **Step 5: コミット**
@@ -815,6 +831,7 @@ Run: `cd <WT> && sed -n '/^## 言語/,/^## /p' .claude/CLAUDE.md`
 - [ ] **Step 3: 既存項目が消えていないことを確認**
 
 Run: `cd <WT> && git diff .claude/CLAUDE.md`
+
 Expected: 追加 1 行のみ（`+` が 1 行、`-` が 0 行）。既存行の削除があれば直す。
 
 - [ ] **Step 4: コミット**
@@ -847,6 +864,7 @@ cd <WT> && python3 <SP>/check_invariants.py \
   .claude/skills/j-finish/SKILL.md .claude/skills/j-recap/SKILL.md \
   .claude/skills/j-devflow/SKILL.md | tee <SP>/invariants-report.txt
 ```
+
 Expected: 9 行すべて `PASS:`、exit code 0
 
 - [ ] **Step 2: 英語の散文が残っていないことを確認**
@@ -859,6 +877,7 @@ cd <WT> && for f in j-task j-pr j-doc j-research j-log md2joifup j-finish j-reca
     "$(grep -c '' .claude/skills/$f/SKILL.md)"
 done
 ```
+
 Expected: 各ファイルで日本語を含む行が過半を占める。`j-devflow` は旧 1/110 だったので、ここが 1 のままなら訳が入っていない。
 
 - [ ] **Step 3: 既存テストが green のままであることを確認**
@@ -867,16 +886,19 @@ Run:
 ```bash
 cd <WT>/.claude/skills/j-finish/scripts && python3 test_j_finish.py && python3 test_uat_attach.py
 ```
+
 Expected: `Ran 14 tests ... OK` と `Ran 51 tests ... OK`（合計 65 件）
 
 - [ ] **Step 4: スクリプトと対象外ファイルを触っていないことを確認**
 
 Run: `cd <WT> && git diff --stat 42c70b5 HEAD --name-only`
+
 Expected: 現れるのは 9 個の SKILL.md と `.claude/CLAUDE.md`、および Phase A の成果物（`tasks/009-*.md`、`notes/document/009-*.md`）のみ。`*.py`、`j-pr/references/pr-body.md`、旧 Notion 系スキルが現れてはならない。
 
 - [ ] **Step 5: 検査スクリプトがコミットされていないことを確認**
 
 Run: `cd <WT> && git ls-files | grep -c check_invariants`
+
 Expected: `0`
 
 ---
