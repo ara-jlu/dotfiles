@@ -3,7 +3,7 @@
 
 何をするか、引数の意味、Task と Project の解決順の正典は `.claude/skills/md2joifup/SKILL.md` である。
 
-frontmatter・tag・リレーションの規約は**ハードコードしない** —— 実行時に Joifup の schema を読む。
+frontmatter・tag・リレーションの規約は**絶対にハードコードしない** —— 実行時に正典の Notes schema を読む。
 """
 import argparse
 import datetime
@@ -296,7 +296,7 @@ def main():
             items.append(("created_at", today))
         if "updated_at" not in src_fm:
             items.append(("updated_at", today))
-        # source が元から持っていたキーは保持する（source 自身の created_at/updated_at も含む）。`ID` は daemon の自動採番に委ねる。
+        # source が元から持っていた残りのキーは保持する（source 自身の created_at/updated_at も含む）。`ID` は自動採番なので除く。
         used = {k for k, _ in items}
         for k, v in src_fm.items():
             if k not in used and k != "ID":
