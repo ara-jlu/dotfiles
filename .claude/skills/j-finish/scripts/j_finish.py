@@ -1,29 +1,12 @@
 #!/usr/bin/env python3
-"""j-finish — output adapter that finishes a completed branch into the
-pre-approval resting state, then hands off to the human approval gate.
+"""j-finish — 完了したブランチを承認ゲートの手前の状態まで仕上げる出力アダプタ。
 
-It performs the FULL pre-approval finish, in a fixed order so the PR URL is
-captured before it is referenced downstream:
+手順とその順序、各手順が何を行うかの正典は `.claude/skills/j-finish/SKILL.md`。
 
-  1. push the branch
-  2. open the PR (body authored in Japanese by the caller; --pr-body-file)
-  3. attach UAT evidence to the PR as a comment (--uat-evidence-dir; screenshots
-     and videos, never committed to the repo)
-  4. move the Joifup Task -> "In review" (SURGICAL: only the status line;
-     every other frontmatter key/relation/body byte is preserved)
-  5. notify Discord (Japanese, scoped mention, PR link)
+**絶対に Done にせず、絶対にマージしない。** status→Done と `chore(joifup): approve TASK-xxx` とマージは、人間の承認セッションが持つ。
 
-It never marks the task Done and never merges — the human's approval session
-owns status->Done + `chore(joifup): approve TASK-xxx` + merge.
-
-Network/side-effect steps (git/gh/curl) are gated by --dry-run, which prints
-the exact commands instead of running them. The local file mechanics (status
-edit) runs in both modes so it can be verified. Two read-only steps also run
-in both modes, because they change nothing and their answers are what makes
-the dry run worth reading: the UAT evidence pre-flight, and the evidence
-attach's own `gh --version` check, its read of results.jsonl, and its
-containment check on every evidence path (which stats the filesystem and can
-stop the run).
+--dry-run はネットワークと副作用のある手順 (git / gh / curl) だけを止め、実行するはずのコマンドを出す。
+ローカルのファイル操作 (status の書き換え) と 2 つの読み取り専用の手順 (UAT 証跡の事前確認、証跡添付の `gh --version` 確認と `results.jsonl` の読み取りと各証跡パスの包含確認) は両方のモードで走る —— 何も変えないうえ、その答えこそが dry-run を読む価値だからである。
 """
 import argparse
 import datetime
@@ -188,7 +171,7 @@ def run(cmd, dry_run):
 
 
 def surgical_status(task_file, new_status):
-    """Replace ONLY the status value inside the frontmatter block."""
+    """frontmatter の中の status の値**だけ**を書き換える。"""
     text = open(task_file, encoding="utf-8").read()
     if not text.startswith("---\n"):
         die(f"task file has no frontmatter: {task_file}")
@@ -222,7 +205,7 @@ def _changed_paths(head_range):
 
 
 def _warn_uat_evidence(changed, evidence_dir, exists=os.path.isfile):
-    """UAT 証跡まわりを警告する (never blocks)。返り値は出した警告の一覧。
+    """UAT 証跡まわりを警告する (絶対にブロックしない)。返り値は出した警告の一覧。
 
     joifup tasks/295 で証跡は commit せず PR に添付する形になった。旧実装は
     「diff に .uat-evidence/ が無ければ警告」で、意味がちょうど反転していた。
@@ -294,9 +277,7 @@ def main():
     head = args.head or run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
                             dry_run=False) or "HEAD"
 
-    # Pre-flight (read-only, advisory): warn if apps/web changed without a
-    # local UAT evidence run, or if .uat-evidence/ was committed. Runs even
-    # under --dry-run; never blocks, since not every apps/web diff is UI-facing.
+    # 事前確認 (読み取りのみ・警告のみ)。何を見て何を出すかは _warn_uat_evidence()。
     _warn_uat_evidence(_changed_paths(f"origin/{args.base}...HEAD"),
                        args.uat_evidence_dir)
 
@@ -333,12 +314,11 @@ def main():
         if comment_url:
             print(f"UAT 証跡: {comment_url}")
 
-    # 4. surgical status edit (runs in dry-run too, so it is verifiable)
+    # 4. 外科的な status 編集 (dry-run でも走る)
     surgical_status(args.task_file, args.status)
     print(f"status -> {args.status}: {args.task_file}")
 
-    # 5. Discord — rich embed (matches auto-workflow/scripts/discord-notify.sh:
-    #    title / description / color / fields[プロジェクト, ブランチ] / timestamp)
+    # 5. Discord — embed の形は auto-workflow/scripts/discord-notify.sh に合わせる。
     if not args.no_discord:
         webhook = os.environ.get("DISCORD_WEBHOOK_URL", "")
         mention = os.environ.get("DISCORD_MENTION_USER", "")

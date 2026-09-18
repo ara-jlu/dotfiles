@@ -1,23 +1,7 @@
 #!/usr/bin/env python3
 """UAT 証跡を PR に添付する — `gh pr comment --attach` の配線。
 
-joifup tasks/295 以降、UAT 証跡 (画像・動画) は repo に commit せず PR に
-添付する。守るべき契約をこの 1 ファイルに集める:
-
-  - `gh` は 2.99.0 以上 (--attach の初出。50 ファイル上限も同 release)
-  - --attach は `<file>#<alt text>` 形式。alt は証跡行の `name`。
-    ファイル名は ASCII slug なので日本語の説明を運べない (295 D5)
-  - 1 コマンドあたり 50 ファイルまで
-  - 画像はコメント本文から `![name](<evidence_dir>/<file>)` で参照する
-    (gh がアップロード先 URL に書き換え、インライン表示される)。参照パスは
-    `--attach` に渡すパスと**完全に一致**していなければならない —— ずれると
-    gh は「参照されていない添付」として末尾に積み、本文側の参照は壊れた
-    リンクのまま残る
-  - 動画は本文から参照しない。gh が末尾に裸 URL として追記し、GitHub が
-    プレイヤー化する。`![]()` で参照すると画像扱いになり再生できない
-
-証跡の読み取り元は `<evidence-dir>/results.jsonl` であって summary.md では
-ない。`name` に `|` が入ると markdown の表はずれるが JSONL はずれない。
+添付の運用と、この配線が守るべき契約の正典は joifup の `notes/document/295-uat-e2e-split-evidence-to-pr-attachments.md` である。
 
 標準ライブラリのみに依存する (j_finish.py と違い PyYAML を要求しない)。
 """
@@ -29,6 +13,8 @@ import subprocess
 import sys
 import tempfile
 
+# 2.99.0 は `--attach` の初出。
+# 設計書は「実装時にリリースノートで特定する」と書いており、この数字はここにしか無い。
 MIN_GH_VERSION = (2, 99, 0)
 MAX_ATTACH = 50
 VIDEO_EXTS = (".webm", ".mp4")
@@ -214,7 +200,7 @@ def body_with_evidence_link(body, url):
 
     節が無ければ None を返す (本文の別の場所に押し込むと、読み手が探す場所と
     ずれる)。GitHub のアンカーはコメント単位なので、証跡表の行ごとにリンクを
-    張ることはできない — リンクは 1 本 (設計 D3)。
+    張ることはできない — リンクは 1 本 (設計 D5)。
 
     既に `証跡コメント:` の行があれば **置き換える**。gh pr edit が失敗した
     後の復旧手順はこのスクリプトの再実行なので、追記にすると本文にリンクが
@@ -345,6 +331,8 @@ def attach_evidence(pr, evidence_dir, task, dry_run=False, runner=None, reader=N
 
     証跡が 1 つも無ければ何もせず None を返す — UI を変えない PR は証跡が
     無いのが正常だから。runner / reader は差し替え可能 (テスト用)。
+
+    読み取り元は `<evidence-dir>/results.jsonl` であって summary.md ではない。`name` に `|` が入ると markdown の表はずれるが JSONL はずれない。
 
     `required=True` のときは、証跡が無いこと自体を AttachError にする。
     呼び出し側が証跡 dir を **明示的に指定した** 場合 (j_finish の
