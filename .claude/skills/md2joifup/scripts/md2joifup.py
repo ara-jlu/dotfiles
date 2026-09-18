@@ -1,30 +1,9 @@
 #!/usr/bin/env python3
-"""md2joifup — persist a markdown file as a Joifup Notes-DB row (frontmatter +
-body), in place. The source may be a superpowers artifact (plan/spec) or a
-hand-authored note (doc/log/research); either way it becomes a house-style
-Joifup note.
+"""md2joifup — markdown ファイルを Joifup の Notes-DB row（frontmatter + 本文）として、その場で永続化する。source は superpowers の成果物（plan / spec）でも手書きの note（doc / log / research）でもよい。
 
-The tool reads the *authoritative* Notes schema (never hardcodes
-frontmatter/tag/relation conventions) and:
-  - extracts the H1 -> mirrors it into frontmatter `title`
-  - strips superpowers agentic-worker scaffolding from the body (no-op for
-    hand-authored notes)
-  - matches the Joifup house frontmatter style: flow arrays (`tag: [plan]`),
-    a single relation value as a scalar and 2+ as a flow array
-  - stamps `created_at`/`updated_at` (today) unless the source already has them
-  - names the file `<NNN>-<slug>.md` under `notes/<type>/`
-    (NNN = related task's id number, else next number in the dir)
-  - moves the source into place (use --keep-source to copy instead)
+何をするか、引数の意味、Task と Project の解決順の正典は `.claude/skills/md2joifup/SKILL.md` である。
 
-Task/Project resolution:
-  - `--task <id>`: link an existing Task (branch-detection is the caller's job;
-    resolve the current TASK-id and pass it here).
-  - `--new-task "<title>"`: create a fresh Joifup Task (house style) and link
-    it — for a note that spawns its own task (e.g. a new investigation).
-  - Project: `--project` > the new/linked Task's Project > the sole project in
-    `projects/`, so every note carries a Project.
-
-Only the auto-increment `ID` is left to the daemon.
+frontmatter・tag・リレーションの規約は**ハードコードしない** —— 実行時に Joifup の schema を読む。
 """
 import argparse
 import datetime
@@ -65,7 +44,7 @@ def load_schema(path):
 
 
 def split_frontmatter(text):
-    """Return (frontmatter_dict, body_str). No frontmatter -> ({}, text)."""
+    """(frontmatter の dict, 本文の str) を返す。frontmatter が無ければ ({}, text) を返す。"""
     if text.startswith("---\n"):
         end = text.find("\n---\n", 4)
         if end != -1:
@@ -87,7 +66,7 @@ SCAFFOLD_MARKERS = ("For agentic workers", "REQUIRED SUB-SKILL", "superpowers:")
 
 
 def strip_scaffolding(body):
-    """Drop superpowers blockquote scaffolding and collapse blank runs."""
+    """superpowers の引用ブロックによる scaffolding を取り除き、連続する空行を1つにまとめる。"""
     kept = []
     for line in body.splitlines():
         if line.lstrip().startswith(">") and any(
@@ -108,7 +87,7 @@ _QUOTE_START = "-?:#&*!|>'\"%@`,[]{} "
 
 
 def fmt_scalar(v):
-    """Render a YAML scalar, quoting only when needed (matches house style)."""
+    """YAML の scalar を書き出す。必要なときだけ quote する（house style に合わせる）。"""
     if not isinstance(v, str):
         return str(v)
     if v == "" or v[0] in _QUOTE_START or v[-1] == " " or ":" in v or "#" in v:
@@ -117,7 +96,7 @@ def fmt_scalar(v):
 
 
 def emit_frontmatter(items):
-    """Emit ordered (key, value) pairs: lists as flow arrays, else scalars."""
+    """順序どおりの (key, value) の組を出力する。list は flow array に、それ以外は scalar にする。"""
     lines = []
     for k, v in items:
         if isinstance(v, list):
@@ -151,7 +130,7 @@ def next_number(dest_dir):
 
 
 def inherit_project(tasks_dir, task_ids):
-    """Read the linked Task's Project so every note carries one (house style)."""
+    """紐づけた Task の Project を読む。どの note も Project を持つようにするためである（house style）。"""
     num = task_number(task_ids)
     if not num or not os.path.isdir(tasks_dir):
         return []
@@ -168,7 +147,7 @@ def inherit_project(tasks_dir, task_ids):
 
 
 def primary_project(notes_dir):
-    """The sole top-level project in projects/, used as the last-resort Project."""
+    """`projects/` の単一の top-level project。Project の最後のフォールバックとして使う。"""
     root = os.path.dirname(os.path.abspath(notes_dir))
     pdir = os.path.join(root, "projects")
     if not os.path.isdir(pdir):
@@ -178,7 +157,7 @@ def primary_project(notes_dir):
 
 
 def create_task(tasks_dir, title, project, status="In progress", slug=None):
-    """Create a house-style Joifup Task and return its id (filename stem)."""
+    """house-style の Joifup Task を作成し、その id（ファイル名の stem）を返す。"""
     os.makedirs(tasks_dir, exist_ok=True)
     num = next_number(tasks_dir)
     slug = slug or slugify(title) or "task"
@@ -203,9 +182,10 @@ def parse_csv(values):
 
 
 def require_task(tasks_dir, task_id, flag):
-    """Fail loudly if a relation id doesn't resolve to a real task file.
-    Catches passing the daemon `ID: TASK-N` (or a bare number) instead of the
-    filename id — which would silently mis-number the note via task_number()."""
+    """relation の id が実在する task ファイルに解決できなければ、明示的にエラーで落ちる。
+
+    filename id ではなく daemon の `ID: TASK-N`（あるいは裸の数値）を渡した場合を捕まえる —— それらは task_number() を通って、黙って note の番号を誤らせる。
+    """
     if not os.path.isfile(os.path.join(tasks_dir, f"{task_id}.md")):
         die(f"{flag} '{task_id}' does not resolve to a file in {tasks_dir} — "
             f"use the task's filename id (NNN-slug), not the daemon ID (TASK-N)")
@@ -264,7 +244,6 @@ def main():
     projects = parse_csv(args.project)
     tasks = parse_csv(args.task)
 
-    # relation ids must resolve to real task files (reject daemon ID: TASK-N)
     for t in tasks:
         require_task(tasks_dir, t, "--task")
     if args.db == "tasks" and args.parent:
@@ -294,7 +273,7 @@ def main():
         dest_dir = tasks_dir
         num = next_number(dest_dir)
     else:
-        # --- resolve Task + Project ---
+        # --- Task と Project を解決する ---
         if args.new_task:
             proj = projects or primary_project(args.notes_dir)
             new_id = create_task(tasks_dir, args.new_task, proj,
@@ -307,7 +286,7 @@ def main():
         if not projects:
             projects = primary_project(args.notes_dir)
 
-        # --- assemble ordered frontmatter (house style) ---
+        # --- 順序を決めた frontmatter を組み立てる（house style） ---
         items = [("title", title), ("tag", [args.type])]
         if projects:
             items.append(("Project", rel_val(projects)))
@@ -317,13 +296,13 @@ def main():
             items.append(("created_at", today))
         if "updated_at" not in src_fm:
             items.append(("updated_at", today))
-        # preserve source's extra keys (incl. its own created_at/updated_at); ID is auto
+        # source が元から持っていたキーは保持する（source 自身の created_at/updated_at も含む）。`ID` は daemon の自動採番に委ねる。
         used = {k for k, _ in items}
         for k, v in src_fm.items():
             if k not in used and k != "ID":
                 items.append((k, v))
 
-        # --- filename: task number wins, else next in dir ---
+        # --- ファイル名を決める ---
         dest_dir = os.path.join(args.notes_dir, args.type)
         num = task_number(tasks) or next_number(dest_dir)
 
