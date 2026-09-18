@@ -64,7 +64,7 @@ echo "✓ wezterm設定のリンクが完了しました"
 
 # Claude Code設定のセットアップ
 # 注意: ~/.claude/ には Claude Code の状態データ（history, plans, todos等）が含まれるため、
-#       ディレクトリ全体ではなく、commands / docs / settings.json / skills / CLAUDE.md を個別にシンボリックリンクする
+#       ディレクトリ全体ではなく、管理対象のエントリだけを個別にシンボリックリンクする
 echo "Claude Code設定をセットアップしています..."
 
 # ~/.claude/ ディレクトリが存在しない場合は作成
