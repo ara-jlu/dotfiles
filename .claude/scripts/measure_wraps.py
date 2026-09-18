@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """md のハード折り返しの量を測る。unwrap.py の適用前後の比較に使う。
 
-「折り返された行」= 段落の途中で改行されている行。判定は「次の行が同じ段落の続き（空行でなく、見出し・リスト・表・フェンスの開始でもない）」。
-**文末（`。` `！` `？`）で終わる行は折り返しとして数えない。** 文末での改行は桁数の折り返しではなく「1文1行」という書き方であり、unwrap.py もそこでは結合しない。数え方を合わせないと、直さないと決めたものが残量に出続ける。
-frontmatter・コードフェンス・HTML ブロックの中は除外する。引用（`>`）の中も数えないので、引用に残った折り返しはこの数に出ない。**HTML ブロックと誤認された領域も同じで、そこに残った折り返しはこの数に出ない**（判定は「迷ったら触らない側」に広く倒してあるため、本文が巻き込まれることがある）。
+**折り返しの数え方の正典は notes/document/008-no-hard-wrap-japanese-design.md**（dotfiles）である。何を折り返しと数え、何を数えないかは、すべてそこで決めている。
 
 使い方:
 
@@ -13,25 +11,22 @@ frontmatter・コードフェンス・HTML ブロックの中は除外する。�
 
 対象ごとに「折り返し行 / 段落行 = 割合（うち日本語 N）」を1行で出す。
 unwrap.py が「変更なし」と答えることと、そのファイルに折り返しが残っていないことは別である。**適用のあとはこれで残量を測って報告する。**
-
-折り返しの定義と、直り切らないもの（4スペース以上のインデント行・引用の中）の扱いの正典は notes/document/008-no-hard-wrap-japanese-design.md。
 """
 import re
 import sys
 from pathlib import Path
 
-# フェンスのマーカー行。unwrap.py と同じ定義にしておく (一致は test_unwrap の test_the_fence_handling_matches_unwrap が固定している)。
+# unwrap.py と同じ定義に保つ。一致は test_unwrap の test_the_fence_handling_matches_unwrap が固定している。
 # 片方だけがフェンスの内と外を取り違えると、変換しないと決めた場所の折り返しが残量に出続ける。
-# markdown でフェンスを閉じられるのは**開いたときと同じ文字で、同じ長さ以上**のマーカーだけであり、**閉じマーカーの行には情報文字列を書けず、インデントは開きマーカーから 3 桁までである**。また**バッククォートのフェンスの情報文字列にはバッククォートを書けない** (含む行は段落である)。
 FENCE = re.compile(r"^(\s*)(`{3,}|~{3,})(.*)$")
-# CommonMark のタブ幅。unwrap.py と同じ定義にしておく (一致は test_unwrap の test_the_fence_handling_matches_unwrap が固定している)。
+# unwrap.py と同じ定義に保つ (同上)。
 TAB_WIDTH = 4
 
 
 def indent_width(indent):
     """行頭の空白を CommonMark の**桁**で数える。タブは次の 4 の倍数の桁まで進む。
 
-    `len()` で数えると、開きから 4 桁以上の位置にあるタブ付きの ``` の行がフェンスを閉じたことになり、そこから先の内と外が入れ替わる。unwrap.py と同じでなければ、片方だけがフェンスの内外を取り違える。
+    `len()` で数えてはならない。その根拠は notes/document/008-no-hard-wrap-japanese-design.md の `## 変換の規則` が正典。unwrap.py と同じでなければ、片方だけがフェンスの内と外を取り違える。
     """
     width = 0
     for ch in indent:
@@ -98,7 +93,7 @@ def html_block_closes(line, kind):
 DIRECTIVE = re.compile(r"^ {0,3}:{3,}")
 # 段落の続きになりえない行。**unwrap.py の is_block_start と同じ範囲にする** (一致は test_unwrap の test_the_block_start_judgement_matches_unwrap が固定している)。
 # ここは unwrap.py の HEADING・LIST・QUOTE・TABLE・RULE をそのまま並べたものである。片方だけが段落の境界をずらすと、直さないと決めた改行が残量に出たり、直したはずの改行が残量に出続けたりする。
-# 以前は `===` (Setext の h2 下線に見える形) を含み、`***` と `___` (unwrap.py の RULE が水平線として扱う形) を含んでいなかった。どちらも unwrap.py と食い違っていたので、unwrap.py 側に揃えた。`===` は unwrap.py が段落の境界と認識しない (設計の「直り切らないもの」に記録がある) ので、measure_wraps でも認識しないのが一致した扱いである。
+# `===` (Setext の h1 下線) を含まないのは、unwrap.py がこれを段落の境界と認識しないからである。ここで認識すると、unwrap.py が結合してしまう改行が残量から消える。
 BLOCK_START = re.compile(
     r"^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|\||(-{3,}|\*{3,}|_{3,})\s*$)")
 
@@ -149,7 +144,7 @@ def classify(path):
                 html = None
             continue
         if fence is not None:
-            # フェンスの中。閉じられるのは開いたときと同じ文字で同じ長さ以上のマーカーだけで、それ以外の行は中身である。閉じられないままファイルが終われば最後まで中身として扱う。
+            # フェンスの中。何が閉じるかの判定は fence_closes に任せる。閉じられないままファイルが終われば最後まで中身として扱う。
             if fence_closes(line, *fence):
                 fence = None
             continue
