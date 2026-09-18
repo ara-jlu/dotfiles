@@ -86,6 +86,12 @@ ln -sf "$DOTFILES_DIR/.claude/settings.json" "$HOME/.claude/settings.json"
 backup_if_exists "$HOME/.claude/skills"
 ln -sf "$DOTFILES_DIR/.claude/skills" "$HOME/.claude/skills"
 
+# rules ディレクトリのシンボリックリンク
+# ユーザースコープの rules は全プロジェクトに効く。paths スコープを使う rule は
+# プロジェクト側に貼ると外部 import 扱いになって読まれないので、ここでしか置けない
+backup_if_exists "$HOME/.claude/rules"
+ln -sf "$DOTFILES_DIR/.claude/rules" "$HOME/.claude/rules"
+
 # CLAUDE.md のシンボリックリンク（グローバルハーネス原則。これが無いと Claude Code がユーザー記憶としてロードしない）
 backup_if_exists "$HOME/.claude/CLAUDE.md"
 ln -sf "$DOTFILES_DIR/.claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"

@@ -67,3 +67,4 @@
 - **スキーマの正典** = `.joifup/databases/<id>/schema.yaml`（repo 内）または `~/.joifup/databases/<id>/schema.yaml`（global）。
 - frontmatter・tag・status・リレーションの仕様はこのスキーマを参照する。**ハードコードせず、スキル側でスキーマを読む**。
 - 概念対応: superpowers の spec = 仕様書 / plan = 実装計画 / 進捗 = Task status。実際のタグ名・値・status はスキーマに従う。
+- **一次情報は1箇所にしか置かない。** 設計判断の根拠は notes 側にあり、コードには**そこへのポインタと、コードから復元できない why だけ**を書く。写しは必ず陳腐化し、陳腐化したコメントは欠落よりも大きく性能を損なう。細則は `.claude/rules/comment-rationale.md`（内容ごとの置き場所・ポインタの書き方・既存コードを触るときの扱い）。`paths` スコープでコードを読むときに自動で載る。
