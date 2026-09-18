@@ -13,9 +13,7 @@ import subprocess
 import sys
 import tempfile
 
-# 2.99.0 は `--attach` の初出。
-# 設計書は下限を実装時にリリースノートで特定するとしているので、この数字は設計書からは復元できない。
-# 同じ値は `.claude/skills/j-finish/SKILL.md` にもある。上げるときは両方を動かす。
+# 下限の根拠は notes/document/005-align-skills-with-pr-attached-uat-evidence-design.md の「### `gh --attach` の下限バージョン」が正典。
 MIN_GH_VERSION = (2, 99, 0)
 MAX_ATTACH = 50
 VIDEO_EXTS = (".webm", ".mp4")
