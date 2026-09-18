@@ -14,7 +14,8 @@ import sys
 import tempfile
 
 # 2.99.0 は `--attach` の初出。
-# 設計書は「実装時にリリースノートで特定する」と書いており、この数字はここにしか無い。
+# 設計書は下限を実装時にリリースノートで特定するとしているので、この数字は設計書からは復元できない。
+# 同じ値は `.claude/skills/j-finish/SKILL.md` にもある。上げるときは両方を動かす。
 MIN_GH_VERSION = (2, 99, 0)
 MAX_ATTACH = 50
 VIDEO_EXTS = (".webm", ".mp4")
@@ -85,7 +86,7 @@ def render_comment(task, shots, evidence_dir):
     """証跡コメントの本文を組み立てる。
 
     画像は参照して説明付きでインライン表示させ、動画は参照せず gh の追記に
-    任せる (docstring 冒頭の契約)。
+    任せる (契約の正典は module docstring が指す joifup の 295)。
 
     **本文の参照パスは `--attach` に渡すパスと 1 バイト違わず同じにする。**
     gh は「本文が添付ファイルを参照していれば、その参照をアップロード先の
