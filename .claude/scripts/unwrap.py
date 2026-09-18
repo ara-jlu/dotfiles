@@ -93,7 +93,7 @@ HTML_COMMENT_OPEN = re.compile(r"^ {0,3}<!--")
 # 判定を CommonMark より広く取る根拠と、タグ名の形に当たらない行の例は notes/document/008-no-hard-wrap-japanese-design.md の `## 変換の規則` が正典。
 HTML_TAG_OPEN = re.compile(r"^ {0,3}</?[A-Za-z][A-Za-z0-9-]*(\s|/?>|$)")
 # **CommonMark の HTML ブロックの 1 種目**。`<pre>` `<script>` `<style>` `<textarea>` で始まるブロックだけは、**空行では終わらず閉じタグまで**が範囲である。他の種別と同じ「空行まで」で扱うと、空行をまたいだ続きが本文として結合される。`<pre>` は空白が意味を持つので、結合すれば描画が変わる。
-# 実データに 0 件でも塞ぐ根拠は notes/document/008-no-hard-wrap-japanese-design.md の `## 変換の規則` が正典。
+# 件数に関わらず塞ぐ根拠は notes/document/008-no-hard-wrap-japanese-design.md の `## 変換の規則` が正典。
 # 終了条件が 4 つの閉じタグのどれでもよいのは CommonMark の規定どおりである (開いたタグ名と一致している必要はない)。大文字小文字は区別しない。
 HTML_RAW_OPEN = re.compile(r"^ {0,3}<(pre|script|style|textarea)(\s|>|$)",
                            re.IGNORECASE)
@@ -163,7 +163,7 @@ def is_block_start(line):
                 or TABLE.match(line) or RULE.match(line) or LIST.match(line)
                 or DIRECTIVE.match(line) or html_block_open(line))
 
-# 結合点の「普通の文字」。ASCII の英数字と、JA (かな・漢字・全角の約物) である。**どちらでもない文字が結合点の左右に現れたら、それは本文の結合ではないかもしれない。**
+# 結合点の「普通の文字」。ASCII の英数字と JA (かな・漢字・全角の約物) に加えて、設計が定めた記号を足している。**どれでもない文字が結合点の左右に現れたら、それは本文の結合ではないかもしれない。**
 # 判定は JA より広い。JA は結合点に空白を入れるかどうかを決める規則なので、そちらを広げると出力が変わる。こちらは**何を人間に見せるか**を決めるだけなので、別に持つ。
 # どの記号を「普通の文字」に足し、何を足さないかの根拠は notes/document/008-no-hard-wrap-japanese-design.md の `### 検証を通ったあとに人間へ見せるもの` が正典。
 ORDINARY = re.compile(r"[A-Za-z0-9/.\u00a7\u00b0\u00d7\u2010-\u205e"
@@ -363,8 +363,7 @@ def _paragraph_indents(text):
         previous_blank = blank
     return indents
 
-# **ブロックの中身をそのまま比べる種別。** unwrap はフェンス・インデントされたコードブロック・HTML ブロックの中の行を 1 文字も触らない。だから中身は**完全一致**でなければならず、正規化はしない。
-# ここを他と同じように空白ごと潰すと、**フェンスの欠陥がそのまま素通りする** —— 入れ子のフェンスを取り違えてコード行を結合しても、空白を落とせば `consta=1;constb=2;` は前後で同じだからである。実際に出た欠陥を捕まえられない正規化は、正規化してはならない側に入っている。
+# **ブロックの中身をそのまま比べる種別。** 下の `ast_blocks` は、この種別のトークンだけ中身を正規化せずに持つ。
 AST_EXACT_TYPES = frozenset({"fence", "code_block", "html_block"})
 
 
