@@ -182,18 +182,28 @@ grep -n -A 2 'HOME/.claude/rules' setup.sh
 
 Expected: `SYNTAX OK` が出る。`backup_if_exists "$HOME/.claude/rules"` と `ln -sf "$DOTFILES_DIR/.claude/rules" "$HOME/.claude/rules"` の2行が、この順で並んでいる。
 
-- [ ] **Step 5: リンクだけを手で作って効くことを確かめる**
+- [ ] **Step 5: rule ファイルが Claude Code に読める形であることを確かめる**
 
-`~/.claude/rules` は現在存在しない。**主チェックアウトを指すリンクを1本だけ足す**（`setup.sh` が次回に行うことと同じ結果になる。他のリンクには触らない）。
+**`$HOME` を書き換えてはならない。** リンクを実際に張るのは `setup.sh` の仕事であり、人間がマージを承認したあとに走らせる。ここで張ると、承認前に指針が全セッションで有効になる。worktree の外を書き換えることにもなる。
+
+frontmatter が有効な YAML で、`paths` が期待どおりであることだけを検査する。
 
 Run:
 ```bash
-ln -sfn /Users/ara/Joifup/dotfiles/.claude/rules "$HOME/.claude/rules"
-ls -l "$HOME/.claude/rules"
-ls "$HOME/.claude/rules/"
+python3 -c "
+import yaml
+src = open('.claude/rules/comment-rationale.md', encoding='utf-8').read()
+assert src.startswith('---\n'), 'frontmatter が無い'
+paths = yaml.safe_load(src.split('---\n')[1])['paths']
+assert any('py' in p for p in paths), paths
+assert any('ts' in p for p in paths), paths
+print('OK', paths)
+"
 ```
 
-Expected: `/Users/ara/Joifup/dotfiles/.claude/rules` を指すシンボリックリンクとして表示され、中身に `skill-language.md` が並ぶ。**`comment-rationale.md` はまだ現れない** —— 主チェックアウトにはマージ後に入るためである。`skill-language.md` が見えれば、リンクの経路が正しいことの証明になる。
+Expected: `OK ['**/*.{ts,tsx,js,jsx,mjs,cjs}', '**/*.{py,rs,go,sh}']`
+
+**リンクを張るのは人間の仕事である。** マージ後に `bash setup.sh` を主チェックアウトから走らせると、`~/.claude/rules` が張られて `comment-rationale.md` と `skill-language.md` の両方が有効になる。この申し送りを PR 本文に書く。
 
 - [ ] **Step 6: コミット**
 
