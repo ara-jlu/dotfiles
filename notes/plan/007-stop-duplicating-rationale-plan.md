@@ -392,7 +392,7 @@ Run:
 cd .claude/scripts && python3 -m unittest test_unwrap -v 2>&1 | tail -5
 ```
 
-Expected: 最終行が `OK`、件数は 139。
+Expected: 最終行が `OK`。**件数は固定しない** —— テストは増えるので、数を書けばそれ自体が陳腐化する（この計画は当初「139」と書いていたが、実際は 154 だった）。
 
 - [ ] **Step 6: 陳腐化した写しが消えたことを確かめる**
 
@@ -467,7 +467,7 @@ Run:
 cd .claude/scripts && python3 -m unittest test_unwrap -v 2>&1 | tail -5
 ```
 
-Expected: 最終行が `OK`、件数は 139。
+Expected: 最終行が `OK`。**件数は固定しない** —— テストは増えるので、数を書けばそれ自体が陳腐化する（この計画は当初「139」と書いていたが、実際は 154 だった）。
 
 - [ ] **Step 6: 道具が動くことを確かめる**
 
