@@ -1,4 +1,5 @@
 ---
+ID: NOTE-1165
 title: 日本語のハード折り返しをやめる（設計）
 tag: [document]
 Project: devops

@@ -1,4 +1,5 @@
 ---
+ID: TASK-701
 title: リサーチ用 MCP（exa / firecrawl）を導入する
 status: Not started
 Project: devops

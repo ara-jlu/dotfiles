@@ -1,4 +1,5 @@
 ---
+ID: NOTE-1171
 title: AIハーネスの原則 — 「記録マキシマム/成果物ミニマム」の妥当性と、ルール列挙 vs 少数原則
 tag: [research]
 Project: devops

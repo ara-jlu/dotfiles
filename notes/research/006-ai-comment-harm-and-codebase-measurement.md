@@ -1,4 +1,5 @@
 ---
+ID: NOTE-1170
 title: AIが書くコメントは有害か（主張の検証とコードベースの実測）
 tag: [research]
 Project: devops

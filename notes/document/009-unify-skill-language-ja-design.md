@@ -1,4 +1,5 @@
 ---
+ID: NOTE-1166
 title: 自作スキルの記述言語を日本語に統一する — 設計
 tag: [document]
 Project: devops
