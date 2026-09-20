@@ -81,9 +81,9 @@ Claude Code の rules 機能を使う。公式ドキュメント（`code.claude.
 
 **`~/.claude/rules/` を選ぶ理由**は、joifup / fde に届くことである。プロジェクトスコープ（`.claude/rules/`）に置くと dotfiles の中でしか効かない。シンボリックリンクでプロジェクトに貼る道もあるが、ドキュメントによれば working directory の外を指すシンボリックリンクは外部 import 扱いになり、承認するまで読まれず、承認後も `paths` 付きのものは読まれない。**`paths` を使う以上、ユーザースコープ以外に選択肢は無い。**
 
-### 既存の `.claude/rules/skill-language.md` は今は効いていない
+### 既存の `.claude/rules/skill-language.md` は本タスクの前は効いていなかった
 
-`setup.sh` は `commands` / `docs` / `settings.json` / `skills` / `CLAUDE.md` をリンクするが、**`rules` をリンクしていない。** したがって `.claude/rules/skill-language.md` は dotfiles を作業ディレクトリにしたときしか載らず、`tasks/009` が意図した効力を持っていない。本タスクでリンクを足すことで、`skill-language.md` も同時に有効になる。
+`setup.sh` はハーネスの主要なディレクトリとファイルをリンクしていたが、**`rules` はリンクしていなかった。** したがって `.claude/rules/skill-language.md` は dotfiles を作業ディレクトリにしたときしか載らず、`tasks/009` が意図した効力を持っていなかった。本タスクでリンクを足すことで、`skill-language.md` も同時に有効になる。
 
 **制約として記録しておく**: Cowork のデスクトップセッションでは、working directory の外を指すシンボリックリンクの `~/.claude/rules/` は読み飛ばされる。ただし `~/.claude/CLAUDE.md` も同じ扱いを受けるとドキュメントに明記されており、この dotfiles の構成は既にその前提で動いている。新しく増えるリスクは無い。
 
