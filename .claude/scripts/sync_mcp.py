@@ -64,3 +64,34 @@ def required_env_vars(manifest):
     for name, defn in manifest.get("mcpServers", {}).items():
         walk(defn, name)
     return needed
+
+
+def normalize_server(defn):
+    """比較用に定義を正規化する。
+
+    claude mcp add-json が保存した定義には "type" や空の "env" が補われる一方、
+    マニフェストではそれらを省いて書く。正規化しないと毎回「更新あり」と判定され、冪等にならない。
+    """
+    out = dict(defn)
+    if "type" not in out:
+        out["type"] = "stdio" if "command" in out else "http"
+    for key in ("env", "args", "headers"):
+        if key in out and not out[key]:
+            del out[key]
+    return out
+
+
+def diff_servers(manifest, current):
+    """マニフェストの各サーバーを add / update / unchanged に分類する。
+
+    マニフェストに無いサーバーはどのリストにも入らない（削除の同期はしない）。
+    """
+    result = {"add": [], "update": [], "unchanged": []}
+    for name, defn in sorted(manifest.get("mcpServers", {}).items()):
+        if name not in current:
+            result["add"].append(name)
+        elif normalize_server(defn) == normalize_server(current[name]):
+            result["unchanged"].append(name)
+        else:
+            result["update"].append(name)
+    return result

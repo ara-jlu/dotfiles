@@ -72,5 +72,62 @@ class TestRequiredEnvVars(unittest.TestCase):
         self.assertEqual(sync_mcp.required_env_vars(manifest), {})
 
 
+class TestNormalizeServer(unittest.TestCase):
+    def test_defaults_type_to_stdio_when_a_command_is_present(self):
+        self.assertEqual(sync_mcp.normalize_server({"command": "npx"}),
+                         {"type": "stdio", "command": "npx"})
+
+    def test_defaults_type_to_http_when_a_url_is_present(self):
+        self.assertEqual(sync_mcp.normalize_server({"url": "https://example.com/mcp"}),
+                         {"type": "http", "url": "https://example.com/mcp"})
+
+    def test_keeps_an_explicit_type(self):
+        self.assertEqual(sync_mcp.normalize_server({"type": "sse", "url": "https://example.com/mcp"}),
+                         {"type": "sse", "url": "https://example.com/mcp"})
+
+    def test_drops_an_empty_env_and_an_empty_args(self):
+        self.assertEqual(sync_mcp.normalize_server({"type": "stdio", "command": "npx", "env": {}, "args": []}),
+                         {"type": "stdio", "command": "npx"})
+
+    def test_keeps_a_non_empty_env(self):
+        self.assertEqual(sync_mcp.normalize_server({"type": "stdio", "command": "npx", "env": {"A": "1"}}),
+                         {"type": "stdio", "command": "npx", "env": {"A": "1"}})
+
+    def test_does_not_mutate_the_input(self):
+        defn = {"command": "npx", "env": {}}
+        sync_mcp.normalize_server(defn)
+        self.assertEqual(defn, {"command": "npx", "env": {}})
+
+
+class TestDiffServers(unittest.TestCase):
+    def test_classifies_a_missing_server_as_add(self):
+        manifest = {"mcpServers": {"exa": {"command": "npx", "args": ["-y", "exa-mcp-server"]}}}
+        self.assertEqual(sync_mcp.diff_servers(manifest, {}),
+                         {"add": ["exa"], "update": [], "unchanged": []})
+
+    def test_classifies_a_changed_server_as_update(self):
+        manifest = {"mcpServers": {"exa": {"command": "npx", "args": ["-y", "exa-mcp-server"]}}}
+        current = {"exa": {"type": "stdio", "command": "npx", "args": ["-y", "old-package"], "env": {}}}
+        self.assertEqual(sync_mcp.diff_servers(manifest, current),
+                         {"add": [], "update": ["exa"], "unchanged": []})
+
+    def test_classifies_an_identical_server_as_unchanged_across_normalization(self):
+        manifest = {"mcpServers": {"exa": {"command": "npx", "args": ["-y", "exa-mcp-server"]}}}
+        current = {"exa": {"type": "stdio", "command": "npx", "args": ["-y", "exa-mcp-server"], "env": {}}}
+        self.assertEqual(sync_mcp.diff_servers(manifest, current),
+                         {"add": [], "update": [], "unchanged": ["exa"]})
+
+    def test_ignores_a_server_that_is_only_in_current(self):
+        """削除の同期はしない。マニフェストに無いサーバーは差分に現れない。"""
+        manifest = {"mcpServers": {}}
+        current = {"legacy": {"type": "stdio", "command": "npx"}}
+        self.assertEqual(sync_mcp.diff_servers(manifest, current),
+                         {"add": [], "update": [], "unchanged": []})
+
+    def test_sorts_each_group_by_name(self):
+        manifest = {"mcpServers": {"zebra": {"command": "a"}, "alpha": {"command": "b"}}}
+        self.assertEqual(sync_mcp.diff_servers(manifest, {})["add"], ["alpha", "zebra"])
+
+
 if __name__ == "__main__":
     unittest.main()
