@@ -1,13 +1,13 @@
 ---
 paths:
   - ".claude/skills/**/*.md"
-  - ".claude/skills/**/*.py"
+  - ".claude/skills/*/scripts/*.py"
   - ".claude/scripts/**/*.py"
 ---
 
 # 自作スキルの記述言語ルール
 
-`CLAUDE.md` § 言語 の「自作スキルの SKILL.md と自作スクリプト: 日本語」の細則。**自作スキル（`.claude/skills/j-*` と `md2joifup`）の SKILL.md と、自作スクリプト（`.claude/scripts/` と `.claude/skills/*/scripts/` の `.py`）を新規作成・改訂するときに適用する。** superpowers / ECC のスキルは無改変で使うので対象外（それらはこのリポジトリの `.claude/skills/` 配下に無い）。
+`CLAUDE.md` § 言語 の「自作スキルの SKILL.md と自作スクリプト: 日本語」の細則。**dotfiles リポジトリの自作スキル（`.claude/skills/j-*` と `md2joifup`）の SKILL.md と、自作スクリプト（`.claude/scripts/` と `.claude/skills/*/scripts/` の `.py`）を新規作成・改訂するときに適用する。** この rule はユーザースコープに置かれるのでどのリポジトリからも読まれるが、**適用先は dotfiles だけである**。他のリポジトリの `.claude/skills/` も、無改変で使う superpowers / ECC のスキルも対象外（それらは dotfiles の `.claude/skills/` 配下に無い）。
 
 **スクリプトでは docstring とコメントが対象である。** 識別子・コマンド・パス・フラグ・環境変数・型名・例外のメッセージ・エラー文字列は英語のまま残す（下の「英語のまま残すもの」の一覧と同じ扱い）。
 
