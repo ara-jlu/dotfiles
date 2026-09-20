@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """MCP サーバー定義を dotfiles のマニフェストから ~/.claude.json へ冪等に反映する。
 
 正典は .claude/mcp-servers.json である。このスクリプトはそれを読み、claude CLI 経由で
@@ -8,7 +9,13 @@ ${VAR} 参照にし、実値は ~/.claude/settings.json の env に置く。平�
 テスト: cd .claude/scripts && python3 -m unittest test_sync_mcp -v
 """
 
+import json
+import os
+import pathlib
 import re
+import shutil
+import subprocess
+import sys
 
 # 秘密を入れる箇所だと判断するキー名。env のキー名と headers のキー名に当てる。
 SECRET_NAME_RE = re.compile(r"(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTHORIZATION)", re.I)
@@ -95,3 +102,121 @@ def diff_servers(manifest, current):
         else:
             result["update"].append(name)
     return result
+
+
+MANIFEST_PATH = pathlib.Path(__file__).resolve().parent.parent / "mcp-servers.json"
+CLAUDE_CONFIG_PATH = pathlib.Path.home() / ".claude.json"
+SETTINGS_PATH = pathlib.Path.home() / ".claude" / "settings.json"
+
+
+def load_manifest(path):
+    """マニフェストを読む。読めなければ即停止する。"""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        sys.exit(f"エラー: マニフェストが見つかりません: {path}")
+    except json.JSONDecodeError as exc:
+        sys.exit(f"エラー: マニフェストが不正な JSON です: {path}: {exc}")
+
+
+def read_current_servers(path):
+    """~/.claude.json から現在の MCP 定義を読む。読めなければ空として扱う。"""
+    try:
+        return json.loads(path.read_text(encoding="utf-8")).get("mcpServers", {})
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def available_env_names(settings_path):
+    """${VAR} の解決元になりうる名前の集合。settings.json の env と、現在のシェル環境。"""
+    names = set(os.environ)
+    try:
+        names |= set(json.loads(settings_path.read_text(encoding="utf-8")).get("env", {}))
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    return names
+
+
+def missing_local_command(defn):
+    """command が絶対パスで、その実行ファイルが無ければ True。
+
+    pencil のようにローカルアプリに依存するサーバーを、インストールされていないマシンで
+    skip するために使う。相対コマンド（npx 等）は PATH 解決に任せるので対象外。
+    """
+    command = defn.get("command", "")
+    return command.startswith("/") and not os.access(command, os.X_OK)
+
+
+def add_json(name, defn):
+    return subprocess.run(
+        ["claude", "mcp", "add-json", name, json.dumps(defn), "--scope", "user"],
+        capture_output=True, text=True)
+
+
+def apply_server(name, defn):
+    """1 サーバーを user scope に投入する。成功すれば True。
+
+    まず add-json をそのまま試し、失敗したときだけ remove してから retry する。
+    先に remove してしまうと、add に失敗したときに動いていたサーバーを失う。
+    """
+    done = add_json(name, defn)
+    if done.returncode != 0:
+        subprocess.run(["claude", "mcp", "remove", name, "--scope", "user"],
+                       capture_output=True, text=True)
+        done = add_json(name, defn)
+    if done.returncode != 0:
+        print(f"  ✗ {name}: {done.stderr.strip() or done.stdout.strip()}")
+        return False
+    return True
+
+
+def main():
+    manifest = load_manifest(MANIFEST_PATH)
+
+    leaks = scan_plaintext_secrets(manifest)
+    if leaks:
+        print("エラー: マニフェストに平文の秘密があります。${VAR} 参照に直してください。")
+        for leak in leaks:
+            print(f"  - {leak}")
+        return 1
+
+    if shutil.which("claude") is None:
+        print("⚠ claude CLI が見つかりません。MCP の同期をスキップします。")
+        return 0
+
+    diff = diff_servers(manifest, read_current_servers(CLAUDE_CONFIG_PATH))
+
+    skipped = [n for n in diff["add"] + diff["update"]
+               if missing_local_command(manifest["mcpServers"][n])]
+    for name in skipped:
+        print(f"⚠ {name}: 実行ファイルが見つからないので skip します"
+              f"（{manifest['mcpServers'][name]['command']}）")
+
+    targets = [n for n in diff["add"] + diff["update"] if n not in skipped]
+    if not targets:
+        print(f"MCP 設定に変更はありません（{len(diff['unchanged'])} サーバー）。")
+    else:
+        if diff["add"]:
+            print(f"追加: {', '.join(n for n in diff['add'] if n not in skipped) or 'なし'}")
+        if diff["update"]:
+            print(f"更新: {', '.join(n for n in diff['update'] if n not in skipped) or 'なし'}")
+
+    failed = [name for name in targets if not apply_server(name, manifest["mcpServers"][name])]
+
+    known = available_env_names(SETTINGS_PATH)
+    for var, servers in sorted(required_env_vars(manifest).items()):
+        if var not in known:
+            print(f"⚠ {var} が未設定です（{', '.join(sorted(servers))} が必要としています）。"
+                  f"~/.claude/settings.json の env に追加してください。")
+
+    if failed:
+        print(f"エラー: {len(failed)} サーバーの投入に失敗しました: {', '.join(failed)}")
+        return 1
+
+    if targets:
+        print(f"✓ MCP 設定を同期しました（{len(targets)} サーバー）。")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

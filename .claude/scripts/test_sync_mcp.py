@@ -1,5 +1,6 @@
 import json
 import pathlib
+import tempfile
 import unittest
 
 import sync_mcp
@@ -162,6 +163,29 @@ class TestTheShippedManifest(unittest.TestCase):
         needed = sync_mcp.required_env_vars(self.manifest)
         self.assertIn("exa", needed.get("EXA_API_KEY", set()))
         self.assertIn("firecrawl", needed.get("FIRECRAWL_API_KEY", set()))
+
+
+class TestLoadManifest(unittest.TestCase):
+    def _write(self, text):
+        handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8")
+        handle.write(text)
+        handle.close()
+        self.addCleanup(pathlib.Path(handle.name).unlink)
+        return pathlib.Path(handle.name)
+
+    def test_reads_a_valid_manifest(self):
+        path = self._write('{"mcpServers": {"a": {"command": "npx"}}}')
+        self.assertEqual(sync_mcp.load_manifest(path),
+                         {"mcpServers": {"a": {"command": "npx"}}})
+
+    def test_stops_on_invalid_json(self):
+        path = self._write("{not json")
+        with self.assertRaises(SystemExit):
+            sync_mcp.load_manifest(path)
+
+    def test_stops_when_the_manifest_is_missing(self):
+        with self.assertRaises(SystemExit):
+            sync_mcp.load_manifest(pathlib.Path("/nonexistent/mcp-servers.json"))
 
 
 if __name__ == "__main__":
