@@ -13,17 +13,79 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.parse
 
-# 秘密を入れる箇所だと判断するキー名。env のキー名と headers のキー名に当てる。
-SECRET_NAME_RE = re.compile(r"(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTHORIZATION)", re.I)
+# 秘密を入れる箇所だと判断するキー名。env のキー名、headers のキー名、args のフラグ名、URL のクエリ名に当てる。
+# AUTH は Authorization・auth-token の双方を覆う。
+SECRET_NAME_RE = re.compile(r"(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)", re.I)
 
-# args の中で、次の要素が秘密になるフラグ。
-SECRET_FLAG_RE = re.compile(r"^--?(api[-_]?key|token|secret|password)$", re.I)
+# args の要素がフラグの形をしているか。この形かつ SECRET_NAME_RE に当たる語を含むものを秘密フラグとみなす。
+# 完全一致で列挙すると --bearer-token や --client-secret のような実在の綴りが素通りする。
+# 秘密のゲートは取りこぼすより過検出に倒す。
+FLAG_SHAPE_RE = re.compile(r"^--?[A-Za-z0-9._-]+$")
 
 # 文字列の中に ${VAR} の参照が少なくとも1つ含まれているか。
 # "Bearer ${TOKEN}" のように値の一部が ${VAR} 参照であれば安全とみなす。
 # required_env_vars もこの正規表現で ${VAR} を拾うため、両者の判断基準は常に一致する。
 VAR_IN_TEXT_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+# ${VAR} を取り除いた残りかすの中の、base64／hex 的な文字の途切れない連なり。
+# `-` と `_` は sk-live- や sk_live_ のような接頭辞の区切りとして使われるので、連なりの区切り文字として扱う。
+KEY_SHAPED_RUN_RE = re.compile(r"[A-Za-z0-9+/=]+")
+
+# 残りかすが鍵らしいと判断する連なりの長さ。
+# 16 文字は、実在の鍵のランダム部（JWT の eyJhbGciOiJIUzI1NiJ9 は 20 文字、sk-live- 系の本体は 20 文字以上）が
+# ほぼ必ず超える一方、値の一部として正当に書かれる語——Bearer・key・Authorization（13 文字）・localhost・
+# ホスト名やパスの各要素——が区切り文字で切られたあとに到達しない長さである。
+# 過検出したときの代償は「${VAR} に直せ」と言われることだけなので、短めに倒してある。
+KEY_SHAPED_MIN_RUN = 16
+
+
+def looks_like_key_material(text):
+    """${VAR} を全部取り除いた残りかすが鍵の形をしていれば True。
+
+    「${VAR} を1つでも含めば安全」だけを条件にすると "${DECOY}sk-REALKEY" のような囮が素通りする。
+    かといって許可する語の一覧を持つと、語が増えるたびに腐る。そこで語ではなく形——長さと文字の種類——で判断する。
+    """
+    residue = VAR_IN_TEXT_RE.sub("", text)
+    return any(len(run) >= KEY_SHAPED_MIN_RUN for run in KEY_SHAPED_RUN_RE.findall(residue))
+
+
+def value_is_safe(value):
+    """秘密が置かれうる場所の値が安全か。${VAR} 参照を含み、かつ残りかすが鍵の形をしていないこと。"""
+    return (isinstance(value, str)
+            and bool(VAR_IN_TEXT_RE.search(value))
+            and not looks_like_key_material(value))
+
+
+def is_secret_flag(arg):
+    """args の要素が「次の要素が秘密になるフラグ」か。"""
+    return (isinstance(arg, str)
+            and bool(FLAG_SHAPE_RE.match(arg))
+            and bool(SECRET_NAME_RE.search(arg)))
+
+
+def scan_url(url):
+    """URL の中の秘密らしい箇所を、場所を表す接尾辞の一覧で返す。
+
+    http / sse トランスポートの url は env や headers と違って構造を持たないので、クエリ文字列と
+    userinfo（https://user:pass@host の部分）を個別に見る。設計時に exa / firecrawl のリモート
+    HTTP 版を検討しているので、この形は今後いちばん現れやすい。
+    """
+    if not isinstance(url, str):
+        return []
+    found = []
+    try:
+        parsed = urllib.parse.urlsplit(url)
+    except ValueError:
+        # 解析できない url は中身を確かめられない。確かめられないものは安全と言えないので報告する。
+        return ["url"]
+    if parsed.password is not None and not value_is_safe(parsed.password):
+        found.append("url.userinfo")
+    for key, value in urllib.parse.parse_qsl(parsed.query, keep_blank_values=True):
+        if SECRET_NAME_RE.search(key) and not value_is_safe(value):
+            found.append(f"url.{key}")
+    return found
 
 
 def scan_plaintext_secrets(manifest):
@@ -34,19 +96,24 @@ def scan_plaintext_secrets(manifest):
             for key, value in sorted(defn.get(section, {}).items()):
                 if not SECRET_NAME_RE.search(key):
                     continue
-                if isinstance(value, str) and VAR_IN_TEXT_RE.search(value):
+                if value_is_safe(value):
                     continue
                 found.append(f"{name}: {section}.{key}")
 
         args = defn.get("args", [])
         for i, arg in enumerate(args):
-            if i == 0 or not isinstance(args[i - 1], str):
-                continue
-            if not SECRET_FLAG_RE.match(args[i - 1]):
-                continue
-            if isinstance(arg, str) and VAR_IN_TEXT_RE.search(arg):
-                continue
-            found.append(f"{name}: args[{i}]")
+            # --api-key=sk-... のように = で繋いだ形。値が別要素にならないので、その場で中身を見る。
+            if isinstance(arg, str) and "=" in arg:
+                flag, _, value = arg.partition("=")
+                if is_secret_flag(flag) and not value_is_safe(value):
+                    found.append(f"{name}: args[{i}]")
+                    continue
+            # --api-key sk-... のように空白で分けた形。直前の要素がフラグなら、この要素が値。
+            if i > 0 and is_secret_flag(args[i - 1]) and not value_is_safe(arg):
+                found.append(f"{name}: args[{i}]")
+
+        for location in scan_url(defn.get("url")):
+            found.append(f"{name}: {location}")
     return found
 
 

@@ -51,6 +51,94 @@ class TestScanPlaintextSecrets(unittest.TestCase):
                          ["a: env.A_TOKEN", "b: env.B_SECRET"])
 
 
+class TestSecretFlagSpellings(unittest.TestCase):
+    """完全一致の列挙では取りこぼす、実在するフラグの綴り。"""
+
+    def test_flags_a_plaintext_value_after_each_real_world_secret_flag(self):
+        for flag in ("--bearer-token", "--auth-token", "--access-token",
+                     "--client-secret", "--credential", "--api-token", "--apiKey"):
+            with self.subTest(flag=flag):
+                manifest = {"mcpServers": {"remote": {"args": ["pkg", flag, "sk-SYNTHETIC-VALUE-000"]}}}
+                self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), ["remote: args[2]"])
+
+    def test_accepts_a_var_reference_after_a_widened_secret_flag(self):
+        manifest = {"mcpServers": {"remote": {"args": ["pkg", "--bearer-token", "${REMOTE_TOKEN}"]}}}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), [])
+
+    def test_ignores_a_flag_that_has_nothing_to_do_with_secrets(self):
+        manifest = {"mcpServers": {"chrome": {"args": ["chrome-devtools-mcp@latest", "--autoConnect", "true"]}}}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), [])
+
+
+class TestEqualJoinedSecretFlags(unittest.TestCase):
+    """--flag=value の形。値が別要素にならないので、要素の中身を見ないと素通りする。"""
+
+    def test_flags_a_plaintext_value_joined_with_an_equals_sign(self):
+        manifest = {"mcpServers": {"context7": {"args": ["@upstash/context7-mcp", "--api-key=ctx7sk-SYNTHETIC-000"]}}}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), ["context7: args[1]"])
+
+    def test_accepts_a_var_reference_joined_with_an_equals_sign(self):
+        manifest = {"mcpServers": {"context7": {"args": ["@upstash/context7-mcp", "--api-key=${CONTEXT7_API_KEY}"]}}}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), [])
+
+    def test_ignores_a_non_secret_flag_joined_with_an_equals_sign(self):
+        manifest = {"mcpServers": {"a": {"args": ["pkg", "--mode=stdio"]}}}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), [])
+
+
+class TestScanUrl(unittest.TestCase):
+    """http / sse トランスポートの url。env や headers と違って構造を持たない。"""
+
+    def test_flags_a_plaintext_key_in_a_query_parameter(self):
+        manifest = {"mcpServers": {"remote": {"type": "http", "url": "https://host/mcp?apiKey=sk-SYNTHETIC-VALUE-000"}}}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), ["remote: url.apiKey"])
+
+    def test_accepts_a_var_reference_in_a_query_parameter(self):
+        manifest = {"mcpServers": {"remote": {"type": "http", "url": "https://host/mcp?apiKey=${REMOTE_API_KEY}"}}}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), [])
+
+    def test_ignores_a_query_parameter_that_is_not_secret_named(self):
+        manifest = {"mcpServers": {"remote": {"type": "http", "url": "https://host/mcp?version=2"}}}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), [])
+
+    def test_flags_a_password_in_the_userinfo(self):
+        manifest = {"mcpServers": {"remote": {"type": "sse", "url": "https://user:SYNTHETICPASSWORD@host/mcp"}}}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), ["remote: url.userinfo"])
+
+    def test_ignores_a_url_without_credentials(self):
+        manifest = {"mcpServers": {"notion": {"type": "http", "url": "https://mcp.notion.com/mcp"}}}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), [])
+
+
+class TestDecoyVarReferences(unittest.TestCase):
+    """${VAR} を1つ置いただけで平文を通す囮。語ではなく形（長さと文字種）で判断する。"""
+
+    def test_keeps_accepting_a_var_reference_with_a_short_literal_prefix(self):
+        manifest = {"mcpServers": {"remote": {"headers": {"Authorization": "Bearer ${TOKEN}"}}}}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), [])
+
+    def test_flags_key_shaped_residue_next_to_a_decoy_var_reference(self):
+        manifest = {"mcpServers": {"remote": {"env": {"REMOTE_API_KEY": "${DECOY}sk-live-51H8xKqRtPvNmWzYbGcDfJeLa9"}}}}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest),
+                         ["remote: env.REMOTE_API_KEY"])
+
+    def test_flags_a_decoy_in_args_and_in_a_url_too(self):
+        manifest = {"mcpServers": {
+            "a": {"args": ["pkg", "--api-key", "${DECOY}sk-live-51H8xKqRtPvNmWzYbGcDfJeLa9"]},
+            "b": {"url": "https://host/mcp?apiKey=${DECOY}sk-live-51H8xKqRtPvNmWzYbGcDfJeLa9"},
+        }}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest),
+                         ["a: args[2]", "b: url.apiKey"])
+
+    def test_treats_ordinary_words_and_punctuation_as_not_key_shaped(self):
+        for residue in ("Bearer ", "key-", ":", "token ", "Authorization"):
+            with self.subTest(residue=residue):
+                self.assertFalse(sync_mcp.looks_like_key_material(residue + "${TOKEN}"))
+
+    def test_treats_a_long_unbroken_run_as_key_shaped(self):
+        self.assertTrue(sync_mcp.looks_like_key_material("${DECOY}eyJhbGciOiJIUzI1NiJ9"))
+
+
 class TestRequiredEnvVars(unittest.TestCase):
     def test_collects_a_var_from_env(self):
         manifest = {"mcpServers": {"ga": {"env": {"GA4_PROPERTY_ID": "${GA4_PROPERTY_ID}"}}}}
