@@ -69,21 +69,16 @@ ln -sf $(pwd)/.zshrc ~/.zshrc
 
 ## MCP サーバー
 
-Claude Code の MCP サーバー定義は `.claude/mcp-servers.json` が正典です。`setup.sh` が
-`claude mcp add-json --scope user` で `~/.claude.json` に冪等に反映します（2 回目以降は
-「変更はありません」と表示されます）。
+Claude Code の MCP サーバー定義は `.claude/mcp-servers.json` が正典です。`setup.sh` が `claude mcp add-json --scope user` で `~/.claude.json` に冪等に反映します（2 回目以降は「変更はありません」と表示されます）。
 
 ### API キーの置き場所
 
-**キーをこのリポジトリに書かないでください。** マニフェストには `${VAR}` 参照だけを書き、
-実値は `~/.claude/settings.json` の `env` に置きます（このファイルは gitignore 済みです）。
-必要な変数の一覧は `.claude/settings.json.sample` にあります。平文の秘密を書いた場合、
-同期スクリプトは投入せずに停止します。
+**キーをこのリポジトリに書かないでください。** マニフェストには `${VAR}` 参照だけを書き、実値は `~/.claude/settings.json` の `env` に置きます（このファイルは gitignore 済みです）。
+必要な変数の一覧は `.claude/settings.json.sample` にあります。平文の秘密を書いた場合、同期スクリプトは投入せずに停止します。
 
 ### リサーチ用 MCP のキー取得
 
-`ecc:deep-research` などの調査系スキルは exa と firecrawl を使います。どちらも無料枠が
-あり、クレジットカードは不要です。
+`ecc:deep-research` などの調査系スキルは exa と firecrawl を使います。どちらも無料枠があり、クレジットカードは不要です。
 
 1. exa: https://exa.ai でサインアップし、API キーを発行する（サインアップ時 $20 ＋ 毎月 $10 のクレジット）
 2. firecrawl: https://firecrawl.dev でサインアップし、API キーを発行する（月 1,000 クレジット）
@@ -93,13 +88,9 @@ Claude Code の MCP サーバー定義は `.claude/mcp-servers.json` が正典�
 
 ### 注意
 
-- `notion` は OAuth で認証します。定義を入れ直したあとは Claude Code 内で `/mcp` から
-  再認証してください。
-- `pencil` はローカルアプリの絶対パスに依存します。インストールされていないマシンでは
-  警告つきで skip されます。
-- マニフェストから消したサーバーは `~/.claude.json` からは消えません（削除の同期は
-  行いません）。不要になったサーバーは `claude mcp remove <name> --scope user` で
-  手動で消してください。
+- `notion` は OAuth で認証します。定義を入れ直したあとは Claude Code 内で `/mcp` から再認証してください。
+- `pencil` はローカルアプリの絶対パスに依存します。インストールされていないマシンでは警告つきで skip されます。
+- マニフェストから消したサーバーは `~/.claude.json` からは消えません（削除の同期は行いません）。不要になったサーバーは `claude mcp remove <name> --scope user` で手動で消してください。
 
 ## Git Alias
 
