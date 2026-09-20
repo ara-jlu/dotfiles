@@ -3,7 +3,7 @@ title: リサーチ用 MCP（exa / firecrawl）を導入する
 status: In progress
 Project: devops
 created_at: 2026-09-12
-updated_at: 2026-09-12
+updated_at: 2026-09-21
 ---
 
 # リサーチ用 MCP（exa / firecrawl）を導入する
