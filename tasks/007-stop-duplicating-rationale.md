@@ -2,7 +2,7 @@
 ID: TASK-668
 Project: devops
 created_at: '2026-09-08'
-status: In review
+status: Done
 title: 一次情報の二重化をやめる
 updated_at: '2026-09-08'
 ---
