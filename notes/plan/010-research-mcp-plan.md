@@ -672,7 +672,9 @@ Expected: PASS（30 tests）
 - [ ] **Step 5: 実際に同期を走らせる**
 
 Run: `python3 .claude/scripts/sync_mcp.py`
-Expected: exa / firecrawl が「追加」と表示され、`EXA_API_KEY` と `FIRECRAWL_API_KEY`（および `GA4_PROPERTY_ID`）が未設定である旨の警告が出て、exit 0。
+Expected: `追加: exa, firecrawl` と `更新: n8n-mcp` が表示される（n8n-mcp は平文キーから `${N8N_API_KEY}` 参照へ変わるため）。
+続けて `EXA_API_KEY` / `FIRECRAWL_API_KEY` / `GA4_PROPERTY_ID` / `N8N_API_KEY` が未設定である旨の警告が出て、exit 0。
+残り 7 サーバーは正規化後に一致するので投入されない。
 
 - [ ] **Step 6: 冪等性を確認する**
 
