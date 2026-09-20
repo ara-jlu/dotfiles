@@ -82,7 +82,7 @@ ln -sf "$DOTFILES_DIR/.claude/docs" "$HOME/.claude/docs"
 backup_if_exists "$HOME/.claude/settings.json"
 ln -sf "$DOTFILES_DIR/.claude/settings.json" "$HOME/.claude/settings.json"
 
-# skills ディレクトリのシンボリックリンク（vercel-labs/skills 用）
+# skills ディレクトリのシンボリックリンク
 backup_if_exists "$HOME/.claude/skills"
 ln -sf "$DOTFILES_DIR/.claude/skills" "$HOME/.claude/skills"
 

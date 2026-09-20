@@ -13,7 +13,7 @@ import subprocess
 import sys
 import tempfile
 
-# 下限の根拠は notes/document/005-align-skills-with-pr-attached-uat-evidence-design.md の「### `gh --attach` の下限バージョン」が正典。
+# MIN_GH_VERSION と MAX_ATTACH の根拠は notes/document/005-align-skills-with-pr-attached-uat-evidence-design.md の「### `gh --attach` の下限バージョン」が正典。
 MIN_GH_VERSION = (2, 99, 0)
 MAX_ATTACH = 50
 VIDEO_EXTS = (".webm", ".mp4")
@@ -197,9 +197,8 @@ def validate_shots(evidence_dir, shots, realpath=os.path.realpath,
 def body_with_evidence_link(body, url):
     """PR 本文の `## UAT 証跡` 節の末尾に証跡コメントへのリンクを足す。
 
-    節が無ければ None を返す (本文の別の場所に押し込むと、読み手が探す場所と
-    ずれる)。GitHub のアンカーはコメント単位なので、証跡表の行ごとにリンクを
-    張ることはできない — リンクは 1 本 (設計 D5)。
+    節が無ければ None を返す (本文の別の場所に押し込むと、読み手が探す場所とずれる)。
+    GitHub のアンカーはコメント単位なので、証跡表の行ごとにリンクを張ることはできない — リンクは 1 本 (005 設計書の D3)。
 
     既に `証跡コメント:` の行があれば **置き換える**。gh pr edit が失敗した
     後の復旧手順はこのスクリプトの再実行なので、追記にすると本文にリンクが

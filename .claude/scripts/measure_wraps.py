@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """md のハード折り返しの量を測る。unwrap.py の適用前後の比較に使う。
 
-**折り返しの数え方の正典は notes/document/008-no-hard-wrap-japanese-design.md**（dotfiles）である。何を折り返しと数え、何を数えないかは、すべてそこで決めている。
+**規約と変換規則の正典は notes/document/008-no-hard-wrap-japanese-design.md**（dotfiles）である。この道具の数え方は、そこが定めた規則に合わせてある。
 
 使い方:
 
@@ -35,7 +35,10 @@ def indent_width(indent):
 
 
 def fence_open(line):
-    """行がフェンスを開くなら (マーカーの文字, 長さ, インデント幅) を返す。"""
+    """行がフェンスを開くなら (マーカーの文字, 長さ, インデント幅) を返す。
+
+    バッククォートのフェンスだけ情報文字列にバッククォートを許さない。その根拠は notes/document/008-no-hard-wrap-japanese-design.md の `## 変換の規則` が正典。
+    """
     m = FENCE.match(line)
     if not m:
         return None
@@ -60,10 +63,10 @@ def fence_closes(line, char, length, indent):
 
 # HTML ブロックの開始行。unwrap.py と同じ定義にしておく (一致は test_unwrap の test_the_html_block_handling_matches_unwrap が固定している)。
 # 片方だけが HTML ブロックの内と外を取り違えると、変換しないと決めた場所の折り返しが残量に出続ける。
-# 「タグに見える」の範囲と、広い側 (触らない側) に倒した理由は unwrap.py の HTML_TAG_OPEN を見よ。
+# 「タグに見える」の範囲と、広い側 (触らない側) に倒した根拠は notes/document/008-no-hard-wrap-japanese-design.md の `## 変換の規則` が正典。
 HTML_COMMENT_OPEN = re.compile(r"^ {0,3}<!--")
 HTML_TAG_OPEN = re.compile(r"^ {0,3}</?[A-Za-z][A-Za-z0-9-]*(\s|/?>|$)")
-# CommonMark の HTML ブロックの 1 種目。空行では終わらず閉じタグまでが範囲である (理由は unwrap.py の HTML_RAW_OPEN を見よ)。
+# CommonMark の HTML ブロックの 1 種目。空行では終わらず閉じタグまでが範囲である。その根拠は notes/document/008-no-hard-wrap-japanese-design.md の `## 変換の規則` が正典。
 HTML_RAW_OPEN = re.compile(r"^ {0,3}<(pre|script|style|textarea)(\s|>|$)",
                            re.IGNORECASE)
 HTML_RAW_CLOSE = re.compile(r"</(pre|script|style|textarea)>", re.IGNORECASE)
@@ -107,7 +110,7 @@ def is_block_start(line):
 # 文末。unwrap.py と同じ定義にしておく (一致は test_unwrap が固定している)。
 # 片方だけが文末を折り返しと見なすと、結合しないと決めた改行が残量に出て、直し切れない数がいつまでも残る。
 SENTENCE_END = re.compile("[。！？][*_`）」』】〕)\"']*$")
-# 除外するディレクトリ**名**。パスの接頭辞ではなく、対象ディレクトリからの相対パスの要素名と突き合わせる (理由は unwrap.py の SKIP_PARTS を見よ)。
+# 除外するディレクトリ**名**。パスの接頭辞ではなく、対象ディレクトリからの相対パスの要素名と突き合わせる。その根拠は notes/document/008-no-hard-wrap-japanese-design.md の `## 適用の範囲と順序` が正典。
 # unwrap.py と同じ一覧にしておく。片方だけが数えると、変換しないと決めたディレクトリの折り返しが残量に出て、直し切れない数がいつまでも残る。
 # 一致は test_unwrap の test_the_skip_list_matches_unwrap が固定している。
 SKIP_PARTS = frozenset({"node_modules", ".git", "worktrees", ".worktrees",
