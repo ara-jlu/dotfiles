@@ -235,12 +235,14 @@ def add_json(name, defn):
 def apply_server(name, defn, previous_defn):
     """1 サーバーを user scope に投入する。成功すれば True。
 
-    まず add-json をそのまま試し、失敗したときだけ remove してから retry する。
+    まず add-json をそのまま試し、既存の定義があって失敗したときだけ remove してから retry する。
     retry の add も失敗したら、remove する前の定義（previous_defn）に戻す。
     戻すのは既存サーバーの update が失敗した場合だけで、新規追加（previous_defn が None）の場合は戻す対象が無い。復元にまで失敗したら、それだけは必ず出力する——設定が消えたままになる唯一のケースなので、黙らせてはならない。
     """
     done = add_json(name, defn)
-    if done.returncode != 0:
+    if done.returncode != 0 and previous_defn is not None:
+        # remove して retry するのは名前の衝突を解くためなので、既存の定義があるときだけ意味がある。
+        # 新規追加は衝突しようがなく、消す対象も無い。
         run_claude(["mcp", "remove", name, "--scope", "user"])
         done = add_json(name, defn)
     if done.returncode != 0:
