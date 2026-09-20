@@ -275,14 +275,17 @@ def main():
         if diff["update"]:
             print(f"更新: {', '.join(n for n in diff['update'] if n not in skipped) or 'なし'}")
 
-    failed = [name for name in targets
-              if not apply_server(name, manifest["mcpServers"][name], current.get(name))]
-
+    # env の充足検査は投入より前に出す。
+    # 投入したあとに警告しても、そのときにはもう ${VAR} 参照で上書きされている。
+    # 実際に n8n-mcp は、動いていた平文のキーが未定義の ${N8N_API_KEY} に置き換わったあとで初めて警告が出た。
     known = available_env_names(SETTINGS_PATH)
     for var, servers in sorted(required_env_vars(manifest).items()):
         if var not in known:
             print(f"⚠ {var} が未設定です（{', '.join(sorted(servers))} が必要としています）。"
                   f"~/.claude/settings.json の env に追加してください。")
+
+    failed = [name for name in targets
+              if not apply_server(name, manifest["mcpServers"][name], current.get(name))]
 
     if failed:
         print(f"エラー: {len(failed)} サーバーの投入に失敗しました: {', '.join(failed)}")
