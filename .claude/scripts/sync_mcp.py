@@ -153,11 +153,14 @@ def add_json(name, defn):
         capture_output=True, text=True)
 
 
-def apply_server(name, defn):
+def apply_server(name, defn, previous_defn):
     """1 サーバーを user scope に投入する。成功すれば True。
 
     まず add-json をそのまま試し、失敗したときだけ remove してから retry する。
-    先に remove してしまうと、add に失敗したときに動いていたサーバーを失う。
+    retry の add も失敗したら、remove する前の定義（previous_defn）に戻す。
+    戻すのは既存サーバーの update が失敗した場合だけで、新規追加（previous_defn が
+    None）の場合は戻す対象が無い。復元にまで失敗したら、それだけは必ず出力する
+    ——設定が消えたままになる唯一のケースなので、黙らせてはならない。
     """
     done = add_json(name, defn)
     if done.returncode != 0:
@@ -165,7 +168,17 @@ def apply_server(name, defn):
                        capture_output=True, text=True)
         done = add_json(name, defn)
     if done.returncode != 0:
-        print(f"  ✗ {name}: {done.stderr.strip() or done.stdout.strip()}")
+        message = done.stderr.strip() or done.stdout.strip()
+        if previous_defn is None:
+            print(f"  ✗ {name}: {message}")
+        else:
+            restore = add_json(name, previous_defn)
+            if restore.returncode == 0:
+                print(f"  ✗ {name}: {message}（元の定義に戻しました）")
+            else:
+                restore_message = restore.stderr.strip() or restore.stdout.strip()
+                print(f"  ✗ {name}: {message}"
+                      f"（元の定義への復元にも失敗しました。手動で確認してください: {restore_message}）")
         return False
     return True
 
@@ -184,7 +197,8 @@ def main():
         print("⚠ claude CLI が見つかりません。MCP の同期をスキップします。")
         return 0
 
-    diff = diff_servers(manifest, read_current_servers(CLAUDE_CONFIG_PATH))
+    current = read_current_servers(CLAUDE_CONFIG_PATH)
+    diff = diff_servers(manifest, current)
 
     skipped = [n for n in diff["add"] + diff["update"]
                if missing_local_command(manifest["mcpServers"][n])]
@@ -201,7 +215,8 @@ def main():
         if diff["update"]:
             print(f"更新: {', '.join(n for n in diff['update'] if n not in skipped) or 'なし'}")
 
-    failed = [name for name in targets if not apply_server(name, manifest["mcpServers"][name])]
+    failed = [name for name in targets
+              if not apply_server(name, manifest["mcpServers"][name], current.get(name))]
 
     known = available_env_names(SETTINGS_PATH)
     for var, servers in sorted(required_env_vars(manifest).items()):
