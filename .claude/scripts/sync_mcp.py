@@ -209,10 +209,27 @@ def missing_local_command(defn):
     return command.startswith("/") and not os.access(command, os.X_OK)
 
 
+# claude CLI 1 回あたりの待ち時間の上限（秒）。
+# add-json はローカルの JSON を書き換えるだけなので通常は 1 秒未満で終わる。
+# 60 秒は npm レジストリの解決などで遅い環境でも十分な余裕を取りつつ、応答しなくなった CLI が
+# setup.sh 全体を無期限に止めるのを防ぐ長さである。`||` のガードは返ってこないプロセスには効かない。
+CLAUDE_TIMEOUT_SECONDS = 60
+
+
+def run_claude(args):
+    """claude CLI を実行する。応答が無ければ、他の失敗と同じ形で返す。"""
+    command = ["claude", *args]
+    try:
+        return subprocess.run(command, capture_output=True, text=True,
+                              timeout=CLAUDE_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(
+            command, 1, "",
+            f"claude が {CLAUDE_TIMEOUT_SECONDS} 秒以内に応答しませんでした")
+
+
 def add_json(name, defn):
-    return subprocess.run(
-        ["claude", "mcp", "add-json", name, json.dumps(defn), "--scope", "user"],
-        capture_output=True, text=True)
+    return run_claude(["mcp", "add-json", name, json.dumps(defn), "--scope", "user"])
 
 
 def apply_server(name, defn, previous_defn):
@@ -224,8 +241,7 @@ def apply_server(name, defn, previous_defn):
     """
     done = add_json(name, defn)
     if done.returncode != 0:
-        subprocess.run(["claude", "mcp", "remove", name, "--scope", "user"],
-                       capture_output=True, text=True)
+        run_claude(["mcp", "remove", name, "--scope", "user"])
         done = add_json(name, defn)
     if done.returncode != 0:
         message = done.stderr.strip() or done.stdout.strip()
