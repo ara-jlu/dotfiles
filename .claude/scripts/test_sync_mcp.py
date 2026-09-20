@@ -1,3 +1,5 @@
+import json
+import pathlib
 import unittest
 
 import sync_mcp
@@ -127,6 +129,39 @@ class TestDiffServers(unittest.TestCase):
     def test_sorts_each_group_by_name(self):
         manifest = {"mcpServers": {"zebra": {"command": "a"}, "alpha": {"command": "b"}}}
         self.assertEqual(sync_mcp.diff_servers(manifest, {})["add"], ["alpha", "zebra"])
+
+
+class TestTheShippedManifest(unittest.TestCase):
+    """リポジトリに実際に置くマニフェストを対象にした検査。"""
+
+    @classmethod
+    def setUpClass(cls):
+        path = pathlib.Path(__file__).resolve().parent.parent / "mcp-servers.json"
+        cls.manifest = json.loads(path.read_text(encoding="utf-8"))
+
+    def test_contains_no_plaintext_secret(self):
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(self.manifest), [])
+
+    def test_declares_the_research_servers(self):
+        names = set(self.manifest["mcpServers"])
+        self.assertIn("exa", names)
+        self.assertIn("firecrawl", names)
+
+    def test_keeps_the_servers_that_are_already_configured(self):
+        names = set(self.manifest["mcpServers"])
+        for existing in ("playwright", "context7", "notion", "google-analytics",
+                         "pencil", "gsc", "chrome-devtools", "n8n-mcp"):
+            self.assertIn(existing, names)
+
+    def test_every_server_normalizes_to_a_known_transport(self):
+        for name, defn in self.manifest["mcpServers"].items():
+            with self.subTest(server=name):
+                self.assertIn(sync_mcp.normalize_server(defn)["type"], {"stdio", "http", "sse"})
+
+    def test_the_research_servers_take_their_keys_from_env_refs(self):
+        needed = sync_mcp.required_env_vars(self.manifest)
+        self.assertIn("exa", needed.get("EXA_API_KEY", set()))
+        self.assertIn("firecrawl", needed.get("FIRECRAWL_API_KEY", set()))
 
 
 if __name__ == "__main__":
