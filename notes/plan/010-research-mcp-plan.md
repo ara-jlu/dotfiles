@@ -489,8 +489,7 @@ git commit -m "feat(mcp): declare the MCP server manifest with exa and firecrawl
 - Consumes: Task 1 / 2 の純粋関数、Task 3 のマニフェスト。
 - Produces: `python3 .claude/scripts/sync_mcp.py` で実行できる CLI。Task 5 の `setup.sh` がこれを呼ぶ。
 
-この層は原則テストしない。純粋関数に処理を寄せ、ここは薄く保つことで担保する。例外は `load_manifest` で、
-「マニフェストが不正な JSON なら即停止する」は設計が明示した振る舞いなのでテストで固定する。
+この層は原則テストしない。純粋関数に処理を寄せ、ここは薄く保つことで担保する。例外は `load_manifest` で、「マニフェストが不正な JSON なら即停止する」は設計が明示した振る舞いなのでテストで固定する。
 
 エラー処理の強度（設計書のとおり）:
 
@@ -795,15 +794,12 @@ git commit -m "feat(setup): sync MCP servers from the manifest and document the 
 
 ## 実装後に人間が行うこと
 
-このブランチの実装は、キーが無くても完了する。キーに依存する受け入れ基準（設計書の 3 と 4）は
-人間の確認になる。
+このブランチの実装は、キーが無くても完了する。キーに依存する受け入れ基準（設計書の 3 と 4）は人間の確認になる。
 
 1. exa と firecrawl の API キーを取得する。
 2. `~/.claude/settings.json` の `env` に `EXA_API_KEY` / `FIRECRAWL_API_KEY` を追加する。
    欠けている `GA4_PROPERTY_ID` もここで埋める。
-3. `n8n-mcp` の API キーを `settings.json` の `N8N_API_KEY` に移し、**n8n 側でローテーションする**
-   （現行のキーは設計時の調査で会話ログに露出した）。
+3. `n8n-mcp` の API キーを `settings.json` の `N8N_API_KEY` に移し、**n8n 側でローテーションする**（現行のキーは設計時の調査で会話ログに露出した）。
 4. `python3 .claude/scripts/sync_mcp.py` を実行し、Claude Code を再起動する。
 5. `claude mcp list` で exa / firecrawl が接続済みであることを確認する。
-6. `ecc:deep-research` を起動し、WebSearch フォールバックではなく `web_search_exa` /
-   `firecrawl_search` が実際に呼ばれることを確認する。
+6. `ecc:deep-research` を起動し、WebSearch フォールバックではなく `web_search_exa` / `firecrawl_search` が実際に呼ばれることを確認する。

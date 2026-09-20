@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 """MCP サーバー定義を dotfiles のマニフェストから ~/.claude.json へ冪等に反映する。
 
-正典は .claude/mcp-servers.json である。このスクリプトはそれを読み、claude CLI 経由で
-user scope に反映する。**マニフェストに平文の秘密を書いてはならない** — 秘密は必ず
-${VAR} 参照にし、実値は ~/.claude/settings.json の env に置く。平文を見つけたら
-このスクリプトは即停止する。リポジトリに push した秘密は履歴に残り、取り返しがつかない。
+正典は .claude/mcp-servers.json である。このスクリプトはそれを読み、claude CLI 経由で user scope に反映する。**マニフェストに平文の秘密を書いてはならない** — 秘密は必ず ${VAR} 参照にし、実値は ~/.claude/settings.json の env に置く。平文を見つけたらこのスクリプトは即停止する。リポジトリに push した秘密は履歴に残り、取り返しがつかない。
 
 テスト: cd .claude/scripts && python3 -m unittest test_sync_mcp -v
 """
@@ -76,8 +73,7 @@ def required_env_vars(manifest):
 def normalize_server(defn):
     """比較用に定義を正規化する。
 
-    claude mcp add-json が保存した定義には "type" や空の "env" が補われる一方、
-    マニフェストではそれらを省いて書く。正規化しないと毎回「更新あり」と判定され、冪等にならない。
+    claude mcp add-json が保存した定義には "type" や空の "env" が補われる一方、マニフェストではそれらを省いて書く。正規化しないと毎回「更新あり」と判定され、冪等にならない。
     """
     out = dict(defn)
     if "type" not in out:
@@ -140,8 +136,7 @@ def available_env_names(settings_path):
 def missing_local_command(defn):
     """command が絶対パスで、その実行ファイルが無ければ True。
 
-    pencil のようにローカルアプリに依存するサーバーを、インストールされていないマシンで
-    skip するために使う。相対コマンド（npx 等）は PATH 解決に任せるので対象外。
+    pencil のようにローカルアプリに依存するサーバーを、インストールされていないマシンで skip するために使う。相対コマンド（npx 等）は PATH 解決に任せるので対象外。
     """
     command = defn.get("command", "")
     return command.startswith("/") and not os.access(command, os.X_OK)
@@ -158,9 +153,7 @@ def apply_server(name, defn, previous_defn):
 
     まず add-json をそのまま試し、失敗したときだけ remove してから retry する。
     retry の add も失敗したら、remove する前の定義（previous_defn）に戻す。
-    戻すのは既存サーバーの update が失敗した場合だけで、新規追加（previous_defn が
-    None）の場合は戻す対象が無い。復元にまで失敗したら、それだけは必ず出力する
-    ——設定が消えたままになる唯一のケースなので、黙らせてはならない。
+    戻すのは既存サーバーの update が失敗した場合だけで、新規追加（previous_defn が None）の場合は戻す対象が無い。復元にまで失敗したら、それだけは必ず出力する——設定が消えたままになる唯一のケースなので、黙らせてはならない。
     """
     done = add_json(name, defn)
     if done.returncode != 0:
