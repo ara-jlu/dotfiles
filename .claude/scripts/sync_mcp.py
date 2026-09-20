@@ -16,10 +16,9 @@ SECRET_NAME_RE = re.compile(r"(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTHORIZATIO
 # args の中で、次の要素が秘密になるフラグ。
 SECRET_FLAG_RE = re.compile(r"^--?(api[-_]?key|token|secret|password)$", re.I)
 
-# 値がまるごと ${VAR} の参照になっているか。
-VAR_REF_RE = re.compile(r"^\$\{[A-Za-z_][A-Za-z0-9_]*\}$")
-
-# 文字列の中に含まれる ${VAR} の参照。
+# 文字列の中に ${VAR} の参照が少なくとも1つ含まれているか。
+# "Bearer ${TOKEN}" のように値の一部が ${VAR} 参照であれば安全とみなす。
+# required_env_vars もこの正規表現で ${VAR} を拾うため、両者の判断基準は常に一致する。
 VAR_IN_TEXT_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
 
@@ -31,7 +30,7 @@ def scan_plaintext_secrets(manifest):
             for key, value in sorted(defn.get(section, {}).items()):
                 if not SECRET_NAME_RE.search(key):
                     continue
-                if isinstance(value, str) and VAR_REF_RE.match(value):
+                if isinstance(value, str) and VAR_IN_TEXT_RE.search(value):
                     continue
                 found.append(f"{name}: {section}.{key}")
 
@@ -41,7 +40,7 @@ def scan_plaintext_secrets(manifest):
                 continue
             if not SECRET_FLAG_RE.match(args[i - 1]):
                 continue
-            if isinstance(arg, str) and VAR_REF_RE.match(arg):
+            if isinstance(arg, str) and VAR_IN_TEXT_RE.search(arg):
                 continue
             found.append(f"{name}: args[{i}]")
     return found

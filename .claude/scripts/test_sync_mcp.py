@@ -26,10 +26,18 @@ class TestScanPlaintextSecrets(unittest.TestCase):
         manifest = {"mcpServers": {"context7": {"args": ["@upstash/context7-mcp", "--api-key", "${CONTEXT7_API_KEY}"]}}}
         self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), [])
 
+    def test_accepts_an_embedded_var_reference_after_a_secret_flag_in_args(self):
+        manifest = {"mcpServers": {"context7": {"args": ["@upstash/context7-mcp", "--api-key", "key-${CONTEXT7_API_KEY}"]}}}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), [])
+
     def test_flags_a_plaintext_authorization_header(self):
         manifest = {"mcpServers": {"remote": {"headers": {"Authorization": "Bearer fc-real"}}}}
         self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest),
                          ["remote: headers.Authorization"])
+
+    def test_accepts_an_embedded_var_reference_in_an_authorization_header(self):
+        manifest = {"mcpServers": {"remote": {"headers": {"Authorization": "Bearer ${TOKEN}"}}}}
+        self.assertEqual(sync_mcp.scan_plaintext_secrets(manifest), [])
 
     def test_reports_every_offending_location(self):
         manifest = {"mcpServers": {
