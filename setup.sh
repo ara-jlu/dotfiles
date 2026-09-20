@@ -92,6 +92,12 @@ ln -sf "$DOTFILES_DIR/.claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 
 echo "✓ Claude Code設定のリンクが完了しました"
 
+# MCP サーバー設定の同期
+# 正典は .claude/mcp-servers.json。秘密は ${VAR} 参照で、実値は ~/.claude/settings.json の env に置く。
+echo "MCP サーバー設定を同期しています..."
+python3 "$DOTFILES_DIR/.claude/scripts/sync_mcp.py" \
+    || echo "⚠ MCP 設定の同期に失敗しました（他の設定は適用済みです）"
+
 # AeroSpace設定のセットアップ
 echo "AeroSpace設定をセットアップしています..."
 backup_if_exists "$HOME/.config/aerospace"
