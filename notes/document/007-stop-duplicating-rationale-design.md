@@ -45,9 +45,9 @@ dotfiles 内訳（`.py` のみ）:
 
 `unwrap.py` は冒頭の docstring で正典の所在を宣言している。
 
-> **規約と変換規則の正典は notes/document/008-no-hard-wrap-japanese-design.md**（dotfiles）である。検証の4条件は、すべてそこで決めている。
+> **規約と変換規則の正典は notes/document/008-no-hard-wrap-japanese-design.md**（dotfiles）である。結合点の空白・触らないものの一覧・検証の4条件は、すべてそこで決めている。規則を変えるときは設計を先に直す。
 
-そのうえで、同じ根拠を本文に写している。
+そのうえで、同じ根拠を本文に写している（表の行番号は本タスクの変更前のものである）。
 
 | `unwrap.py` | `notes/document/008-no-hard-wrap-japanese-design.md` の対応箇所 |
 | --- | --- |
@@ -132,7 +132,7 @@ Claude Code の rules 機能を使う。公式ドキュメント（`code.claude.
 
 ### 折り返しの規約
 
-新しく書くコメントは `notes/document/008-no-hard-wrap-japanese-design.md` の規約に従う（桁数で折り返さない）。既存の日本語コメントは既にこの形になっている。
+新しく書くコメントは `notes/document/008-no-hard-wrap-japanese-design.md` の規約に従う（桁数で折り返さない）。**既存の日本語コメントにはまだ桁数で折り返されたものが残っている** —— `uat_attach.py` と `j_finish.py` の docstring がそれである。本タスクで直すのは触った行だけで、残りの整形は行わない（`tasks/008` が `.py` を対象外としたのと同じ理由で、触る機会に合わせて直す）。
 
 ## 適用の範囲と順序
 
@@ -154,7 +154,7 @@ Claude Code の rules 機能を使う。公式ドキュメント（`code.claude.
 - **消したコメントの内容が設計書に存在すること。** 消した各箇所について、対応する設計書の節を示せること。示せないものは消さずに移す。
 - **残したポインタが内容を要約していないこと。** 数・条件の列挙・項目名を含まないこと。
 - **`unwrap.py` の「検証の4条件」が直っていること。** この欠陥は本タスクの出発点なので、残っていれば失敗である。
-- **テストが green であること。** `python3 -m unittest test_unwrap -v`（139件）、`test_j_finish.py`、`test_uat_attach.py`。コメントの変更がコードの挙動を変えていないことの担保になる。
+- **テストが green であること。** `python3 -m unittest test_unwrap -v`、`test_j_finish.py`、`test_uat_attach.py`。コメントの変更がコードの挙動を変えていないことの担保になる。
 - **`setup.sh` の `rules` リンクが効くこと。** 実行後に `~/.claude/rules/` が dotfiles を指し、`comment-rationale.md` と `skill-language.md` の両方が見えること。
 
 UI を変えないので UAT は行わない。
