@@ -1,23 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "alwaysThinkingEnabled": true,
-  "permissions": {
-    "allow": [
-      "mcp__pencil",
-      "mcp__notion__notion-fetch",
-      "mcp__notion__notion-search",
-      "mcp__notion__notion-create-pages",
-      "mcp__notion__notion-update-page",
-      "mcp__playwright__browser_navigate",
-      "mcp__playwright__browser_take_screenshot",
-      "mcp__playwright__browser_snapshot",
-      "Bash(gh pr create *)",
-      "Bash(gh pr view *)",
-      "Bash(git push *)",
-      "Bash(git checkout *)",
-      "Bash(git pull *)"
-    ]
-  },
+  "cleanupPeriodDays": 9999,
   "env": {
     "CONTEXT7_API_KEY": "<YOUR_CONTEXT7_API_KEY>",
     "EXA_API_KEY": "<YOUR_EXA_API_KEY>",
@@ -27,12 +10,48 @@
     "DISCORD_WEBHOOK_URL": "<YOUR_DISCORD_WEBHOOK_URL>",
     "DISCORD_MENTION_USER": "<YOUR_DISCORD_USER_ID>",
     "NOTION_TASK_COLLECTION_URL": "<YOUR_NOTION_TASK_COLLECTION_URL>",
-    "NOTION_NOTES_COLLECTION_URL": "<YOUR_NOTION_NOTES_COLLECTION_URL>"
+    "NOTION_NOTES_COLLECTION_URL": "<YOUR_NOTION_NOTES_COLLECTION_URL>",
+    "ECC_CONTEXT_MONITOR_COST_WARNINGS": "false",
+    "ECC_GATEGUARD": "off",
+    "ECC_CONTEXT_WINDOW_TOKENS": "1000000"
   },
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "playwright",
-    "context7",
-    "notion"
-  ]
+  "permissions": {
+    "defaultMode": "auto"
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  },
+  "enabledPlugins": {
+    "ecc@ecc": true,
+    "superpowers@superpowers-marketplace": true,
+    "episodic-memory@superpowers-marketplace": true
+  },
+  "extraKnownMarketplaces": {
+    "ecc": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/affaan-m/ECC.git"
+      }
+    },
+    "superpowers-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers-marketplace"
+      }
+    }
+  },
+  "language": "japanese",
+  "effortLevel": "medium",
+  "tui": "fullscreen",
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
+  "autoMemoryEnabled": false,
+  "skipDangerousModePermissionPrompt": true,
+  "remoteControlAtStartup": true,
+  "agentPushNotifEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "voiceEnabled": true
 }
