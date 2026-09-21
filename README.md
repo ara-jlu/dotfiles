@@ -137,6 +137,7 @@ cp .claude/settings.json.sample .claude/settings.json
 
 - このセットアップはmacOS環境を想定しています
 - 設定を変更した場合は、このリポジトリ内のファイルを編集してください
+- `.claude/statusline-command.sh` は `jq` を使います。入っていないマシンでは statusLine が `Unknown | Context: --` になるので `brew install jq` を実行してください（他の設定には影響しません）
 
 ---
 

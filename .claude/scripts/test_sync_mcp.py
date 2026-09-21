@@ -242,6 +242,14 @@ class TestTheShippedManifest(unittest.TestCase):
                          "gsc", "chrome-devtools", "n8n-mcp"):
             self.assertIn(existing, names)
 
+    def test_does_not_bring_back_a_retired_server(self):
+        """廃止したサーバーが貼り戻されたら落とす。
+
+        他の検査はすべて assertIn なので、消したはずの定義を貼り直しても緑のままになる。
+        廃止を「やった」で終わらせず、以後も守られる形にしておく。
+        """
+        self.assertNotIn("pencil", self.manifest["mcpServers"])
+
     def test_every_server_normalizes_to_a_known_transport(self):
         for name, defn in self.manifest["mcpServers"].items():
             with self.subTest(server=name):
