@@ -108,7 +108,7 @@ cp .claude/settings.json.sample .claude/settings.json
 
 - **`n8n-mcp` は現在このマシンで API アクセスができない状態です。** マニフェスト化にあたって平文のキーを `${N8N_API_KEY}` 参照に変えましたが、この変数がまだ `settings.json` の `env` に入っていません。実値を `~/.claude/settings.json` の `env` に移してください。**あわせて、以前のキーは n8n 側でローテートしてください** — 設計時の調査で会話ログに平文のまま現れたため、露出したものとして扱う必要があります。
 - `notion` は OAuth で認証します。定義を入れ直したあとは Claude Code 内で `/mcp` から再認証してください。
-- `pencil` はローカルアプリの絶対パスに依存します。インストールされていないマシンでは警告つきで skip されます。
+- ローカルアプリの絶対パスに依存するサーバーは、その実行ファイルが無ければ警告つきで skip されます。
 - マニフェストから消したサーバーは `~/.claude.json` からは消えません（削除の同期は行いません）。不要になったサーバーは `claude mcp remove <name> --scope user` で手動で消してください。
 
 ## Git Alias

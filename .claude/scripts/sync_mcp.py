@@ -203,7 +203,7 @@ def available_env_names(settings_path):
 def missing_local_command(defn):
     """command が絶対パスで、その実行ファイルが無ければ True。
 
-    pencil のようにローカルアプリに依存するサーバーを、インストールされていないマシンで skip するために使う。相対コマンド（npx 等）は PATH 解決に任せるので対象外。
+    ローカルアプリの実行ファイルに依存するサーバーを、インストールされていないマシンで skip するために使う。相対コマンド（npx 等）は PATH 解決に任せるので対象外。
     """
     command = defn.get("command", "")
     return command.startswith("/") and not os.access(command, os.X_OK)

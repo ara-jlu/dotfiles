@@ -56,11 +56,6 @@
       "type": "http",
       "url": "https://mcp.notion.com/mcp"
     },
-    "pencil": {
-      "type": "stdio",
-      "command": "/Applications/Pencil.app/Contents/Resources/app.asar.unpacked/out/mcp-server-darwin-arm64",
-      "args": ["--app", "desktop"]
-    },
     "playwright": {
       "type": "stdio",
       "command": "npx",

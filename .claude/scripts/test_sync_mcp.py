@@ -239,7 +239,7 @@ class TestTheShippedManifest(unittest.TestCase):
     def test_keeps_the_servers_that_are_already_configured(self):
         names = set(self.manifest["mcpServers"])
         for existing in ("playwright", "context7", "notion", "google-analytics",
-                         "pencil", "gsc", "chrome-devtools", "n8n-mcp"):
+                         "gsc", "chrome-devtools", "n8n-mcp"):
             self.assertIn(existing, names)
 
     def test_every_server_normalizes_to_a_known_transport(self):
