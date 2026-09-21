@@ -2,9 +2,9 @@
 ID: TASK-668
 Project: devops
 created_at: '2026-09-08'
-status: Not started
+status: Done
 title: 一次情報の二重化をやめる
-updated_at: '2026-09-08'
+updated_at: '2026-09-20T02:23:03Z'
 ---
 
 # 一次情報の二重化をやめる

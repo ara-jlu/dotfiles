@@ -1,4 +1,5 @@
 ---
+ID: NOTE-1167
 title: UAT 証跡の PR 添付化に skill 側を合わせる — 実装計画
 tag: [plan]
 Project: devops

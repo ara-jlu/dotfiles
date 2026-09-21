@@ -1,4 +1,5 @@
 ---
+ID: NOTE-1164
 title: UAT 証跡の PR 添付化に skill 側を合わせる (005) — 設計
 tag: [document]
 Project: devops

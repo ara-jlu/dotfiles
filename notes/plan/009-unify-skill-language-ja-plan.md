@@ -1,4 +1,5 @@
 ---
+ID: NOTE-1169
 title: 自作スキルの記述言語を日本語に統一する 実装計画
 tag: [plan]
 Project: devops

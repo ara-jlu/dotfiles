@@ -1,4 +1,5 @@
 ---
+ID: TASK-700
 title: 日本語のコメントと本文でハード折り返しをやめる
 status: Done
 Project: devops

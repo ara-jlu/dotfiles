@@ -1,4 +1,5 @@
 ---
+ID: NOTE-1168
 title: 日本語のハード折り返しをやめる 実装計画
 tag: [plan]
 Project: devops
