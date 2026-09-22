@@ -2,7 +2,7 @@
 ID: TASK-693
 Project: devops
 created_at: '2026-09-14'
-status: Not started
+status: In progress
 title: 判断の原則を CLAUDE.md に載せる
 updated_at: '2026-09-14'
 ---
