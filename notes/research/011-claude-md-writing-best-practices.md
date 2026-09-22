@@ -36,7 +36,6 @@ updated_at: 2026-09-22
 - 概要: Claude 5 世代（Opus 5 / Fable 5 / Sonnet 5）向けに Claude Code のシステムプロンプトを 80% 以上削っても、コーディング評価で計測できる劣化は無かった。旧モデル向けの制約が、新モデルを過剰に縛っていた。
 - 6 つの転換: ルールを与える → 判断を任せる / 例を並べる → インターフェースを設計する / 全部前置き → progressive disclosure / 繰り返す → tool description に一度だけ / CLAUDE.md にメモ → auto-memory / 簡素な spec → 豊かな参照。
 - CLAUDE.md について: 「軽く保ち、リポジトリが何かを簡潔に書き、トークンの大半はコードベースの落とし穴に使う。ファイルシステムを見れば分かる自明なことは書かない」。詳細は skill に切り出して CLAUDE.md から参照する。
-- skill について: 「過剰に制約しない — **ただし本当に重要な領域は例外**」。
 - `/doctor` が CLAUDE.md と skill の rightsizing を自動で提案する。
 - 参考: https://x.com/trq212/article/2080710971228918066（2026-07-24。転載 https://tool.lu/en_US/article/7Xk/preview で本文を確認）
 
@@ -50,7 +49,7 @@ updated_at: 2026-09-22
 
 - Nick Babich「5 Best practices for CLAUDE.md」: 100〜200 行以内、価値のある情報だけ、全部を 1 ファイルに入れず必要時に読むファイルの木にする。https://x.com/101babich/status/2039723575372927395
 - Aakash Gupta「Claude Code 5: How to Update Your Setup」: safe mode（カスタマイズ無効）で素の挙動をベースラインにし、素のモデルが既にできることは指示から削る。「手順ではなく結果を定義する」ほうが 5 世代では良い出力になった。https://www.aibyaakash.com/p/claude-code-5
-- Boris Cherny（Y Combinator 登壇、2026-07）: 「**半年ごとに CLAUDE.md・skills・hooks を消して、モデルが何をするか見ろ**。同じ所で繰り返しつまずいたときだけ、その指示を戻す」。https://www.youtube.com/watch?v=qyPCVqFUyDo
+- Boris Cherny の「半年ごとに全部消して素のモデルを見る」という全体方針は `notes/research/015-claude-code-features-best-practices.md` §1 に記録した。
 
 ### 比較表
 
@@ -69,9 +68,9 @@ updated_at: 2026-09-22
 - CLAUDE.md に載せてよいのは「リポジトリから導出できず、間違えても自動では検出されない」種類の情報である。判断の原則はこれに当たる。
 - 載せる形は姿勢 1 文。理由・経緯・運用の手順は載せない（Claude 5 世代では「手順ではなく判断を与える」）。
 - 効いているかの検証は挙動の観察で行い、効かなければ文言を直す。行数は増やさない。
-- dotfiles の `.claude/CLAUDE.md` は現在 70 行前後で、200 行の目標内にある。ただし「ハーネス構成」「レビュー統合」の節は手順に近いので、次に見直すときは skill 側への移動を検討する対象になる。
+- dotfiles の `.claude/CLAUDE.md` はこの変更前で 70 行で、200 行の目標内にある。どの節を skill 側へ移すかの候補は `notes/research/015-claude-code-features-best-practices.md` の「結論・推奨」が一次情報である。
 
 ### 残課題
 
 - `/doctor` を dotfiles の CLAUDE.md と自作 skill に対して実行し、提案を記録する（未実施）。
-- 「半年ごとに全消しで再ベースライン」を運用に入れるか。次のメジャーモデルの時点で判断する。
+- 全消し再ベースラインの運用判断は `notes/research/015-claude-code-features-best-practices.md` の残課題に集約した。

@@ -32,7 +32,7 @@ updated_at: 2026-09-22
 - 決定論的な作業はスクリプトに固定し、「実行しろ」と「参照として読め」を区別して書く。
 - 「skill は特定の意見・知識・ベストプラクティスを符号化するときに最も価値がある。過剰に制約しない — **ただし本当に重要な領域は例外**」（Thariq）。
 - Claude Code 側: カスタムコマンド（`.claude/commands/*.md`）は skill に統合された。`/doctor` `/code-review` `/verify` `/run` `/debug` `/batch` `/loop` などが bundled skill として同梱される。
-- 参考: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices / https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills / https://x.com/trq212/article/2080710971228918066
+- 参考: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices / https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills / https://x.com/trq212/article/2080710971228918066 / bundled skill とコマンド統合は https://code.claude.com/docs/en/best-practices
 
 #### 3. Hooks
 
@@ -52,7 +52,7 @@ updated_at: 2026-09-22
 #### 5. Memory（CLAUDE.md と auto memory）
 
 - CLAUDE.md（人が書く指示）と auto memory（Claude が書く学習。先頭 200 行 / 25KB が毎セッション読まれる）は相補的。「`#` で CLAUDE.md にメモを書く」運用は auto memory に置き換わった。CLAUDE.md には**セッション前に分かっているプロジェクト文脈**（アーキテクチャ・落とし穴・規約）だけを置く。
-- CLAUDE.md は 200 行以下。パスに紐づく規則は `.claude/rules/` に分ける。`@import` は起動時に全部読まれるので分割の節約効果は無い（整理の効果だけ）。
+- CLAUDE.md 自体のサイズ・分割・書き方の基準は `notes/research/011-claude-md-writing-best-practices.md` に記録した。
 - 参考: https://code.claude.com/docs/en/memory
 
 #### 6. 検証と自律実行
@@ -77,7 +77,7 @@ updated_at: 2026-09-22
 dotfiles のハーネスに照らすと、次の点が見直し候補になる。
 
 1. **CLAUDE.md の「ハーネス構成」「レビュー統合」は手順に近い。** 公式の基準では skill か rule に移す対象で、CLAUDE.md には「superpowers が背骨、ECC が専門作業」という一文と落とし穴だけ残す形になる。ただし 006 の結論（少数原則 + 上書き可能な既定）と整合するかを先に確かめる。
-2. **「例外なく毎回」の規則は hook に移す。** 現在 CLAUDE.md に「絶対に〜しない」で書いているもののうち、機械的に判定できるもの（worktree 外への書き込み、`docs/superpowers/` への commit 等）は `PreToolUse` hook の候補である。
+2. **「例外なく毎回」の規則は hook に移す。** 自作 skill（例: `j-devflow` の「`docs/superpowers/` に commit しない」「subagent を worktree に固定する」）に「絶対に〜しない」で書いているもののうち、機械的に判定できるものは `PreToolUse` hook の候補である。CLAUDE.md 自体にはこの種の規則は無い。
 3. **自作 skill の description を「短く、トリガー条件を具体的に」で見直す。** `j-*` の description は「〜に該当する場合」の列挙が長い。OpenAI の指摘（長い description は切り詰められ矛盾する）と Anthropic の指摘（under-trigger する）を両立させる書き方に揃える。
 4. **`/doctor` を実行して提案を記録する。** 手で見直す前に、公式の rightsizing を一度通す。
 5. **半年ごとの全消し再ベースラインを運用に入れるかを決める。** 次のメジャーモデルの時点で `CLAUDE_CODE_SIMPLE=1` 相当の比較を行い、素のモデルが既にできることを指示から削る。
