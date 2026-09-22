@@ -9,7 +9,7 @@ argument-hint: "[タスク/アイデアの文（任意）]"
 
 ## 概要
 
-Joifup の **Task**（status `Not started`）を `tasks/` に記録する。単体で完結する軽量な操作で、見つけた課題を backlog として一時置きする場合や、`j-devflow` の入口として使う。詳細な要件は各タスクの brainstorming に委ね、ここでは title と概要のみを記録する。永続化は `md2joifup --db tasks` に委譲する。
+Joifup の **Task**（status `Not started`）を `tasks/` に記録する。単体で完結する軽量な操作で、見つけた課題を backlog として一時置きする場合や、`j-devflow` の入口として使う。詳細な要件は各タスクの brainstorming に委ね、ここでは title と概要、必要なら未検証のメモのみを記録する。永続化は `md2joifup --db tasks` に委譲する。
 
 ## 使う場面
 
