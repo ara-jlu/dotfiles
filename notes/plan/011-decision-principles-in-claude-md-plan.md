@@ -11,7 +11,7 @@ updated_at: 2026-09-22
 
 **Goal:** `.claude/CLAUDE.md` の先頭に「判断の原則」の節（見出し + 1 文）を追加する。
 
-**Architecture:** 変更は markdown ファイル 1 つに 3 行（見出し・空行・本文）を挿入するだけである。何を載せて何を載せないかの線引きは設計書 `notes/document/011-decision-principles-in-claude-md-design.md` で確定しており、この計画はその文言を一字も変えずに置く。
+**Architecture:** 変更は markdown ファイル 1 つに 4 行（見出し・空行・本文・区切りの空行）を挿入するだけである。何を載せて何を載せないかの線引きは設計書 `notes/document/011-decision-principles-in-claude-md-design.md` で確定しており、この計画はその文言を一字も変えずに置く。
 
 **Tech Stack:** markdown、git。
 

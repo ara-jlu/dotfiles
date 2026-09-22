@@ -10,7 +10,7 @@ updated_at: 2026-09-22
 
 ## 概要
 
-`notes/research/015-claude-code-features-best-practices.md` の「結論・推奨」にある 5 つの見直し候補（CLAUDE.md の手順節を skill / rule へ移す、例外なしの規則を hook へ移す、自作 skill の description を短く具体的に、`/doctor` の実行、半年ごとの全消し再ベースライン）の優先順位を決め、個別に起票する。
+`notes/research/015-claude-code-features-best-practices.md` の「結論・推奨」にある 5 つの見直し候補の優先順位を決め、個別に起票する。候補の一覧は同ノートが一次情報なので、ここには写さない。
 
 ## 背景
 

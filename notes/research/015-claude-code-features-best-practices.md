@@ -13,7 +13,7 @@ updated_at: 2026-09-22
 
 `tasks/011` で CLAUDE.md の書き方を調べた際（`notes/research/011-claude-md-writing-best-practices.md`）、CLAUDE.md 単体ではなく、skills・hooks・subagents・auto-memory・検証の仕組みを含めた全体で「何をどこに置くか」が変わっていることが分かった。`notes/research/006-harness-principles.md` の論点（ルール列挙 vs 少数原則）の続きとして、2026-09 時点の公式ドキュメントと実務者の発言を機能別に整理し、dotfiles のハーネス（superpowers + ECC + Joifup）を見直すための材料にする。
 
-ユーザーが X でいいねした 2 投稿も出発点に含めた。1 つは Boris Cherny の Y Combinator 登壇の紹介（「まず全部消してみろ」）、もう 1 つは OpenAI Developers の「GPT-6 Astra 向けに skills / AGENTS.md / プロンプトを見直せ」への反応である。後者は Claude ではなく Codex の話だが、主張は Anthropic 側と同じ方向を向いているので併記する。
+出発点にした X の投稿が 2 つある。1 つは Boris Cherny の Y Combinator 登壇の紹介（「まず全部消してみろ」）、もう 1 つは OpenAI Developers の「GPT-6 Astra 向けに skills / AGENTS.md / プロンプトを見直せ」への反応である。後者は Claude ではなく Codex の話だが、主張は Anthropic 側と同じ方向を向いているので併記する。
 
 ### 調査結果
 
@@ -22,7 +22,7 @@ updated_at: 2026-09-22
 - Boris Cherny（Claude Code 作者、Y Combinator Startup School 2026-07）: Opus 5 でシステムプロンプトの 80% を削った。内部では `CLAUDE_CODE_SIMPLE=1` でシステムプロンプトとツールプロンプトを全部剥がす「simple mode」を ablation に使う。「**半年ごとに CLAUDE.md・skills・hooks を消して、モデルが何をするか見ろ**」。再構築は「削る → 使う → 同じ所で繰り返しつまずいたときだけ、その指示を戻す」の順で、推測で書かない。「モデルは指示を毎回読むので、本当に必要な指示だけを入れる」。
 - 同登壇: 「プロンプトエンジニアリングより、少し難しすぎる課題を与えて、自分で検証できる手段を持たせることが重要。**検証が、人が最も正しくやれていない唯一のこと**」。「タスク・ガードレール・終了条件を書いて、あとはモデルに任せる」。「LinkedIn や Twitter の一発テクニックは無い。経験的にやるしかない」。
 - OpenAI Developers「Rethinking skills and prompts for GPT-6 Astra」（2026-09-11）: skill の description は「いつ使うか」が明確な範囲で**できるだけ短く**（悪い例「DB・クエリ・モデル・永続化を扱うときに使う」→ 良い例「migration を追加・変更・レビューするときに使う」）。skill の root は最小のルーターにして支援文書へ振る（progressive disclosure）。「毎回 architecture.md を読め」ではなく「サービス境界なら architecture.md」のように文脈で指す。旧モデル向けの「まず確認しろ」は新モデルを萎縮させるので見直す。**「done」を先に定義する**。
-- 参考: https://www.youtube.com/watch?v=qyPCVqFUyDo / https://sozai.app/transcript/boris-cherny-cut-80-percent-claude-code-prompt/ / https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra / いいね投稿 https://x.com/AiAircle34052/status/2096459879955550518 、 https://x.com/gigabit_million/status/2099264412876247359
+- 参考: https://www.youtube.com/watch?v=qyPCVqFUyDo / https://sozai.app/transcript/boris-cherny-cut-80-percent-claude-code-prompt/ / https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra / X の投稿 https://x.com/AiAircle34052/status/2096459879955550518 、 https://x.com/gigabit_million/status/2099264412876247359
 
 #### 2. Skills
 
