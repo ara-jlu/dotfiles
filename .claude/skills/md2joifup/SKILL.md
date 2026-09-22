@@ -24,7 +24,7 @@ python3 scripts/md2joifup.py <source.md> --type <tag> \
   [--notes-dir DIR] [--tasks-dir DIR] [--slug SLUG] [--keep-source]
 ```
 
-**Task 作成（tasks db）：** `python3 scripts/md2joifup.py <body.md> --db tasks [--status "Not started"] [--parent ID] [--project ID] [--slug EN-SLUG]` — house-style の frontmatter（title/status/Project/parent、timestamps、ID なし）で `tasks/NNN-slug.md` を作成する。`--status` は tasks schema に対して検証される。`--db notes`（既定）は変わらない。
+**Task 作成（tasks db）：** `python3 scripts/md2joifup.py <body.md> --db tasks [--status "Not started"] [--parent ID] [--project ID] [--slug EN-SLUG]` — house-style の frontmatter（title/status/Project/parent、timestamps、ID なし）で `tasks/NNN-slug.md` を作成する。`--status` は tasks schema に対して検証される。`--db notes`（既定）は変わらない。 **本文の規則は `j-task` が持つ。** `--db tasks` と `--new-task` を呼ぶのは `j-task` の内部からに限る — 他のスキルやセッションが直接叩くと本文の規則を通らない。
 
 - `--type` — Notes の**content タグ**（`plan`、`document`、`log`、`research`、`memo`）。schema のタグ選択肢に対して検証される。
 - `--task` — 既存の Task をその**filename id**（`NNN-slug`、パスではなく、daemon の `ID: TASK-N` **でもない** — これらは別物で一致しない）で紐づける。ブランチの判定は呼び出し側の責務である：ブランチは `feature-<filename-id>` なので、`feature-` の接頭辞を外して id を取り出し、ここに渡す。**md2joifup は `--task`（および `--parent`）が実在する `tasks/` ファイルに解決できるかを検証する**。できなければエラーにする — daemon の `ID` や typo は、黙って note の番号を誤るのではなく、明示的にエラーで落ちる。
