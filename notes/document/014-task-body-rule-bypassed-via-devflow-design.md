@@ -23,12 +23,12 @@ updated_at: 2026-09-22
 
 ### 起票は j-task に集約する
 
-流れの中の起票を含め、新しい Task を作るときは必ず `j-task` を経由する。`md2joifup --db tasks`（および `--new-task`）を呼ぶのは `j-task` の内部からに限る。機械検査は置かず、起動を確実にする側から直す。
+流れの中の起票を含め、新しい Task を作るときは必ず `j-task` を経由する。`md2joifup --db tasks` を呼ぶのは `j-task` の内部からに限る（`--new-task` は本文の無い Task を作るだけなので対象外 — `j-research` / `j-doc` が正当に使っている）。機械検査は置かず、起動を確実にする側から直す。
 
 - `j-task/SKILL.md` の `description` に、実際に発火しなかった発話を起動語として足す: 「タスク起票して」「タスクにしておいて」「別タスクに切り出して」「follow-up を起票」「残余を起票」「申し送りのタスクを作って」。さらに j-devflow・brainstorming・最終レビュー・PM セッションの流れの中で Task を作るときも経由すると明記する。
 - `j-devflow/SKILL.md`: 流れの中で生まれる Task（brainstorming の分解で出る子タスク、最終レビュー・fix ループで本ブランチで閉じない残余）も `/j-task` 経由と明記し、「よくある失敗」に「残余を `md2joifup --db tasks` で直接起票する」を足す。
 - `j-finish/SKILL.md`: 「よくある失敗」に「残余タスクを `j-task` を経由せず起票する」を足す。j-finish 自身は起票しないので手順は触らない。
-- `md2joifup/SKILL.md`: 「Task 作成（tasks db）」の段落に「本文の規則は `j-task` が持つ。呼び出すのは `j-task` の内部からに限る（`--new-task` も同様）」を足す。`user-invocable` を持たないので `description` に起動語は足さない。
+- `md2joifup/SKILL.md`: 「Task 作成（tasks db）」の段落に「本文の規則は `j-task` が持つ。呼び出すのは `j-task` の内部からに限る」を足す（`--new-task` は対象外と明記する）。`user-invocable` を持たないので `description` に起動語は足さない。
 - `CLAUDE.md`（global）は触らない。規則はスキルに閉じる。
 
 ### 本文に第 3 の節「起票時のメモ（未検証）」を許す
