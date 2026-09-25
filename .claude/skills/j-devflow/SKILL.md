@@ -72,7 +72,7 @@ j-devflow には、異なる 2 つのリスク軸を制御する独立したモ�
 status・tag・フォルダ名は Joifup のスキーマ（`.joifup/databases/<id>/schema.yaml`）を読む — 絶対にハードコードしない。
 
 **Phase A — Plan（対話）**
-1. `tasks/` の下に Joifup の **Task** を用意する: 新規 → `/j-task` を実行する。既存の backlog → その filename id を使う。その id を控える — すべてがこれを起点にする。
+1. `tasks/` の下に Joifup の **Task** を用意する: 新規 → `/j-task` を実行する。既存の backlog → その filename id を使う。その id を控える — すべてがこれを起点にする。 **流れの中で生まれる Task も同じ経路である** — brainstorming の分解で出る子タスク、最終レビュー・fix ループで本ブランチでは閉じない残余は `/j-task` で起票し、`md2joifup --db tasks` を直接叩かない。事前調査は `j-task` の `## 起票時のメモ（未検証）` に置く。
 2. ブランチ: **ハイフン命名（スラッシュなし）** ＋ TASK-id の注入 — `feature-001-slug` であり、`feature/001-slug` では**ない**。ネイティブの `EnterWorktree` は worktree ディレクトリ名で `/` を `+` に置き換えるし、スラッシュ由来の worktree は SDD subagent の書き込みを主チェックアウトへ漏らした事例がある（tasks/154, 155、根本原因は 156）。隔離は `superpowers:using-git-worktrees` で行う。repo の `branch` スキルは使わない（Notion 向けである）。**隔離したら、worktree の絶対ルートを一度だけ取得し、実行全体を通じた正典とする: `WT="$(git rev-parse --show-toplevel)"`**（SDD の progress-ledger ヘッダに記録する）。すべての SDD dispatch は `<WT>` に固定する — 手順 7 と ガード → Worktree の隔離 を参照。
 3. `superpowers:brainstorming` → 設計。**HUMAN GATE 1: 設計承認 — 承認されるまでコードを書かない**（attended: 人間が承認する。`-auto`: セッションが brainstorming 自身の推奨アプローチを自動承認し、**モード**の規定に従ってエスカレーションする）。subagent には絶対にしない（これは設計の対話である）。設計ドキュメントを書くときは**staging パス**（scratchpad）を指定し、`docs/superpowers/specs/` は指定し**ない**。そこに commit も**しない**。手順 4 が spec の唯一の commit である。
 4. staging した spec を `md2joifup` で `notes/document/` へ（`--type document --task <id>`）。この移動 ＋ frontmatter が spec の**唯一の commit** である。（brainstorming が既に `docs/superpowers/specs/` の下に commit していた場合、md2joifup の既定の移動がそれを取り除く — その移設を commit する。）
@@ -104,6 +104,7 @@ status・tag・フォルダ名は Joifup のスキーマ（`.joifup/databases/<i
 - 計画が、明示されていない Phase A のコンテキストに依存する — 計画は、設計の対話なしで fresh な SDD の orchestrator（あるいは将来の読者）が実行できる self-contained な契約でなければならない。（重要なのはセッション境界ではなくこちらである。SDD はいずれにせよ各タスクを隔離する。）
 - ラップしてしまう: 順序付けに留めず、superpowers やアダプタの動作そのものを書き換える。
 - Phase B（機械）からマージする、あるいは Done にする — それは人間のゲートの役割である。
+- 残余や子タスクを `md2joifup --db tasks` で直接起票する — `j-task` の本文規則を通らず、受け入れ基準や確定した判断を持つ Task ができる（fde の 043・049・050・057・058）。起票は常に `/j-task` 経由で、本ブランチで閉じない理由は設計文書にも残す。
 - brainstorming や writing-plans に、superpowers の既定の場所（`docs/superpowers/specs|plans/`）で spec や計画を commit させる — そこは Joifup のインデックス対象（`**/notes/**` のみ）でもなく、Task にも紐づかない。commit せずに staging に置く。commit するのは `md2joifup` だけであり、行き先は `notes/document/` と `notes/plan/` である。
 - ブランチ名にスラッシュを使う（`feature/154-…`）、あるいは SDD の subagent を `<WT>` に固定せず dispatch する — subagent は黙って主チェックアウトに着地し、そこで編集や `cargo fmt` を行う（観測済み: tasks 154, 155）。ブランチはハイフンで命名し、すべての dispatch に `<WT>` ＋ toplevel の assert を持たせる。
 - **旧 inline の `-light` を復活させる** — `-light` はもう `executing-plans` / 同一セッションの inline を意味しない。SDD（タスク毎に fresh subagent）からタスク毎レビューを引いたものである。inline の実装は正しさのばらつきを抱えていると実測（008）されたので、廃止した。

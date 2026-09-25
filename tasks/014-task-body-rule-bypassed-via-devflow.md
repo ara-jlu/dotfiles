@@ -1,7 +1,7 @@
 ---
 ID: TASK-752
 title: j-devflow 経由の起票で j-task の本文規則が適用されない
-status: Not started
+status: In review
 Project: devops
 created_at: 2026-09-20
 updated_at: 2026-09-20

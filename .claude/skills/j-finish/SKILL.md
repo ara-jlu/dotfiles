@@ -51,3 +51,4 @@ python3 scripts/j_finish.py --task-file <tasks/NNN-*.md> \
 - コミット言語: 承認コミットは**英語**、PR 本文は**日本語**。
 - UI 変更なのに `pnpm uat` を回さず PR を出す — 証跡が空になる。逆に `.uat-evidence/` を **commit** するのも誤り（gitignore 対象。PR には添付する）。
 - UAT ユーザーアクション task を新規 file する — 廃止済み。受け入れ基準は PR の `## 受け入れ基準` に inline する。
+- 残余タスクを `j-task` を経由せず起票する — 本文の規則を通らない。本ブランチで閉じない残余は `/j-task` で起票し、設計文書にも理由を残す。
