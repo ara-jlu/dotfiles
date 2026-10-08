@@ -1,7 +1,7 @@
 ---
 ID: TASK-838
 title: j-devflow で設計書を書いた後に fresh なレビューを入れる
-status: In progress
+status: In review
 Project: devops
 created_at: 2026-10-02
 updated_at: 2026-10-08
