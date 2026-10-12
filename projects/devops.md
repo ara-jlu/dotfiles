@@ -1,12 +1,16 @@
 ---
 ID: PRJ-1
 Notes:
-- '001-j-task-design'
-- '003-j-recap-design'
-- '001-j-task'
-- '003-j-recap-plan'
-- '002-macos-tmux-tcc-operation-not-permitted'
-- '002-macos-tmux-tcc-troubleshoot'
+- 001-j-task-design
+- 003-j-recap-design
+- 001-j-task
+- 003-j-recap-plan
+- 002-macos-tmux-tcc-operation-not-permitted
+- 002-macos-tmux-tcc-troubleshoot
+- 011-decision-principles-in-claude-md-design
+- 011-decision-principles-in-claude-md-plan
+- 011-claude-md-writing-best-practices
+- 015-claude-code-features-best-practices
 Tasks:
 - 003-j-recap-skill
 - 001-ai-harness
@@ -19,6 +23,8 @@ Tasks:
 - 012-j-recap-direction-check
 - 013-x-post-policy-before-recap-suggestion
 - 014-task-body-rule-bypassed-via-devflow
+- 015-harness-review-2026-09
+- 018-daily-vulnerability-check
 created_at: '2026-07-11'
 status: In Progress
 title: DevOps

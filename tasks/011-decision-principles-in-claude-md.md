@@ -5,6 +5,10 @@ created_at: '2026-09-14'
 status: Done
 title: 判断の原則を CLAUDE.md に載せる
 updated_at: '2026-09-22'
+Notes:
+- 011-decision-principles-in-claude-md-design
+- 011-decision-principles-in-claude-md-plan
+- 011-claude-md-writing-best-practices
 ---
 
 # 判断の原則を CLAUDE.md に載せる

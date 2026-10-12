@@ -1,10 +1,13 @@
 ---
+ID: NOTE-1307
 title: 判断の原則を CLAUDE.md に載せる
 tag: [document]
 Project: devops
 Task: 011-decision-principles-in-claude-md
 created_at: 2026-09-22
 updated_at: 2026-09-22
+Tasks:
+- 011-decision-principles-in-claude-md
 ---
 
 # 判断の原則を CLAUDE.md に載せる

@@ -1,10 +1,13 @@
 ---
+ID: NOTE-1304
 title: Claude Code の機能別ベストプラクティス — skills / hooks / subagents / memory / 検証（2026-09 時点）
 tag: [research]
 Project: devops
 Task: 015-harness-review-2026-09
 created_at: 2026-09-22
 updated_at: 2026-09-22
+Tasks:
+- 015-harness-review-2026-09
 ---
 
 # Claude Code の機能別ベストプラクティス — skills / hooks / subagents / memory / 検証（2026-09 時点）

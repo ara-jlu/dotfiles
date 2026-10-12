@@ -1,4 +1,5 @@
 ---
+ID: NOTE-1272
 title: リサーチ用 MCP（exa / firecrawl）の導入と MCP 定義の dotfiles 化
 tag: [document]
 Project: devops
