@@ -1,4 +1,5 @@
 ---
+ID: NOTE-1273
 title: 一次情報の二重化をやめる 実装計画
 tag: [plan]
 Project: devops

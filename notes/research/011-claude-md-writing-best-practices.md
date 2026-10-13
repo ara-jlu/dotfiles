@@ -1,10 +1,13 @@
 ---
+ID: NOTE-1305
 title: CLAUDE.md の書き方 — 2026-09 時点のベストプラクティス
 tag: [research]
 Project: devops
 Task: 011-decision-principles-in-claude-md
 created_at: 2026-09-22
 updated_at: 2026-09-22
+Tasks:
+- 011-decision-principles-in-claude-md
 ---
 
 # CLAUDE.md の書き方 — 2026-09 時点のベストプラクティス

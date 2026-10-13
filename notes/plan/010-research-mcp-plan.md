@@ -1,4 +1,5 @@
 ---
+ID: NOTE-1274
 title: リサーチ用 MCP 導入と MCP 定義の dotfiles 化 実装計画
 tag: [plan]
 Project: devops

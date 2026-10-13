@@ -1,4 +1,5 @@
 ---
+ID: NOTE-1271
 title: 一次情報の二重化をやめる
 tag: [document]
 Project: devops

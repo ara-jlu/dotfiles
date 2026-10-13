@@ -1,9 +1,12 @@
 ---
+ID: TASK-777
 title: ハーネスを 2026-09 のベストプラクティスに照らして見直す
 status: Not started
 Project: devops
 created_at: 2026-09-22
 updated_at: 2026-09-22
+Notes:
+- 015-claude-code-features-best-practices
 ---
 
 # ハーネスを 2026-09 のベストプラクティスに照らして見直す
