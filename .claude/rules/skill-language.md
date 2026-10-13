@@ -79,7 +79,7 @@ paths:
 | Common Mistakes | よくある失敗 |
 | `<X>` content spec | `<X>` の内容規定 |
 
-モード名・フラグ名・フェーズ名（`attended` / `-auto` / `-light` / `full` / `Phase A` / `GATE 1`）は識別子なので見出し内でも英語のまま。`(default)` のみ `（既定）` にする。
+モード名・フラグ名・フェーズ名（`attended` / `-auto` / `-full` / `Phase A` / `GATE 1`）は識別子なので見出し内でも英語のまま。`(default)` のみ `（既定）` にする。
 
 ## `description`
 
