@@ -1,7 +1,7 @@
 ---
 ID: TASK-852
 title: j-devflow の Phase B の既定を light にする
-status: In progress
+status: In review
 Project: devops
 created_at: 2026-10-02
 updated_at: 2026-10-13
