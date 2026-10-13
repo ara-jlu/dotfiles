@@ -60,7 +60,7 @@ j-devflow には、異なる 2 つのリスク軸を制御する独立したモ�
 | タスク毎の `ecc:security-reviewer` | 該当タスクだけ | 該当タスクだけ |
 | ブランチ全体の最終レビュー | あり | あり |
 
-「該当タスク」の物差し（セキュリティ該当の区分）、判定の外れの確かめ方、progress ledger の記録規則は、`CLAUDE.md` の「レビュー統合」にある。ここには写さない。判定するのは手順 7 の冒頭の orchestrator であり、writing-plans には何も注入しない（計画を読む側で判定する）。
+「該当タスク」の物差し（セキュリティ該当の区分）、判定の外れの確かめ方、progress ledger の記録規則は、グローバルの `~/.claude/CLAUDE.md` の「レビュー統合」にある。ここには写さない。判定するのは手順 7 の冒頭の orchestrator であり、writing-plans には何も注入しない（計画を読む側で判定する）。
 
 **既定でタスク毎レビューを絞る理由:** 重要な正しさの網は、SDD の「タスク毎に fresh subagent」の隔離と、ブランチ全体の最終レビューである。タスク毎レビューの層は、実測でほとんど欠陥を拾っていない。ただし実測の n は小さいので directional として扱い、全タスクに戻す `-full` を残す。根拠の数字は dotfiles の `notes/document/017-devflow-full-flag-design.md` にある。**ブランチ全体の最終レビューは絶対に弱めない**: これは常に fresh subagent であり、実装した subagent や orchestrator の会話は絶対に受け取らない（自己レビューのバイアス）。
 
@@ -86,8 +86,8 @@ status・tag・フォルダ名は Joifup のスキーマ（`.joifup/databases/<i
 
 **Phase B — Implement（既定では同一セッション、コンテキストが重いときのみ新規セッション）**
 7. 永続化された計画を読み、そのうえで Phase B のモードで分岐する:
-   - **既定:** `superpowers:subagent-driven-development` — タスク毎に fresh subagent、英語の atomic commit。最初のタスクを dispatch する前に、計画の各タスクがセキュリティ該当の区分（`CLAUDE.md` の「レビュー統合」）に当たるかを判定し、結果を progress ledger のヘッダに `<WT>` と並べて記録する。該当タスクにだけ `task-reviewer` と `agentType: ecc:security-reviewer` を入れる。該当しないタスクは、完了ごとに `CLAUDE.md` の規定どおりファイル名で判定の外れを確かめ、確かめが済んでから ledger に記録する。orchestration と fix のループは Driver が持ち続ける — subagent になるのはタスク毎の単位だけである。
-   - **`-full`:** 既定と同じだが、全タスクに `task-reviewer` を入れる。`ecc:security-reviewer` は該当タスクにだけ入れる。
+   - **既定:** `superpowers:subagent-driven-development` — タスク毎に fresh subagent、英語の atomic commit。最初のタスクを dispatch する前に、計画の各タスクがセキュリティ該当の区分（グローバルの `~/.claude/CLAUDE.md` の「レビュー統合」）に当たるかを判定し、結果を progress ledger のヘッダに `<WT>` と並べて記録する。該当タスクにだけ `task-reviewer` と `agentType: ecc:security-reviewer` を入れる。該当しないタスクは、完了ごとに グローバルの `~/.claude/CLAUDE.md` の規定どおりファイル名で判定の外れを確かめ、確かめが済んでから ledger に記録する。orchestration と fix のループは Driver が持ち続ける — subagent になるのはタスク毎の単位だけである。
+   - **`-full`:** 既定と同じだが、全タスクに `task-reviewer` を入れる。`ecc:security-reviewer` は該当タスクにだけ入れ、判定の外れの確かめも既定と同じに行う（当たれば `ecc:security-reviewer` を足す）。
    - **Worktree 固定の契約（subagent の dispatch すべて — implementer・fix・reviewer。既定も `-full` も同様）:** どちらのモードも SDD の implementer subagent と最終レビューの subagent を dispatch するので、この固定の契約は既定と `-full` に**同一に**適用される。Agent の subagent は、このセッションの `EnterWorktree` の cwd を継承**しない** — fresh subagent は主チェックアウトで開始する。したがって各 dispatch は次を MUST とする: (a) `Worktree root: <WT>` を明記する（手順 2 の `$WT`）。空欄や相対的な「Work from」は絶対に書かない。(b) subagent の**最初の行動**を `cd "<WT>"` とし、続けて `test "$(git rev-parse --show-toplevel)" = "<WT>"` を assert させる — 一致しなければ**STOP して BLOCKED を報告する**。fallback ディレクトリで編集することも cargo/pnpm を実行することも絶対にしない。(c) すべてのパスを `<WT>` 相対（または `<WT>/…`）に保ち、**主チェックアウトの literal なパスを禁じる**（`.claude/worktrees/<branch>/` の部分を含まない `/Users/…/joifup/…`）。例外: 何も書き換えない設計書の fresh レビュアー（手順 3）には、staging の設計書・タスク本文・設計書が参照する `<WT>` の外のファイルを、読み取り専用の入力として絶対パスで渡してよい（(c) の目的は書き込みの漏洩を防ぐことにある）。(d) build とテストを worktree の manifest に固定する — Rust では `cargo … --manifest-path "<WT>/apps/desktop/src-tauri/Cargo.toml"`。cwd を信頼する裸の `cargo` / `cargo fmt` / `pnpm` は絶対に使わない。
 8. ブランチ全体のレビュー: fresh に dispatch し、受け手ごとに渡すものを分ける — **SDD の最終 code-reviewer（spec 準拠）**には review-package と永続化された計画のパス（`[PLAN_OR_REQUIREMENTS]`）を、**`ecc:<lang>-reviewer`**（変更された言語に応じて）と、diff がセキュリティ該当の区分に触れるなら **`ecc:security-reviewer`** には review-package だけを渡す。どの受け手にも、実装した subagent と orchestrator の会話コンテキストは絶対に渡さない。既定でも `-full` でも同じである。Critical/Important はブロッキングであり → clean になるまで fix ループを回す。修正後の再レビューも同じ fresh な dispatch を通し、修正を行ったセッションによる自己チェックにはしない。**既定では、該当しないタスクの spec 準拠を見るのはこのレビューだけである。**
 9. `superpowers:verification-before-completion` ＋ テストが green。
@@ -99,7 +99,7 @@ status・tag・フォルダ名は Joifup のスキーマ（`.joifup/databases/<i
 ## ガード（全モード共通）
 
 - **設計ゲート（手順 7 の前）:** 設計承認より前にコードを書くことは絶対にしない。attended → 人間が承認する。`-auto` → エスカレーション条件が発火し**ない限り** brainstorming 自身の推奨が自動承認され、発火したら dispatcher に停止して問う（**モード**を参照）。概要レベルのタスク本文から承認を捏造することは絶対にしない。GATE 1 の前に、設計書の fresh レビュー（手順 3）を必ず通す — 書いた本人の自己レビューだけで GATE 1 に出さない。
-- **fix ループの出口（手順 10 の前）:** どのレビュアー由来であれ Critical/Important が未解決で残っていない — `-auto` も既定の Phase B もこの基準を下げてはならない。
+- **fix ループの出口（手順 10 の前）:** どのレビュアー由来であれ Critical/Important が未解決で残っていない — `-auto` も Phase B のどちらのモードもこの基準を下げてはならない。
 - **手順 10 の外部アクションの前:** PR・Discord・status は外から見えて取り消しが難しい — まずテストが green でレビューが clean であることを checkpoint とする。
 - **マージと Done:** 機械には構造上不可能である — どちらのモードでも Phase C（人間）に留保されている。
 - **Worktree の隔離（すべての subagent。`-auto` を含む）:** subagent を主チェックアウトの外に留めているのは dispatch だけである — `EnterWorktree` が動かすのは「このセッション」だけで、その subagent は動かさない。subagent の最初の手順として `cd "<WT>"` ＋ `git rev-parse --show-toplevel` の一致 assert を持たない dispatch は絶対に出さない。`<WT>` にいると確認できない subagent は、主チェックアウトを編集するのではなく BLOCK する。安い（dispatch 開始時に一度だけ、シェルチェック 1 回）のに対し、主チェックアウトへの漏洩と復旧のコストはそれよりはるかに大きい。根本原因: tasks/156。

@@ -40,8 +40,8 @@
   - 機微データ（個人情報・顧客データ）の読み書き。
   - リポジトリの `CLAUDE.md` が挙げる手掛かり（ファイルや関数の名前の形）。手掛かりは区分を広げる。上の5項目に当たらなくても該当とする。
 - **タスク毎レビュー**は、SDD の orchestrator が計画を読み、各タスクが触るファイルから区分に当たるかを判定して、当たるタスクにだけ superpowers task-reviewer と `ecc:security-reviewer` を入れる。判定結果は progress ledger のヘッダに記録する。全タスクに task-reviewer を入れるのは、依頼者が求めたとき（j-devflow では `-full`）だけである。根拠は dotfiles の `notes/document/017-devflow-full-flag-design.md`。
-  - **判定の外れの確かめ:** タスク毎レビューを入れなかったタスクが完了するたびに、`git diff --name-only <base>..<head>` でそのタスクが触ったファイルの名前だけを見て、区分に当たるかを確かめる。当たれば、次のタスクに進む前に、そのタスクに task-reviewer と `ecc:security-reviewer` を dispatch する。diff の本文は orchestrator のコンテキストに入れない。計画のタスクを分けたときは、新しくできたタスクも判定し直す。
-  - **ledger の記録:** 確かめが済んでから、`Task N: complete (commits <base7>..<head7>, per-task review: none)` と書く。`review clean` は流用しない（コンパクション後の再開で、レビュー済みと誤読しないため）。
+  - **判定の外れの確かめ:** `ecc:security-reviewer` を入れなかったタスク（全タスクに task-reviewer を入れるときも同じ）が完了するたびに、`git diff --name-only <base>..<head>` でそのタスクが触ったファイルの名前だけを見て、区分に当たるかを確かめる。当たれば、次のタスクに進む前に、そのタスクにまだ入れていない reviewer（task-reviewer と `ecc:security-reviewer` のうち欠けているもの）を dispatch し、progress ledger のヘッダの判定も更新する。diff の本文は orchestrator のコンテキストに入れない。計画のタスクを分けたときは、新しくできたタスクも判定し直す。
+  - **ledger の記録:** 確かめが済んでから書く。タスク毎レビューを入れなかったタスクは `Task N: complete (commits <base7>..<head7>, per-task review: none)` と書き、`review clean` は流用しない（コンパクション後の再開で、レビュー済みと誤読しないため）。レビューを入れたタスク（確かめで当たって後から入れたものを含む）は、SDD の通常の記録に従う。
 - Critical / Important はどの reviewer 由来でもブロッキング。修正は superpowers の fix-dispatch ループに合流。
 - 言語→reviewer: `.ts/.js`→typescript / `.tsx/.jsx`→typescript + react / `.vue`→vue / `.py`→python（+ django/fastapi 検出時）/ `.go/.rs/.java/.kt/.swift/.cs/.php/.cpp`→各言語 / `.dart`→flutter / SQL・migrations→database。
 
