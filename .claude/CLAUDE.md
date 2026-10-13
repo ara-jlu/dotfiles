@@ -28,11 +28,20 @@
 
 - **Spec準拠 = superpowers task-reviewer**（plan/brief に紐づく判定。ECC には無い）。
 - **コード品質・セキュリティ = ECC 言語別 reviewer**（言語イディオム・フレームワーク固有の罠・OWASP）。
-- **最終 whole-branch レビュー**（SDD が全タスク後に自動 dispatch）で、変更言語に対応する `ecc:<lang>-reviewer` を `agentType` 指定で dispatch。review-package の diff を渡し、diff 集中を指示する（コードベースを漁らせない）。
+- **最終 whole-branch レビュー**（SDD が全タスク後に自動 dispatch）で、変更言語に対応する `ecc:<lang>-reviewer` を `agentType` 指定で dispatch。review-package の diff を渡し、diff 集中を指示する（コードベースを漁らせない）。SDD の最終 code-reviewer（spec 準拠）には、review-package に加えて計画のパスを `[PLAN_OR_REQUIREMENTS]` として渡す（タスク毎レビューを入れないタスクの spec 準拠は、ここでしか見られない）。
   - **例外: 「タスクNに申し送った」「ファイルXに反映した」という主張が差分に含まれるときは、その送り先のファイルもパッケージに入れる。** 変更されていないファイルは diff に現れないので、**「変わるべきだったのに変わっていない」は原理的に検査できない**（実例: 別のリポジトリの `tasks/028` は申し送りを証跡・設計書・PR 本文の3箇所に書き、実際に読まれる `tasks/029` には書いていなかった。全レビューが通過し、PM が後から発見した）。
   - **顧客・外部に渡る文書を含む差分では、その節を頭から通しで読むレビューを1回入れる。** 想定読み手の実状（未接触・設定なし・開発の経緯を知らない）を明示して渡す。**差分レビューは「文書として読むとおかしい」を構造的に見つけられない**（同上の実例で、確定文に受注側の作業事故が残り、用語の未定義と同時に見落とされた）。
-- 差分が auth / 入力 / 秘密 / API / 機微データに触れる場合は `ecc:security-reviewer` も dispatch。
-- **タスク毎レビュー**は superpowers task-reviewer を維持し、上記セキュリティ該当タスクのみ `ecc:security-reviewer` を追加。
+- 差分が下記の**セキュリティ該当の区分**に触れる場合は `ecc:security-reviewer` も dispatch。
+- **セキュリティ該当の区分**（タスク毎レビューの判定と、最終レビューの `ecc:security-reviewer` に共通の物差し。定義はここだけに置く）: 次のどれかに触れるもの。
+  - 信頼の境界を越えて値を受け取る、または出す経路（利用者の入力・外部のネットワーク・第三者が書ける内容から受け取る、それを HTML・シェル・SQL などに出す）。検証や無害化の有無は問わない。自前のプロセス間の受け渡しや、自リポジトリが管理するファイルを読むだけの経路は含めない。
+  - 認証・認可。
+  - 秘密（鍵・トークン・資格情報）。
+  - 外部に公開する API の契約（ルート・引数・応答の形）。リポジトリの内部だけで呼ぶ関数は含めない。
+  - 機微データ（個人情報・顧客データ）の読み書き。
+  - リポジトリの `CLAUDE.md` が挙げる手掛かり（ファイルや関数の名前の形）。手掛かりは区分を広げる。上の5項目に当たらなくても該当とする。
+- **タスク毎レビュー**は、SDD の orchestrator が計画を読み、各タスクが触るファイルから区分に当たるかを判定して、当たるタスクにだけ superpowers task-reviewer と `ecc:security-reviewer` を入れる。判定結果は progress ledger のヘッダに記録する。全タスクに task-reviewer を入れるのは、依頼者が求めたとき（j-devflow では `-full`）だけである。根拠は dotfiles の `notes/document/017-devflow-full-flag-design.md`。
+  - **判定の外れの確かめ:** タスク毎レビューを入れなかったタスクが完了するたびに、`git diff --name-only <base>..<head>` でそのタスクが触ったファイルの名前だけを見て、区分に当たるかを確かめる。当たれば、次のタスクに進む前に、そのタスクに task-reviewer と `ecc:security-reviewer` を dispatch する。diff の本文は orchestrator のコンテキストに入れない。計画のタスクを分けたときは、新しくできたタスクも判定し直す。
+  - **ledger の記録:** 確かめが済んでから、`Task N: complete (commits <base7>..<head7>, per-task review: none)` と書く。`review clean` は流用しない（コンパクション後の再開で、レビュー済みと誤読しないため）。
 - Critical / Important はどの reviewer 由来でもブロッキング。修正は superpowers の fix-dispatch ループに合流。
 - 言語→reviewer: `.ts/.js`→typescript / `.tsx/.jsx`→typescript + react / `.vue`→vue / `.py`→python（+ django/fastapi 検出時）/ `.go/.rs/.java/.kt/.swift/.cs/.php/.cpp`→各言語 / `.dart`→flutter / SQL・migrations→database。
 
