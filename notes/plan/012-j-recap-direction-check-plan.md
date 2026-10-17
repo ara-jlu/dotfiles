@@ -46,7 +46,7 @@ updated_at: 2026-10-17
 
 ファイルがまだ無いことを確かめる。
 
-Run: `test -f .claude/skills/j-recap/references/direction-check.md && echo EXISTS || echo MISSING`
+Run: `test -f .claude/skills/j-recap/references/direction-check.md && echo EXISTS || echo MISSING`  
 Expected: `MISSING`
 
 - [ ] **Step 2: ファイルを作る**
@@ -153,10 +153,10 @@ Step 4 で recap を出した後に行う。**外部共有のとき**（共有�
 
 - [ ] **Step 3: 折り返しと言語規約を確かめる**
 
-Run: `python3 .claude/scripts/unwrap.py .claude/skills/j-recap`
+Run: `python3 .claude/scripts/unwrap.py .claude/skills/j-recap`  
 Expected: 新しいファイルについて、結合の対象（折り返し）が 0 件であること。FAILED が 0 件であること（`markdown-it-py` が無いという警告は出てよい）。
 
-Run: `grep -n '；' .claude/skills/j-recap/references/direction-check.md || echo NONE`
+Run: `grep -n '；' .claude/skills/j-recap/references/direction-check.md || echo NONE`  
 Expected: `NONE`
 
 - [ ] **Step 4: 規律のシナリオで確かめる（GREEN）**
@@ -208,7 +208,7 @@ Claude-Session: https://claude.ai/code/session_01Y97hroLaWdMBJtCxVY3bgK"
 
 いまの `SKILL.md` が週次で点検に入らないことを確かめる。
 
-Run: `grep -c 'direction-check' .claude/skills/j-recap/SKILL.md`
+Run: `grep -c 'direction-check' .claude/skills/j-recap/SKILL.md`  
 Expected: `0`
 
 - [ ] **Step 2: frontmatter を直す**
@@ -295,13 +295,13 @@ Step 2 の子箇条書きの最後（`- ヒットが 0 件でも、**0 件だと
 
 - [ ] **Step 8: 折り返しと言語規約と、既存部分の保持を確かめる**
 
-Run: `python3 .claude/scripts/unwrap.py .claude/skills/j-recap`
+Run: `python3 .claude/scripts/unwrap.py .claude/skills/j-recap`  
 Expected: `SKILL.md` と `references/direction-check.md` について、結合の対象（折り返し）が 0 件。FAILED が 0 件。
 
-Run: `grep -n '；' .claude/skills/j-recap/SKILL.md || echo NONE`
+Run: `grep -n '；' .claude/skills/j-recap/SKILL.md || echo NONE`  
 Expected: `NONE`
 
-Run: `git diff -U0 .claude/skills/j-recap/SKILL.md | grep '^-' | grep -v '^---'`
+Run: `git diff -U0 .claude/skills/j-recap/SKILL.md | grep '^-' | grep -v '^---'`  
 Expected: 削除された行が次の 5 行だけであること（`description`・`argument-hint`・旧 Step 1・旧 Step 4・旧 Step 5）。それ以外の既存の行が消えていれば戻す。
 
 - [ ] **Step 9: 発火のシナリオで確かめる（GREEN）**
