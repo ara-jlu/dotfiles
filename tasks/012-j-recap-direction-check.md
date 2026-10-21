@@ -2,7 +2,7 @@
 ID: TASK-694
 Project: devops
 created_at: '2026-09-14'
-status: In review
+status: Done
 title: j-recap の週次・月次に方向性の点検を足す
 updated_at: '2026-09-14'
 ---
